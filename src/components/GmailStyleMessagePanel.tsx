@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+// import { messages, addMessage, markMessageAsRead, type Message, stores } from '@/services/mockData';
 
 const GmailStyleMessagePanel = () => {
   const [messages, setMessages] = useState<any[]>([]);

@@ -1,32 +1,28 @@
 const mongoose = require('mongoose');
 
 const messageSchema = new mongoose.Schema({
-  content: {
-    type: String,
-    required: true
-  },
   sender: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  senderRole: {
-    type: String,
-    enum: ['user', 'admin', 'developer'],
-    required: true
+    id: { type: mongoose.Schema.Types.ObjectId, required: true },
+    name: { type: String, required: true },
+    role: { type: String, enum: ['user', 'admin', 'developer'], required: true }
   },
   recipient: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    id: { type: mongoose.Schema.Types.ObjectId, required: true },
+    name: { type: String, required: true },
+    role: { type: String, enum: ['user', 'admin', 'developer'], required: true }
   },
-  isRead: {
-    type: Boolean,
-    default: false
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
+  content: { type: String, required: true },
+  status: { type: String, enum: ['unread', 'read'], default: 'unread' },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('Message', messageSchema); 
+// Update the updatedAt timestamp before saving
+messageSchema.pre('save', function(next) {
+  this.updatedAt = new Date();
+  next();
+});
+
+const Message = mongoose.model('Message', messageSchema);
+
+module.exports = Message; 

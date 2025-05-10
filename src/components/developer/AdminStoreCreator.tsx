@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from 'sonner';
 import axios from 'axios';
+// import { createAdmin, createStore } from '@/services/mockData';
 
 interface AdminStoreFormData {
   adminName: string;

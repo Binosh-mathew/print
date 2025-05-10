@@ -1,47 +1,52 @@
 const express = require('express');
-const router = express.Router();
 const Message = require('../models/Message');
 const auth = require('../middleware/auth');
+
+const router = express.Router();
 
 // Get all messages
 router.get('/', auth, async (req, res) => {
   try {
     const messages = await Message.find()
-      .sort({ createdAt: -1 })
-      .populate('sender', 'username')
-      .populate('recipient', 'username');
+      .sort({ createdAt: -1 });
     res.json(messages);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching messages', error });
   }
 });
 
-// Send a new message
+// Create a new message
 router.post('/', auth, async (req, res) => {
   try {
-    const { content, recipient } = req.body;
     const message = new Message({
-      content,
-      sender: req.user.id,
-      senderRole: req.user.role,
-      recipient,
-      isRead: false
+      ...req.body,
+      sender: {
+        id: req.user.id,
+        name: req.user.username,
+        role: req.user.role
+      }
     });
     await message.save();
     res.status(201).json(message);
   } catch (error) {
-    res.status(500).json({ message: 'Error sending message', error });
+    res.status(500).json({ message: 'Error creating message', error });
   }
 });
 
-// Mark message as read
-router.put('/:id/read', auth, async (req, res) => {
+// Update a message
+router.put('/:id', auth, async (req, res) => {
   try {
     const message = await Message.findById(req.params.id);
     if (!message) {
       return res.status(404).json({ message: 'Message not found' });
     }
-    message.isRead = true;
+    
+    // Only allow sender to update their message
+    if (message.sender.id !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to update this message' });
+    }
+    
+    Object.assign(message, req.body);
     await message.save();
     res.json(message);
   } catch (error) {
@@ -56,13 +61,14 @@ router.delete('/:id', auth, async (req, res) => {
     if (!message) {
       return res.status(404).json({ message: 'Message not found' });
     }
-    // Only allow sender or recipient to delete
-    if (message.sender.toString() !== req.user.id && 
-        message.recipient.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized' });
+    
+    // Only allow sender to delete their message
+    if (message.sender.id !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to delete this message' });
     }
+    
     await message.remove();
-    res.json({ message: 'Message deleted' });
+    res.json({ message: 'Message deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting message', error });
   }

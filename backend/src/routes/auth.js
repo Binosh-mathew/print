@@ -5,7 +5,6 @@ const User = require('../models/User');
 const Developer = require('../models/Developer');
 const Store = require('../models/Store');
 const LoginActivity = require('../models/LoginActivity');
-const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -66,25 +65,13 @@ router.post('/login', async (req, res) => {
     await LoginActivity.create({
       userName: user.username,
       userRole: user.role,
-      userId: user._id,
-      userModel: user.role === 'developer' ? 'Developer' : user.role === 'admin' ? 'Store' : 'User',
-      action: 'login',
-      ipAddress: req.ip,
       timestamp: new Date(),
-      status: 'success'
+      ipAddress: req.ip,
+      action: 'login'
     });
-    res.json({ token, user: { id: user._id, username: user.username, name: user.username, email: user.email, role: user.role } });
+    res.json({ token, user: { id: user._id, username: user.username, email: user.email, role: user.role } });
   } catch (error) {
     res.status(500).json({ message: 'Error logging in', error });
-  }
-});
-
-// Verify token and return user info
-router.get('/verify', authMiddleware, async (req, res) => {
-  try {
-    res.json({ valid: true, user: req.user });
-  } catch (error) {
-    res.status(401).json({ valid: false, message: 'Invalid token' });
   }
 });
 

@@ -1,9 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { registerUser, loginUser, updateUserProfile as apiUpdateUserProfile } from '@/api';
-import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:5000/api';
 
 // Define types
 interface User {
@@ -11,11 +8,6 @@ interface User {
   name: string;
   email: string;
   role: 'user' | 'admin' | 'developer';
-}
-
-interface AuthResponse {
-  token: string;
-  user: User;
 }
 
 type AuthContextType = {
@@ -50,22 +42,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Check for existing user session on load
   useEffect(() => {
-    const token = localStorage.getItem('printShopToken');
-    if (token) {
-      // Verify token with backend
-      axios.get(`${API_BASE_URL}/auth/verify`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      .then(response => {
-        setUser(response.data.user);
-      })
-      .catch(() => {
-        localStorage.removeItem('printShopToken');
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-    } else {
+    try {
+      const storedUser = localStorage.getItem('printShopUser');
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        if (parsedUser && typeof parsedUser === 'object') {
+          setUser(parsedUser);
+        } else {
+          // If the stored data is not a valid user object, remove it
+          localStorage.removeItem('printShopUser');
+        }
+      }
+    } catch (error) {
+      // If there's any error parsing the stored data, remove it
+      console.error('Error parsing stored user data:', error);
+      localStorage.removeItem('printShopUser');
+    } finally {
       setIsLoading(false);
     }
   }, []);
@@ -76,11 +68,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     try {
       const response = await loginUser(email, password, role);
-      setUser(response.user);
-      localStorage.setItem('printShopToken', response.token);
+      setUser(response);
+      localStorage.setItem('printShopUser', JSON.stringify(response));
       toast({
         title: "Login successful",
-        description: `Welcome back, ${response.user.name}!`,
+        description: `Welcome back, ${response.name}!`,
       });
       return true;
     } catch (error: any) {
@@ -100,9 +92,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
-      const response = await registerUser(name, email, password);
-      setUser(response.user);
-      localStorage.setItem('printShopToken', response.token);
+      const userData = await registerUser(name, email, password);
+      
+      setUser(userData);
+      localStorage.setItem('printShopUser', JSON.stringify(userData));
       toast({
         title: "Registration successful",
         description: `Welcome, ${name}!`,
@@ -122,7 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Logout function
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('printShopToken');
+    localStorage.removeItem('printShopUser');
     toast({
       title: "Logged out",
       description: "You have been successfully logged out.",
@@ -149,7 +142,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const newUserData = { ...user, ...userData };
       setUser(newUserData);
       
-      // No need to update token in localStorage as it remains the same
+      // Update local storage
+      localStorage.setItem('printShopUser', JSON.stringify(newUserData));
       
       toast({
         title: "Profile updated",
