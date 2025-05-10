@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -20,14 +19,24 @@ import UserProfile from "./pages/user/Profile";
 
 // Admin Pages
 import AdminLogin from "./pages/admin/AdminLogin";
-import AdminDashboard from "./pages/admin/Dashboard";
+import Dashboard from "./pages/admin/Dashboard";
 import ManageOrders from "./pages/admin/ManageOrders";
 import ManageUsers from "./pages/admin/ManageUsers";
 import PricingSettings from "./pages/admin/PricingSettings";
+import Messages from "./pages/admin/Messages";
 import NotFound from "./pages/NotFound";
 
 // Protected Route Component
 import ProtectedRoute from "./components/ProtectedRoute";
+
+// Developer Pages
+import DeveloperDashboard from '@/pages/developer/DeveloperDashboard';
+import DeveloperLogin from '@/pages/developer/DeveloperLogin';
+import DeveloperMessages from '@/pages/developer/Messages';
+import SystemStatus from '@/pages/developer/SystemStatus';
+import Database from '@/pages/developer/Database';
+import Logs from '@/pages/developer/Logs';
+import CreateAdmin from '@/pages/developer/CreateAdmin';
 
 const queryClient = new QueryClient();
 
@@ -92,7 +101,7 @@ const App = () => (
               path="/admin" 
               element={
                 <ProtectedRoute allowedRole="admin">
-                  <AdminDashboard />
+                  <Dashboard />
                 </ProtectedRoute>
               } 
             />
@@ -117,6 +126,65 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRole="admin">
                   <PricingSettings />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/messages" 
+              element={
+                <ProtectedRoute allowedRole="admin">
+                  <Messages />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Developer Routes */}
+            <Route path="/developer/login" element={<DeveloperLogin />} />
+            <Route 
+              path="/developer" 
+              element={
+                <ProtectedRoute allowedRole="developer">
+                  <DeveloperDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/developer/create-admin" 
+              element={
+                <ProtectedRoute allowedRole="developer">
+                  <CreateAdmin />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/developer/messages" 
+              element={
+                <ProtectedRoute allowedRole="developer">
+                  <DeveloperMessages />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/developer/system" 
+              element={
+                <ProtectedRoute allowedRole="developer">
+                  <SystemStatus />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/developer/database" 
+              element={
+                <ProtectedRoute allowedRole="developer">
+                  <Database />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/developer/logs" 
+              element={
+                <ProtectedRoute allowedRole="developer">
+                  <Logs />
                 </ProtectedRoute>
               } 
             />

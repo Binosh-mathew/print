@@ -74,7 +74,14 @@ export const loginUser = async (email: string, password: string, role: string = 
   console.log('Logging in mock user:', email);
   
   // For mock data, we'll check against hardcoded values
-  if (role === 'admin' && email === 'admin@example.com' && password === 'admin123') {
+  if (role === 'developer' && email === 'developer@system.com' && password === 'dev123') {
+    return {
+      id: 'dev1',
+      name: 'System Developer',
+      email: 'developer@system.com',
+      role: 'developer'
+    };
+  } else if (role === 'admin' && email === 'admin@example.com' && password === 'admin123') {
     return {
       id: '1',
       name: 'Admin User',

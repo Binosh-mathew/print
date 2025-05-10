@@ -4,20 +4,23 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { 
   LayoutDashboard,
-  FileText,
-  Users,
-  Settings,
+  MessageSquare,
+  Database,
+  AlertCircle,
+  Terminal,
   LogOut,
   Menu,
   X,
-  MessageSquare
+  UserPlus
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { messages } from '@/services/mockData';
 
-interface AdminLayoutProps {
+interface DeveloperLayoutProps {
   children: React.ReactNode;
 }
 
-const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
+const DeveloperLayout: React.FC<DeveloperLayoutProps> = ({ children }) => {
   const { logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -25,24 +28,49 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   const handleLogout = () => {
     logout();
-    navigate('/admin/login');
+    navigate('/developer/login');
   };
 
+  // Count unread messages
+  const unreadCount = messages.filter(msg => !msg.read && msg.senderRole === 'admin').length;
+
   const navItems = [
-    { path: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
-    { path: '/admin/orders', label: 'Manage Orders', icon: <FileText size={18} /> },
-    { path: '/admin/users', label: 'Manage Users', icon: <Users size={18} /> },
-    { path: '/admin/pricing', label: 'Pricing', icon: <Settings size={18} /> },
-    { path: '/admin/messages', label: 'Messages', icon: <MessageSquare size={18} /> },
+    { 
+      path: '/developer', 
+      label: 'Dashboard', 
+      icon: <LayoutDashboard size={18} /> 
+    },
+    { 
+      path: '/developer/create-admin', 
+      label: 'Create Admin', 
+      icon: <UserPlus size={18} /> 
+    },
+    { 
+      path: '/developer/system', 
+      label: 'System Status', 
+      icon: <Terminal size={18} /> 
+    },
+    { 
+      path: '/developer/database', 
+      label: 'Database', 
+      icon: <Database size={18} /> 
+    },
+    { 
+      path: '/developer/logs', 
+      label: 'System Logs', 
+      icon: <AlertCircle size={18} /> 
+    }
   ];
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <Link to="/admin" className="flex items-center space-x-2">
-            <span className="font-bold text-xl text-primary">PrintSpark <span className="text-sm font-normal text-gray-500">Admin</span></span>
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <Link to="/developer" className="flex items-center space-x-2">
+            <span className="font-bold text-xl text-primary">
+              PrintSpark <span className="text-sm font-normal text-gray-500">Developer</span>
+            </span>
           </Link>
           
           {/* Mobile menu button */}
@@ -69,6 +97,26 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 <span>{item.label}</span>
               </Link>
             ))}
+
+            {/* Messages Button with Badge */}
+            <Link
+              to="/developer/messages"
+              className={`flex items-center space-x-1 py-2 px-1 border-b-2 text-sm font-medium transition-colors duration-150 relative ${
+                location.pathname === '/developer/messages'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-gray-600 hover:text-primary hover:border-primary-200'
+              }`}
+            >
+              <MessageSquare size={18} />
+              <span>Messages</span>
+              {unreadCount > 0 && (
+                <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0">
+                  {unreadCount}
+                </Badge>
+              )}
+            </Link>
+
+            {/* Logout Button */}
             <Button 
               variant="ghost" 
               onClick={handleLogout} 
@@ -86,7 +134,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         <div className="lg:hidden fixed inset-0 z-50 bg-black bg-opacity-50" onClick={() => setMobileMenuOpen(false)}>
           <div className="bg-white w-64 h-full overflow-auto" onClick={(e) => e.stopPropagation()}>
             <div className="px-4 py-3 border-b border-gray-200">
-              <span className="font-bold text-xl text-primary">PrintSpark <span className="text-sm font-normal text-gray-500">Admin</span></span>
+              <span className="font-bold text-xl text-primary">
+                PrintSpark <span className="text-sm font-normal text-gray-500">Developer</span>
+              </span>
             </div>
             <nav className="px-2 py-3">
               {navItems.map((item) => (
@@ -104,6 +154,21 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   <span>{item.label}</span>
                 </Link>
               ))}
+              <Link
+                to="/developer/messages"
+                className={`flex items-center space-x-3 px-3 py-3 rounded-md transition-colors duration-150 ${
+                  location.pathname === '/developer/messages'
+                    ? 'bg-primary-100 text-primary'
+                    : 'text-gray-600 hover:bg-primary-100 hover:text-primary'
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <MessageSquare size={18} />
+                <span>Messages</span>
+                {unreadCount > 0 && (
+                  <Badge variant="destructive">{unreadCount}</Badge>
+                )}
+              </Link>
               <button
                 onClick={() => {
                   handleLogout();
@@ -127,11 +192,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       {/* Footer */}
       <footer className="bg-white border-t border-gray-200 py-4">
         <div className="container mx-auto px-4 text-center text-sm text-gray-500">
-          <p>© 2025 PrintSpark Studio Admin. All rights reserved.</p>
+          <p>© 2025 PrintSpark Studio Developer Portal. All rights reserved.</p>
         </div>
       </footer>
     </div>
   );
 };
 
-export default AdminLayout;
+export default DeveloperLayout; 

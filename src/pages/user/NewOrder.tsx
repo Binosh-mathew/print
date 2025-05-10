@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -12,13 +11,22 @@ import {
   FormField,
   FormItem,
   FormLabel,
+  FormMessage,
 } from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Loader2 } from 'lucide-react';
 import FileUploader from '@/components/FileUploader';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
 import { createOrder } from '@/api';
 import type { OrderFormData, FileDetails, Order } from '@/types/order';
+import { stores } from '@/services/mockData';
 
 const NewOrder = () => {
   const { user } = useAuth();
@@ -32,6 +40,7 @@ const NewOrder = () => {
       documentName: '',
       files: [],
       description: '',
+      storeId: '',
     },
   });
 
@@ -129,6 +138,15 @@ const NewOrder = () => {
       });
       return;
     }
+
+    if (!data.storeId) {
+      toast({
+        title: "Store not selected",
+        description: "Please select a store to send your print order to",
+        variant: "destructive",
+      });
+      return;
+    }
     
     setIsSubmitting(true);
     
@@ -138,6 +156,9 @@ const NewOrder = () => {
       // Calculate if we have any color files
       const hasColorFile = files.some(file => file.printType === 'color');
       const colorType = hasColorFile ? 'color' : 'blackAndWhite';
+      
+      // Get store information
+      const selectedStore = stores.find(store => store.id === data.storeId);
       
       // Create the order in the backend
       const orderData: Partial<Order> = {
@@ -151,6 +172,8 @@ const NewOrder = () => {
         colorType: colorType,
         doubleSided: files.some(file => file.doubleSided),
         totalPrice: totalPrice,
+        storeId: data.storeId,
+        storeName: selectedStore?.name,
       };
       
       console.log('Sending order data:', orderData);
@@ -159,7 +182,7 @@ const NewOrder = () => {
       
       toast({
         title: "Order submitted successfully",
-        description: "Your print order has been placed and is being processed",
+        description: `Your print order has been sent to ${selectedStore?.name} and is being processed`,
       });
       
       navigate('/orders');
@@ -174,6 +197,9 @@ const NewOrder = () => {
       setIsSubmitting(false);
     }
   };
+
+  // Filter only active stores
+  const activeStores = stores.filter(store => store.status === 'active');
 
   return (
     <UserLayout>
@@ -192,6 +218,35 @@ const NewOrder = () => {
               <CardContent>
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    {/* Store Selection */}
+                    <FormField
+                      control={form.control}
+                      name="storeId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Select Store</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Choose a store to send your print order" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {activeStores.map((store) => (
+                                <SelectItem key={store.id} value={store.id}>
+                                  {store.name} - {store.location}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Select the store where you want your documents to be printed
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
                     <FormField
                       control={form.control}
                       name="files"
@@ -268,6 +323,18 @@ const NewOrder = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
+                  {/* Store Information */}
+                  <div className="border-b border-gray-200 pb-4">
+                    <p className="text-sm text-gray-500 mb-1">Selected Store</p>
+                    <p className="font-medium">
+                      {form.watch('storeId') ? (
+                        activeStores.find(store => store.id === form.watch('storeId'))?.name
+                      ) : (
+                        <span className="text-gray-400">No store selected</span>
+                      )}
+                    </p>
+                  </div>
+
                   <div className="border-b border-gray-200 pb-4">
                     <p className="text-sm text-gray-500 mb-1">Documents</p>
                     <p className="font-medium">

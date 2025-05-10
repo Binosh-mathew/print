@@ -1,4 +1,3 @@
-
 // Types
 import type { Order as OrderType, FileDetails } from '@/types/order';
 
@@ -8,7 +7,8 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'user' | 'admin';
+  role: 'user' | 'admin' | 'developer';
+  password?: string;
   orders?: Order[];
   createdAt: string;
 }
@@ -60,6 +60,14 @@ export const pricingSettings: PricingSettings = {
 
 // Mock users data
 export const users: User[] = [
+  {
+    id: 'dev1',
+    name: 'System Developer',
+    email: 'developer@system.com',
+    role: 'developer',
+    password: 'dev123',
+    createdAt: '2024-01-01T00:00:00Z',
+  },
   {
     id: '1',
     name: 'Admin User',
@@ -232,4 +240,196 @@ export const calculateOrderPrice = (
 // Generate a new order ID
 export const generateOrderId = (): string => {
   return `ORD${(orders.length + 1001).toString()}`;
+};
+
+export interface Admin {
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+  storeId: string;
+  lastLogin: string;
+  lastLoginIp: string;
+  createdAt: string;
+}
+
+export interface Store {
+  id: string;
+  name: string;
+  location: string;
+  status: 'active' | 'inactive';
+  adminId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlatformStats {
+  dailyOrders: number;
+  monthlyOrders: number;
+  monthlyRevenue: number;
+  activeStores: number;
+  activeAdmins: number;
+  storageUsed: number;
+  totalStorage: number;
+}
+
+export interface LoginActivity {
+  id: string;
+  userId: string;
+  userName: string;
+  userRole: 'developer' | 'admin';
+  timestamp: string;
+  ipAddress: string;
+  action: 'login' | 'logout' | 'failed_login';
+}
+
+// Mock admins array
+export const admins: Admin[] = [
+  {
+    id: 'admin1',
+    name: 'Admin User',
+    email: 'admin@example.com',
+    password: 'admin123',
+    storeId: 'store1',
+    lastLogin: '2024-03-15T10:00:00Z',
+    lastLoginIp: '192.168.1.1',
+    createdAt: '2024-03-15T10:00:00Z',
+  },
+];
+
+// Mock stores array
+export const stores: Store[] = [
+  {
+    id: 'store1',
+    name: 'Main Print Shop',
+    location: 'Downtown',
+    status: 'active',
+    adminId: 'admin1',
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-03-15T10:00:00Z',
+  },
+];
+
+// Mock platform statistics
+export const platformStats: PlatformStats = {
+  dailyOrders: 45,
+  monthlyOrders: 1250,
+  monthlyRevenue: 25000,
+  activeStores: stores.filter(s => s.status === 'active').length,
+  activeAdmins: admins.length,
+  storageUsed: 92, // GB
+  totalStorage: 100 // GB
+};
+
+// Mock login activity
+export const loginActivity: LoginActivity[] = [
+  {
+    id: 'log1',
+    userId: 'dev1',
+    userName: 'Developer One',
+    userRole: 'developer',
+    timestamp: '2024-03-15T10:30:00Z',
+    ipAddress: '192.168.1.100',
+    action: 'login'
+  },
+  {
+    id: 'log2',
+    userId: 'admin1',
+    userName: 'John Admin',
+    userRole: 'admin',
+    timestamp: '2024-03-15T09:15:00Z',
+    ipAddress: '192.168.1.101',
+    action: 'login'
+  }
+];
+
+// Platform maintenance mode state
+export let maintenanceMode = false;
+
+// Function to toggle maintenance mode
+export const toggleMaintenanceMode = (enabled: boolean) => {
+  maintenanceMode = enabled;
+};
+
+export interface Message {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderRole: 'admin' | 'developer';
+  content: string;
+  timestamp: string;
+  read: boolean;
+  storeId?: string;
+  storeName?: string;
+}
+
+// Mock messages data
+export const messages: Message[] = [
+  {
+    id: 'msg1',
+    senderId: 'dev1',
+    senderName: 'Developer One',
+    senderRole: 'developer',
+    content: 'Initial system setup completed',
+    timestamp: '2024-03-14T10:00:00Z',
+    read: true,
+    storeId: 'store1',
+    storeName: 'Downtown Print Shop'
+  },
+  {
+    id: 'msg2',
+    senderId: 'admin1',
+    senderName: 'Admin One',
+    senderRole: 'admin',
+    content: 'Thank you for the update',
+    timestamp: '2024-03-14T10:30:00Z',
+    read: true,
+    storeId: 'store1',
+    storeName: 'Downtown Print Shop'
+  }
+];
+
+// Function to add a new message
+export const addMessage = (messageData: Omit<Message, 'id' | 'timestamp'>) => {
+  const newMessage: Message = {
+    ...messageData,
+    id: `msg${messages.length + 1}`,
+    timestamp: new Date().toISOString(),
+  };
+  messages.unshift(newMessage);
+  return newMessage;
+};
+
+// Function to mark message as read
+export const markMessageAsRead = (messageId: string) => {
+  const message = messages.find(m => m.id === messageId);
+  if (message) {
+    message.read = true;
+  }
+};
+
+// Function to create a new admin
+export const createAdmin = (adminData: Omit<Admin, 'id' | 'lastLogin' | 'lastLoginIp' | 'createdAt'>) => {
+  const newAdmin: Admin = {
+    ...adminData,
+    id: `admin${admins.length + 1}`,
+    lastLogin: '',
+    lastLoginIp: '',
+    createdAt: new Date().toISOString(),
+  };
+  admins.push(newAdmin);
+  return newAdmin;
+};
+
+// Function to create a new store
+export const createStore = (storeData: Omit<Store, 'id' | 'status' | 'createdAt' | 'updatedAt'>) => {
+  const newStore: Store = {
+    ...storeData,
+    id: `store${stores.length + 1}`,
+    status: 'active',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  stores.push(newStore);
+  return newStore;
 };

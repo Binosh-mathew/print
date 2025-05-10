@@ -1,22 +1,21 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { registerUser, loginUser, updateUserProfile as apiUpdateUserProfile } from '@/api';
 import { shouldUseMockData } from '@/utils/orderUtils';
 
 // Define types
-type User = {
+interface User {
   id: string;
   name: string;
   email: string;
-  role: 'user' | 'admin';
-};
+  role: 'user' | 'admin' | 'developer';
+}
 
 type AuthContextType = {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string, role?: 'user' | 'admin') => Promise<void>;
+  login: (email: string, password: string, role?: 'user' | 'admin' | 'developer') => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   updateUserProfile: (userData: Partial<User>) => Promise<void>;
@@ -27,7 +26,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   isAuthenticated: false,
   isLoading: true,
-  login: async () => {},
+  login: async () => false,
   register: async () => {},
   logout: () => {},
   updateUserProfile: async () => {},
@@ -53,25 +52,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // Login function
-  const login = async (email: string, password: string, role: 'user' | 'admin' = 'user') => {
+  const login = async (email: string, password: string, role: 'user' | 'admin' | 'developer' = 'user') => {
     setIsLoading(true);
     
     try {
-      const userData = await loginUser(email, password, role);
-      
-      setUser(userData);
-      localStorage.setItem('printShopUser', JSON.stringify(userData));
+      const response = await loginUser(email, password, role);
+      setUser(response);
+      localStorage.setItem('printShopUser', JSON.stringify(response));
       toast({
         title: "Login successful",
-        description: `Welcome back, ${userData.name}!`,
+        description: `Welcome back, ${response.name}!`,
       });
+      return true;
     } catch (error: any) {
       toast({
         title: "Login failed",
         description: error.message || "An error occurred during login",
         variant: "destructive",
       });
-      throw error;
+      return false;
     } finally {
       setIsLoading(false);
     }

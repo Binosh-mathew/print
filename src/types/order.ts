@@ -1,4 +1,3 @@
-
 export interface FileDetails {
   file: File;
   copies: number;
@@ -16,6 +15,7 @@ export interface OrderFormData {
   documentName: string;
   files: FileDetails[];
   description: string;
+  storeId: string;
 }
 
 export interface Order {
@@ -37,4 +37,6 @@ export interface Order {
   totalPrice?: number;
   userName?: string;
   documentName?: string;
+  storeId?: string;
+  storeName?: string;
 }

@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
   FileText, 
   Users, 
@@ -27,7 +26,7 @@ import {
   Line,
   Legend
 } from 'recharts';
-import { orders, stats } from '@/services/mockData';
+import { orders, stats, platformStats, stores } from '@/services/mockData';
 import { type Order } from '@/services/mockData';
 import {
   Table,
@@ -90,6 +89,35 @@ const AdminDashboard = () => {
           <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
           <p className="text-gray-600">Overview of print shop operations and metrics</p>
         </div>
+        
+        {/* Statistics Overview */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Dashboard Overview</CardTitle>
+            <CardDescription>Key metrics and statistics</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <h3 className="font-semibold">Today's Orders</h3>
+              <p className="text-2xl">{platformStats.dailyOrders}</p>
+              <p className="text-sm text-muted-foreground">
+                {platformStats.monthlyOrders} this month
+              </p>
+            </div>
+            <div>
+              <h3 className="font-semibold">Revenue</h3>
+              <p className="text-2xl">${platformStats.monthlyRevenue}</p>
+              <p className="text-sm text-muted-foreground">Monthly revenue</p>
+            </div>
+            <div>
+              <h3 className="font-semibold">Active Stores</h3>
+              <p className="text-2xl">{platformStats.activeStores}</p>
+              <p className="text-sm text-muted-foreground">
+                {stores.filter(s => s.status === 'active').length} stores online
+              </p>
+            </div>
+          </CardContent>
+        </Card>
         
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
