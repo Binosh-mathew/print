@@ -26,8 +26,7 @@ import {
   Line,
   Legend
 } from 'recharts';
-import { orders, stats, platformStats, stores } from '@/services/mockData';
-import { type Order } from '@/services/mockData';
+import axios from 'axios';
 import {
   Table,
   TableBody,
@@ -59,25 +58,45 @@ const ordersData = [
 ];
 
 const AdminDashboard = () => {
-  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
-  
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    totalOrders: 0,
+    pendingOrders: 0,
+    completedOrders: 0,
+    totalRevenue: 0,
+    dailyOrders: 0,
+    monthlyOrders: 0,
+    monthlyRevenue: 0,
+    activeStores: 0,
+    activeAdmins: 0,
+    totalUsers: 0,
+  });
+
   useEffect(() => {
-    // Get recent orders - make sure to use the current orders array
-    const fetchRecentOrders = () => {
-      console.log('Dashboard fetching orders:', orders.length);
-      // Always sort from the current orders array to get fresh data
-      const sortedOrders = [...orders].sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-      setRecentOrders(sortedOrders.slice(0, 5));
+    const fetchDashboardData = async () => {
+      try {
+        const ordersResponse = await axios.get('http://localhost:5000/api/orders');
+        const orders = ordersResponse.data;
+        const sortedOrders = [...orders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setRecentOrders(sortedOrders.slice(0, 5));
+        setStats({
+          totalOrders: orders.length,
+          pendingOrders: orders.filter((order: any) => order.status === 'Pending').length,
+          completedOrders: orders.filter((order: any) => order.status === 'Completed').length,
+          totalRevenue: orders.reduce((total: number, order: any) => total + (order.totalPrice || 0), 0),
+          dailyOrders: orders.filter((order: any) => order.createdAt.toDateString() === new Date().toDateString()).length,
+          monthlyOrders: orders.filter((order: any) => order.createdAt.toDateString().startsWith(new Date().toDateString().split(' ')[3])).length,
+          monthlyRevenue: orders.reduce((total: number, order: any) => total + (order.totalPrice || 0), 0),
+          activeStores: orders.filter((order: any) => order.store.status === 'active').length,
+          activeAdmins: orders.filter((order: any) => order.store.admin.status === 'active').length,
+          totalUsers: orders.filter((order: any) => order.user.status === 'active').length,
+        });
+      } catch (error) {
+        // handle error
+      }
     };
-    
-    fetchRecentOrders();
-    
-    // Set up polling to refresh orders every 10 seconds
-    const intervalId = setInterval(fetchRecentOrders, 10000);
-    
-    // Clean up interval on component unmount
+    fetchDashboardData();
+    const intervalId = setInterval(fetchDashboardData, 10000);
     return () => clearInterval(intervalId);
   }, []);
 
@@ -99,21 +118,21 @@ const AdminDashboard = () => {
           <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <h3 className="font-semibold">Today's Orders</h3>
-              <p className="text-2xl">{platformStats.dailyOrders}</p>
+              <p className="text-2xl">{stats.dailyOrders}</p>
               <p className="text-sm text-muted-foreground">
-                {platformStats.monthlyOrders} this month
+                {stats.monthlyOrders} this month
               </p>
             </div>
             <div>
               <h3 className="font-semibold">Revenue</h3>
-              <p className="text-2xl">${platformStats.monthlyRevenue}</p>
+              <p className="text-2xl">${stats.monthlyRevenue}</p>
               <p className="text-sm text-muted-foreground">Monthly revenue</p>
             </div>
             <div>
               <h3 className="font-semibold">Active Stores</h3>
-              <p className="text-2xl">{platformStats.activeStores}</p>
+              <p className="text-2xl">{stats.activeStores}</p>
               <p className="text-sm text-muted-foreground">
-                {stores.filter(s => s.status === 'active').length} stores online
+                {stats.activeStores} stores online
               </p>
             </div>
           </CardContent>
@@ -123,21 +142,21 @@ const AdminDashboard = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard 
             title="Total Orders" 
-            value={orders.length} // Use actual count instead of static stat
+            value={stats.totalOrders}
             icon={<FileText size={24} />}
             trend={{ value: 12, isPositive: true }}
           />
           
           <StatCard 
             title="Pending Orders" 
-            value={orders.filter(order => order.status === 'Pending').length}
+            value={stats.pendingOrders}
             icon={<Clock size={24} />}
             trend={{ value: 5, isPositive: false }}
           />
           
           <StatCard 
             title="Total Revenue" 
-            value={`₹${orders.reduce((sum, order) => sum + order.totalPrice, 0)}`}
+            value={`₹${stats.totalRevenue}`}
             icon={<CreditCard size={24} />}
             trend={{ value: 18, isPositive: true }}
           />

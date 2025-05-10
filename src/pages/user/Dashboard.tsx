@@ -6,9 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FilePlus, File, Clock, CheckCircle, TrendingUp } from 'lucide-react';
 import OrderStatusBadge from '@/components/OrderStatusBadge';
 import { useAuth } from '@/contexts/AuthContext';
-import { orders } from '@/services/mockData';
-import { type Order } from '@/services/mockData';
+import type { Order } from '@/types/order';
 import { hasStatus } from '@/utils/orderUtils';
+import axios from 'axios';
 
 const UserDashboard = () => {
   const { user } = useAuth();
@@ -18,6 +18,20 @@ const UserDashboard = () => {
     pendingOrders: 0,
     completedOrders: 0,
   });
+  const [orders, setOrders] = useState([]);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/orders');
+        setOrders(response.data);
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+      }
+    };
+
+    fetchOrders();
+  }, []);
 
   useEffect(() => {
     // Simulate API call
@@ -41,7 +55,7 @@ const UserDashboard = () => {
         ).length,
       });
     }
-  }, [user]);
+  }, [user, orders]);
 
   return (
     <UserLayout>

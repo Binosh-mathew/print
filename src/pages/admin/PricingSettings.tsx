@@ -14,30 +14,29 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Loader2, Save, CreditCard, FileText, Printer, Info, BookOpen, Layers } from 'lucide-react';
-import { pricingSettings } from '@/services/mockData';
 import { toast } from '@/components/ui/use-toast';
 
 const PricingSettings = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [prices, setPrices] = useState({
     blackAndWhite: {
-      singleSided: pricingSettings.blackAndWhite.singleSided,
-      doubleSided: pricingSettings.blackAndWhite.doubleSided,
+      singleSided: 0,
+      doubleSided: 0,
     },
     color: {
-      singleSided: pricingSettings.color.singleSided,
-      doubleSided: pricingSettings.color.doubleSided,
+      singleSided: 0,
+      doubleSided: 0,
     },
     binding: {
-      spiralBinding: pricingSettings.binding.spiralBinding,
-      staplingBinding: pricingSettings.binding.staplingBinding,
-      hardcoverBinding: pricingSettings.binding.hardcoverBinding,
+      spiralBinding: 0,
+      staplingBinding: 0,
+      hardcoverBinding: 0,
     },
     paperTypes: {
-      normal: pricingSettings.paperTypes.normal,
-      glossy: pricingSettings.paperTypes.glossy,
-      matte: pricingSettings.paperTypes.matte,
-      transparent: pricingSettings.paperTypes.transparent,
+      normal: 0,
+      glossy: 0,
+      matte: 0,
+      transparent: 0,
     },
   });
 

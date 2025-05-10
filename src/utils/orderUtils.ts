@@ -15,8 +15,8 @@ export const hasStatus = (order: Order, status: string): boolean => {
 };
 
 /**
- * Always returns true since we're using mock data
+ * Always returns false since we're not using mock data
  */
 export const shouldUseMockData = (): boolean => {
-  return true;
+  return false;
 }; 

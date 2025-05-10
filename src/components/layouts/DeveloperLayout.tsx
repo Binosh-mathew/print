@@ -14,7 +14,6 @@ import {
   UserPlus
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { messages } from '@/services/mockData';
 
 interface DeveloperLayoutProps {
   children: React.ReactNode;
@@ -32,7 +31,7 @@ const DeveloperLayout: React.FC<DeveloperLayoutProps> = ({ children }) => {
   };
 
   // Count unread messages
-  const unreadCount = messages.filter(msg => !msg.read && msg.senderRole === 'admin').length;
+  const unreadCount = 0; // Placeholder for any developer layout state
 
   const navItems = [
     { 

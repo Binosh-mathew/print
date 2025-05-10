@@ -26,7 +26,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
 import { createOrder } from '@/api';
 import type { OrderFormData, FileDetails, Order } from '@/types/order';
-import { stores } from '@/services/mockData';
+import axios from 'axios';
 
 const NewOrder = () => {
   const { user } = useAuth();
@@ -34,6 +34,7 @@ const NewOrder = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [files, setFiles] = useState<FileDetails[]>([]);
   const [totalPrice, setTotalPrice] = useState(0);
+  const [stores, setStores] = useState([]);
   
   const form = useForm<OrderFormData>({
     defaultValues: {
@@ -128,6 +129,19 @@ const NewOrder = () => {
     const newTotalPrice = calculateTotalPrice(files);
     setTotalPrice(newTotalPrice);
   }, [files]);
+
+  useEffect(() => {
+    const fetchStores = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/stores');
+        setStores(response.data);
+      } catch (error) {
+        console.error('Error fetching stores:', error);
+      }
+    };
+
+    fetchStores();
+  }, []);
 
   const onSubmit = async (data: OrderFormData) => {
     if (files.length === 0) {

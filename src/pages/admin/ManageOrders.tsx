@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import AdminLayout from '@/components/layouts/AdminLayout';
@@ -34,7 +33,6 @@ import {
   ArrowUp
 } from 'lucide-react';
 import OrderStatusBadge from '@/components/OrderStatusBadge';
-import { orders, type Order } from '@/services/mockData';
 import { toast } from '@/components/ui/use-toast';
 import { normalizeStatus, hasStatus } from '@/utils/orderUtils';
 import {
@@ -46,43 +44,42 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { fetchOrders, updateOrder } from '@/api';
+import axios from 'axios';
+import type { Order } from '@/types/order';
 
 const ManageOrders = () => {
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const orderId = queryParams.get('id');
 
-  const [allOrders, setAllOrders] = useState<Order[]>([]);
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [orders, setOrders] = useState([]);
+  const [filteredOrders, setFilteredOrders] = useState([]);
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [sortConfig, setSortConfig] = useState<{
-    key: keyof Order;
-    direction: 'ascending' | 'descending';
-  }>({
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sortConfig, setSortConfig] = useState({
     key: 'createdAt',
     direction: 'descending',
   });
 
-  // Fix the dialog reopening issue by improving the dialog close logic
   const [statusChangeCompleted, setStatusChangeCompleted] = useState(false);
 
   const refreshOrders = async () => {
     try {
       setIsUpdating(true);
       
-      const fetchedOrders = await fetchOrders();
+      const response = await axios.get('http://localhost:5000/api/orders');
+      setOrders(response.data);
       
-      console.log('Fetching orders from mockData:', fetchedOrders.length);
+      console.log('Fetching orders from API:', response.data.length);
       
-      const sortedOrders = [...fetchedOrders].sort((a, b) => 
+      const sortedOrders = [...response.data].sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       
-      setAllOrders(sortedOrders);
+      setFilteredOrders(sortedOrders);
       setIsUpdating(false);
       
       if (orderId) {
@@ -112,7 +109,7 @@ const ManageOrders = () => {
   }, [orderId]);
 
   useEffect(() => {
-    let result = [...allOrders];
+    let result = [...orders];
     
     if (statusFilter !== 'all') {
       result = result.filter(order => order.status === statusFilter);
@@ -146,7 +143,7 @@ const ManageOrders = () => {
     });
     
     setFilteredOrders(result);
-  }, [allOrders, statusFilter, searchQuery, sortConfig]);
+  }, [orders, statusFilter, searchQuery, sortConfig]);
 
   const handleSort = (key: keyof Order) => {
     setSortConfig({
@@ -185,20 +182,20 @@ const ManageOrders = () => {
     setIsUpdating(true);
     
     try {
-      const normalizedStatus = normalizeStatus(newStatus);
+      const normalizedStatus: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled' | 'Completed' = 'Pending';
       
       const updatedOrder = await updateOrder(orderId, { 
         status: normalizedStatus 
       });
       
-      const updatedOrders = allOrders.map(order => {
+      const updatedOrders = orders.map(order => {
         if (order.id === orderId) {
           return updatedOrder;
         }
         return order;
       });
       
-      setAllOrders(updatedOrders);
+      setOrders(updatedOrders);
       
       if (selectedOrder && selectedOrder.id === orderId) {
         setSelectedOrder(updatedOrder);
@@ -209,10 +206,8 @@ const ManageOrders = () => {
         description: `Order #${orderId} status changed to ${normalizedStatus}.`,
       });
       
-      // Set the status change completed flag to true
       setStatusChangeCompleted(true);
       
-      // Close the dialog after a status change
       setIsDetailsOpen(false);
     } catch (error) {
       console.error('Error updating order status:', error);
@@ -227,7 +222,6 @@ const ManageOrders = () => {
   };
 
   const handleOrderClick = (order: Order) => {
-    // Reset status change flag when opening a new order
     setStatusChangeCompleted(false);
     setSelectedOrder(order);
     setIsDetailsOpen(true);
@@ -244,11 +238,9 @@ const ManageOrders = () => {
     return hasStatus({status: orderStatus} as Order, checkStatus);
   };
 
-  // Reset the status change flag when dialog is closed
   const handleDialogOpenChange = (open: boolean) => {
     if (!open && !isUpdating) {
       setIsDetailsOpen(false);
-      // Add a small delay before allowing the dialog to be opened again
       setTimeout(() => {
         setStatusChangeCompleted(false);
       }, 300);

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from 'sonner';
-import { createAdmin, createStore } from '@/services/mockData';
+import axios from 'axios';
 
 interface AdminStoreFormData {
   adminName: string;
@@ -22,6 +22,7 @@ const AdminStoreCreator = () => {
     storeName: '',
     storeLocation: '',
   });
+  const [loading, setLoading] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -31,40 +32,26 @@ const AdminStoreCreator = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validate form data
     if (!formData.adminEmail.includes('@') || formData.adminPassword.length < 6) {
       toast.error('Please enter a valid email and password (min 6 characters)');
       return;
     }
-
     if (!formData.adminName || !formData.storeName || !formData.storeLocation) {
       toast.error('Please fill in all fields');
       return;
     }
-
+    setLoading(true);
     try {
-      // Create new admin first
-      const newAdmin = createAdmin({
+      // Create new admin
+      await axios.post('http://localhost:5000/api/admins', {
         name: formData.adminName,
         email: formData.adminEmail,
         password: formData.adminPassword,
-        storeId: '', // This will be updated after store creation
+        storeName: formData.storeName,
+        storeLocation: formData.storeLocation
       });
-
-      // Create new store
-      const newStore = createStore({
-        name: formData.storeName,
-        location: formData.storeLocation,
-        adminId: newAdmin.id,
-      });
-
-      // Update admin's storeId
-      newAdmin.storeId = newStore.id;
-
-      // Reset form
       setFormData({
         adminName: '',
         adminEmail: '',
@@ -72,11 +59,12 @@ const AdminStoreCreator = () => {
         storeName: '',
         storeLocation: '',
       });
-
       toast.success('Admin and store created successfully');
     } catch (error) {
       toast.error('Failed to create admin and store');
       console.error('Error creating admin and store:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -97,7 +85,6 @@ const AdminStoreCreator = () => {
               placeholder="Enter admin name"
             />
           </div>
-          
           <div className="space-y-2">
             <Label htmlFor="adminEmail">Admin Email</Label>
             <Input
@@ -109,7 +96,6 @@ const AdminStoreCreator = () => {
               placeholder="Enter admin email"
             />
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="adminPassword">Admin Password</Label>
             <Input
@@ -121,7 +107,6 @@ const AdminStoreCreator = () => {
               placeholder="Enter admin password"
             />
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="storeName">Store Name</Label>
             <Input
@@ -132,7 +117,6 @@ const AdminStoreCreator = () => {
               placeholder="Enter store name"
             />
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="storeLocation">Store Location</Label>
             <Input
@@ -143,9 +127,8 @@ const AdminStoreCreator = () => {
               placeholder="Enter store location"
             />
           </div>
-
-          <Button type="submit" className="w-full">
-            Create Admin & Store
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? 'Creating...' : 'Create Admin & Store'}
           </Button>
         </form>
       </CardContent>

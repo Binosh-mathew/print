@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import DeveloperLayout from '@/components/layouts/DeveloperLayout';
 import {
   Card,
@@ -10,22 +10,59 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { platformStats, maintenanceMode, toggleMaintenanceMode } from '@/services/mockData';
 import { toast } from "@/components/ui/use-toast";
+import axios from 'axios';
 
 const SystemStatus = () => {
-  const [isMaintenanceMode, setIsMaintenanceMode] = React.useState(maintenanceMode);
-  const storagePercentage = (platformStats.storageUsed / platformStats.totalStorage) * 100;
-  const isStorageCritical = storagePercentage > 90;
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [stats, setStats] = useState({
+    dailyOrders: 0,
+    monthlyOrders: 0,
+    monthlyRevenue: 0,
+    activeStores: 0,
+    activeAdmins: 0,
+    storageUsed: 0,
+    totalStorage: 0,
+  });
+  const [loading, setLoading] = useState(true);
 
-  const handleMaintenanceToggle = (enabled: boolean) => {
-    setIsMaintenanceMode(enabled);
-    toggleMaintenanceMode(enabled);
-    toast({
-      title: enabled ? "Maintenance Mode Enabled" : "Maintenance Mode Disabled",
-      description: enabled ? "The platform is now in maintenance mode." : "The platform is now active.",
-    });
+  useEffect(() => {
+    const fetchStatus = async () => {
+      setLoading(true);
+      try {
+        const statsRes = await axios.get('http://localhost:5000/api/platform-stats');
+        setStats(statsRes.data);
+        const maintRes = await axios.get('http://localhost:5000/api/system/maintenance');
+        setMaintenanceMode(maintRes.data.maintenanceMode);
+      } catch (error) {
+        // handle error
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStatus();
+  }, []);
+
+  const handleToggleMaintenance = async () => {
+    try {
+      const newMode = !maintenanceMode;
+      setMaintenanceMode(newMode);
+      await axios.post('http://localhost:5000/api/system/maintenance', { maintenanceMode: newMode });
+      toast({
+        title: newMode ? "Maintenance Mode Enabled" : "Maintenance Mode Disabled",
+        description: newMode ? "The platform is now in maintenance mode." : "The platform is now active.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update maintenance mode.",
+        variant: "destructive",
+      });
+    }
   };
+
+  const storagePercentage = (stats.storageUsed / stats.totalStorage) * 100;
+  const isStorageCritical = storagePercentage > 90;
 
   return (
     <DeveloperLayout>
@@ -49,18 +86,24 @@ const SystemStatus = () => {
                 </p>
               </div>
               <Switch
-                checked={isMaintenanceMode}
-                onCheckedChange={handleMaintenanceToggle}
+                checked={maintenanceMode}
+                onCheckedChange={handleToggleMaintenance}
               />
             </div>
 
             <div>
               <Label>Storage Usage</Label>
-              <Progress value={storagePercentage} className="mt-2" />
-              <p className={`text-sm mt-1 ${isStorageCritical ? 'text-red-500' : 'text-muted-foreground'}`}>
-                {platformStats.storageUsed}GB / {platformStats.totalStorage}GB
-                {isStorageCritical && ' - Critical storage level!'}
-              </p>
+              {loading ? (
+                <p>Loading...</p>
+              ) : (
+                <>
+                  <Progress value={storagePercentage} className="mt-2" />
+                  <p className={`text-sm mt-1 ${isStorageCritical ? 'text-red-500' : 'text-muted-foreground'}`}>
+                    {stats.storageUsed}GB / {stats.totalStorage}GB
+                    {isStorageCritical && ' - Critical storage level!'}
+                  </p>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>

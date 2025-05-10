@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { registerUser, loginUser, updateUserProfile as apiUpdateUserProfile } from '@/api';
-import { shouldUseMockData } from '@/utils/orderUtils';
+import axios from 'axios';
+
+const API_BASE_URL = 'http://localhost:5000/api';
 
 // Define types
 interface User {
@@ -9,6 +11,11 @@ interface User {
   name: string;
   email: string;
   role: 'user' | 'admin' | 'developer';
+}
+
+interface AuthResponse {
+  token: string;
+  user: User;
 }
 
 type AuthContextType = {
@@ -40,15 +47,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const useMockData = shouldUseMockData();
 
   // Check for existing user session on load
   useEffect(() => {
-    const storedUser = localStorage.getItem('printShopUser');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    const token = localStorage.getItem('printShopToken');
+    if (token) {
+      // Verify token with backend
+      axios.get(`${API_BASE_URL}/auth/verify`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(response => {
+        setUser(response.data.user);
+      })
+      .catch(() => {
+        localStorage.removeItem('printShopToken');
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+    } else {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
   // Login function
@@ -57,11 +76,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     try {
       const response = await loginUser(email, password, role);
-      setUser(response);
-      localStorage.setItem('printShopUser', JSON.stringify(response));
+      setUser(response.user);
+      localStorage.setItem('printShopToken', response.token);
       toast({
         title: "Login successful",
-        description: `Welcome back, ${response.name}!`,
+        description: `Welcome back, ${response.user.name}!`,
       });
       return true;
     } catch (error: any) {
@@ -81,10 +100,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
-      const userData = await registerUser(name, email, password);
-      
-      setUser(userData);
-      localStorage.setItem('printShopUser', JSON.stringify(userData));
+      const response = await registerUser(name, email, password);
+      setUser(response.user);
+      localStorage.setItem('printShopToken', response.token);
       toast({
         title: "Registration successful",
         description: `Welcome, ${name}!`,
@@ -104,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Logout function
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('printShopUser');
+    localStorage.removeItem('printShopToken');
     toast({
       title: "Logged out",
       description: "You have been successfully logged out.",
@@ -131,8 +149,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const newUserData = { ...user, ...userData };
       setUser(newUserData);
       
-      // Update local storage
-      localStorage.setItem('printShopUser', JSON.stringify(newUserData));
+      // No need to update token in localStorage as it remains the same
       
       toast({
         title: "Profile updated",

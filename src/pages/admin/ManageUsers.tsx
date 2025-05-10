@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import { Button } from '@/components/ui/button';
@@ -29,18 +28,18 @@ import {
   ArrowUp,
   Ban
 } from 'lucide-react';
-import { users, orders, type User as UserType } from '@/services/mockData';
 import { toast } from '@/components/ui/use-toast';
+import axios from 'axios';
 
 const ManageUsers = () => {
-  const [allUsers, setAllUsers] = useState<UserType[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<UserType[]>([]);
-  const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<any[]>([]);
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [userOrders, setUserOrders] = useState<any[]>([]);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortConfig, setSortConfig] = useState<{
-    key: keyof UserType;
+    key: keyof any;
     direction: 'ascending' | 'descending';
   }>({
     key: 'name',
@@ -48,26 +47,19 @@ const ManageUsers = () => {
   });
 
   useEffect(() => {
-    // Simulate API call to fetch users
     const fetchUsers = async () => {
       try {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Only get non-admin users
-        const filteredUsers = users.filter(user => user.role === 'user');
-        setAllUsers(filteredUsers);
-        setFilteredUsers(filteredUsers);
+        const response = await axios.get('http://localhost:5000/api/auth/users');
+        setAllUsers(response.data);
+        setFilteredUsers(response.data);
       } catch (error) {
-        console.error('Error fetching users:', error);
         toast({
-          title: "Error loading users",
-          description: "There was a problem fetching the users.",
-          variant: "destructive",
+          title: 'Error loading users',
+          description: 'There was a problem fetching the users.',
+          variant: 'destructive',
         });
       }
     };
-    
     fetchUsers();
   }, []);
 
@@ -100,7 +92,7 @@ const ManageUsers = () => {
     setFilteredUsers(result);
   }, [allUsers, searchQuery, sortConfig]);
 
-  const handleSort = (key: keyof UserType) => {
+  const handleSort = (key: keyof any) => {
     setSortConfig({
       key,
       direction: 
@@ -110,15 +102,23 @@ const ManageUsers = () => {
     });
   };
 
-  const handleUserClick = (user: UserType) => {
+  // Fetch orders for selected user
+  const fetchUserOrders = async (userId: string) => {
+    try {
+      const response = await axios.get(`http://localhost:5000/api/orders?userId=${userId}`);
+      setUserOrders(response.data);
+    } catch (error) {
+      toast({
+        title: 'Error loading user orders',
+        description: 'There was a problem fetching the user orders.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleUserClick = (user: any) => {
     setSelectedUser(user);
-    
-    // Get user orders
-    const userOrdersList = orders.filter(order => order.userId === user.id);
-    setUserOrders(userOrdersList.sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    ));
-    
+    fetchUserOrders(user._id || user.id);
     setIsDetailsOpen(true);
   };
 
