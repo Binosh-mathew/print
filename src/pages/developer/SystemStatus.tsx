@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import DeveloperLayout from '@/components/layouts/DeveloperLayout';
 import {
   Card,
@@ -14,6 +15,7 @@ import { toast } from "@/components/ui/use-toast";
 import axios from 'axios';
 
 const SystemStatus = () => {
+  const { user } = useAuth();
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [stats, setStats] = useState({
     dailyOrders: 0,
@@ -33,7 +35,7 @@ const SystemStatus = () => {
         const statsRes = await axios.get('http://localhost:5000/api/platform-stats');
         setStats(statsRes.data);
         const maintRes = await axios.get('http://localhost:5000/api/system/maintenance');
-        setMaintenanceMode(maintRes.data.maintenanceMode);
+        setMaintenanceMode(maintRes.data.enabled);
       } catch (error) {
         // handle error
       } finally {
@@ -45,17 +47,41 @@ const SystemStatus = () => {
 
   const handleToggleMaintenance = async () => {
     try {
+      if (!user) {
+        throw new Error('You must be logged in to perform this action');
+      }
+
+      if (user.role !== 'developer') {
+        throw new Error('Only developers can toggle maintenance mode');
+      }
+
       const newMode = !maintenanceMode;
       setMaintenanceMode(newMode);
-      await axios.post('http://localhost:5000/api/system/maintenance', { maintenanceMode: newMode });
+      
+      await axios.post('http://localhost:5000/api/system/maintenance', 
+        { 
+          enabled: newMode,
+          message: newMode ? "System is currently under maintenance. Please try again later." : "",
+          reason: newMode ? "Scheduled maintenance" : "Maintenance completed"
+        },
+        { 
+          headers: { 
+            'X-User-ID': user.id,
+            'X-User-Role': user.role
+          } 
+        }
+      );
+      
       toast({
         title: newMode ? "Maintenance Mode Enabled" : "Maintenance Mode Disabled",
         description: newMode ? "The platform is now in maintenance mode." : "The platform is now active.",
       });
     } catch (error) {
+      console.error('Maintenance mode error:', error);
+      setMaintenanceMode(!maintenanceMode); // Revert the UI state on error
       toast({
         title: "Error",
-        description: "Failed to update maintenance mode.",
+        description: "Failed to update maintenance mode. Please ensure you're logged in with developer privileges.",
         variant: "destructive",
       });
     }

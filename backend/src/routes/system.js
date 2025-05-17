@@ -3,6 +3,7 @@ const { isDeveloper } = require('../middleware/roleCheck');
 const auth = require('../middleware/auth');
 const os = require('os');
 const mongoose = require('mongoose');
+const MaintenanceMode = require('../models/maintenanceMode');
 
 const router = express.Router();
 
@@ -55,6 +56,54 @@ router.get('/logs', auth, isDeveloper, async (req, res) => {
     res.json(logs);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching logs', error });
+  }
+});
+
+// Get maintenance mode status
+router.get('/maintenance', async (req, res) => {
+  try {
+    const maintenanceStatus = await MaintenanceMode.getStatus();
+    res.json({
+      enabled: maintenanceStatus.enabled,
+      message: maintenanceStatus.message,
+      startTime: maintenanceStatus.startTime,
+      endTime: maintenanceStatus.endTime,
+      reason: maintenanceStatus.reason
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching maintenance status', error: error.message });
+  }
+});
+
+// Enable/disable maintenance mode (developer only)
+router.post('/maintenance', auth, isDeveloper, async (req, res) => {
+  try {
+    const { enabled, message, endTime, reason } = req.body;
+    
+    const maintenanceStatus = await MaintenanceMode.getStatus();
+    
+    maintenanceStatus.enabled = enabled !== undefined ? enabled : maintenanceStatus.enabled;
+    maintenanceStatus.message = message || maintenanceStatus.message;
+    maintenanceStatus.reason = reason || maintenanceStatus.reason;
+    
+    if (enabled) {
+      maintenanceStatus.startTime = new Date();
+      maintenanceStatus.endTime = endTime ? new Date(endTime) : null;
+    } else {
+      maintenanceStatus.endTime = new Date();
+    }
+    
+    maintenanceStatus.updatedBy = req.user.id;
+    
+    await maintenanceStatus.save();
+    
+    res.json({
+      status: 'success',
+      message: `Maintenance mode ${enabled ? 'enabled' : 'disabled'}`,
+      maintenanceStatus
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating maintenance status', error: error.message });
   }
 });
 

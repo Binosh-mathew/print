@@ -31,7 +31,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const navItems = [
     { path: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
     { path: '/admin/orders', label: 'Manage Orders', icon: <FileText size={18} /> },
-    { path: '/admin/users', label: 'Manage Users', icon: <Users size={18} /> },
     { path: '/admin/pricing', label: 'Pricing', icon: <Settings size={18} /> },
     { path: '/admin/messages', label: 'Messages', icon: <MessageSquare size={18} /> },
   ];

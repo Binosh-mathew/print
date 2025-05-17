@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -32,6 +33,7 @@ import { toast } from '@/components/ui/use-toast';
 import axios from 'axios';
 
 const ManageUsers = () => {
+  const { user } = useAuth();
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
@@ -49,13 +51,35 @@ const ManageUsers = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/auth/users');
+        // Get the user data from localStorage
+        const storedUser = localStorage.getItem('printShopUser');
+        if (!storedUser) {
+          toast({
+            title: 'Authentication error',
+            description: 'You need to be logged in to view users.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        // Parse the stored user data
+        const userData = JSON.parse(storedUser);
+        
+        // Make the API request with the authentication headers
+        const response = await axios.get('http://localhost:5000/api/users', {
+          headers: {
+            'X-User-ID': userData.id,
+            'X-User-Role': userData.role
+          }
+        });
+        
         setAllUsers(response.data);
         setFilteredUsers(response.data);
       } catch (error) {
+        console.error('Error fetching users:', error);
         toast({
           title: 'Error loading users',
-          description: 'There was a problem fetching the users.',
+          description: 'There was a problem fetching the users. Make sure you have admin privileges.',
           variant: 'destructive',
         });
       }

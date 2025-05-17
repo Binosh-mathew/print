@@ -28,6 +28,7 @@ import NotFound from "./pages/NotFound";
 
 // Protected Route Component
 import ProtectedRoute from "./components/ProtectedRoute";
+import MaintenanceCheck from "./components/MaintenanceCheck";
 
 // Developer Pages
 import DeveloperDashboard from '@/pages/developer/DeveloperDashboard';
@@ -47,151 +48,153 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Homepage />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            
-            {/* User Protected Routes */}
-            <Route 
-              path="/dashboard" 
-              element={
-                <ProtectedRoute allowedRole="user">
-                  <UserDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/new-order" 
-              element={
-                <ProtectedRoute allowedRole="user">
-                  <NewOrder />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/orders" 
-              element={
-                <ProtectedRoute allowedRole="user">
-                  <OrderHistory />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/orders/:id" 
-              element={
-                <ProtectedRoute allowedRole="user">
-                  <OrderDetails />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/profile" 
-              element={
-                <ProtectedRoute allowedRole="user">
-                  <UserProfile />
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Admin Routes */}
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route 
-              path="/admin" 
-              element={
-                <ProtectedRoute allowedRole="admin">
-                  <Dashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/orders" 
-              element={
-                <ProtectedRoute allowedRole="admin">
-                  <ManageOrders />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/users" 
-              element={
-                <ProtectedRoute allowedRole="admin">
-                  <ManageUsers />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/pricing" 
-              element={
-                <ProtectedRoute allowedRole="admin">
-                  <PricingSettings />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/messages" 
-              element={
-                <ProtectedRoute allowedRole="admin">
-                  <Messages />
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Developer Routes */}
-            <Route path="/developer/login" element={<DeveloperLogin />} />
-            <Route 
-              path="/developer" 
-              element={
-                <ProtectedRoute allowedRole="developer">
-                  <DeveloperDashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/developer/create-admin" 
-              element={
-                <ProtectedRoute allowedRole="developer">
-                  <CreateAdmin />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/developer/messages" 
-              element={
-                <ProtectedRoute allowedRole="developer">
-                  <DeveloperMessages />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/developer/system" 
-              element={
-                <ProtectedRoute allowedRole="developer">
-                  <SystemStatus />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/developer/database" 
-              element={
-                <ProtectedRoute allowedRole="developer">
-                  <Database />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/developer/logs" 
-              element={
-                <ProtectedRoute allowedRole="developer">
-                  <Logs />
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Catch-All Route */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <MaintenanceCheck>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<Homepage />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              
+              {/* User Protected Routes */}
+              <Route 
+                path="/dashboard" 
+                element={
+                  <ProtectedRoute allowedRole="user">
+                    <UserDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/new-order" 
+                element={
+                  <ProtectedRoute allowedRole="user">
+                    <NewOrder />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/orders" 
+                element={
+                  <ProtectedRoute allowedRole="user">
+                    <OrderHistory />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/orders/:id" 
+                element={
+                  <ProtectedRoute allowedRole="user">
+                    <OrderDetails />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/profile" 
+                element={
+                  <ProtectedRoute allowedRole="user">
+                    <UserProfile />
+                  </ProtectedRoute>
+                } 
+              />
+              
+              {/* Admin Routes */}
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route 
+                path="/admin" 
+                element={
+                  <ProtectedRoute allowedRole="admin">
+                    <Dashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/orders" 
+                element={
+                  <ProtectedRoute allowedRole="admin">
+                    <ManageOrders />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/users" 
+                element={
+                  <ProtectedRoute allowedRole="admin">
+                    <ManageUsers />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/pricing" 
+                element={
+                  <ProtectedRoute allowedRole="admin">
+                    <PricingSettings />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/messages" 
+                element={
+                  <ProtectedRoute allowedRole="admin">
+                    <Messages />
+                  </ProtectedRoute>
+                } 
+              />
+              
+              {/* Developer Routes */}
+              <Route path="/developer/login" element={<DeveloperLogin />} />
+              <Route 
+                path="/developer" 
+                element={
+                  <ProtectedRoute allowedRole="developer">
+                    <DeveloperDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/developer/create-admin" 
+                element={
+                  <ProtectedRoute allowedRole="developer">
+                    <CreateAdmin />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/developer/messages" 
+                element={
+                  <ProtectedRoute allowedRole="developer">
+                    <DeveloperMessages />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/developer/system" 
+                element={
+                  <ProtectedRoute allowedRole="developer">
+                    <SystemStatus />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/developer/database" 
+                element={
+                  <ProtectedRoute allowedRole="developer">
+                    <Database />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/developer/logs" 
+                element={
+                  <ProtectedRoute allowedRole="developer">
+                    <Logs />
+                  </ProtectedRoute>
+                } 
+              />
+              
+              {/* Catch-All Route */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </MaintenanceCheck>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

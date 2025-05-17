@@ -2,10 +2,15 @@ import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import userRoutes from './routes/users';
-import orderRoutes from './routes/orders';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// MongoDB Connection
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/print-spark-studio';
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log('Connected to MongoDB'))
+  .catch(err => console.error('MongoDB connection error:', err));
 
 // Middleware
 app.use(express.json());
@@ -26,7 +31,6 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/api/users', userRoutes);
-app.use('/api/orders', orderRoutes);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

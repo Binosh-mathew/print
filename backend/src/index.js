@@ -4,11 +4,14 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // Middleware
 app.use(express.json());
 app.use(cors());
+
+// Auth middleware
+const auth = require('./middleware/auth');
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
@@ -29,16 +32,24 @@ const messagesRoutes = require('./routes/messages');
 const usersRoutes = require('./routes/users');
 const systemRoutes = require('./routes/system');
 
-// Use routes
+// Import maintenance mode middleware
+const maintenanceCheck = require('./middleware/maintenanceMode');
+
+// Use routes without requiring authentication for development
 app.use('/api/auth', authRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/stores', storeRoutes);
+app.use('/api/system', systemRoutes);
 app.use('/api/platform-stats', platformStatsRoutes);
 app.use('/api/login-activity', loginActivityRoutes);
+
+// Apply maintenance mode check without requiring authentication
+app.use(maintenanceCheck);
+
+// Routes that should require authentication in production
+app.use('/api/orders', orderRoutes);
+app.use('/api/stores', storeRoutes);
 app.use('/api/admins', adminsRoutes);
 app.use('/api/messages', messagesRoutes);
 app.use('/api/users', usersRoutes);
-app.use('/api/system', systemRoutes);
 
 // Routes
 app.get('/', (req, res) => {
