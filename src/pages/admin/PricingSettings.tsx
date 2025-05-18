@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,9 +15,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Loader2, Save, CreditCard, FileText, Printer, Info, BookOpen, Layers } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { fetchStores, updateStorePricing } from '@/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 const PricingSettings = () => {
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [storeId, setStoreId] = useState('');
+  const [lastUpdated, setLastUpdated] = useState('');
   const [prices, setPrices] = useState({
     blackAndWhite: {
       singleSided: 0,
@@ -39,6 +45,63 @@ const PricingSettings = () => {
       transparent: 0,
     },
   });
+  
+  // Fetch store data and pricing when component mounts
+  useEffect(() => {
+    const fetchStoreData = async () => {
+      setIsLoading(true);
+      try {
+        const stores = await fetchStores();
+        
+        if (stores && stores.length > 0) {
+          // Get the first store (assuming admin is associated with one store)
+          const store = stores[0];
+          setStoreId(store._id);
+          
+          // If store has pricing data, use it
+          if (store.pricing) {
+            setPrices({
+              blackAndWhite: {
+                singleSided: store.pricing.blackAndWhite?.singleSided || 0,
+                doubleSided: store.pricing.blackAndWhite?.doubleSided || 0,
+              },
+              color: {
+                singleSided: store.pricing.color?.singleSided || 0,
+                doubleSided: store.pricing.color?.doubleSided || 0,
+              },
+              binding: {
+                spiralBinding: store.pricing.binding?.spiralBinding || 0,
+                staplingBinding: store.pricing.binding?.staplingBinding || 0,
+                hardcoverBinding: store.pricing.binding?.hardcoverBinding || 0,
+              },
+              paperTypes: {
+                normal: store.pricing.paperTypes?.normal || 0,
+                glossy: store.pricing.paperTypes?.glossy || 0,
+                matte: store.pricing.paperTypes?.matte || 0,
+                transparent: store.pricing.paperTypes?.transparent || 0,
+              },
+            });
+            
+            // Set last updated date if available
+            if (store.pricing.lastUpdated) {
+              setLastUpdated(new Date(store.pricing.lastUpdated).toLocaleDateString());
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching store data:', error);
+        toast({
+          title: 'Error loading pricing',
+          description: 'Could not load current pricing settings.',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchStoreData();
+  }, []);
 
   const handlePriceChange = (
     printType: 'blackAndWhite' | 'color',
@@ -88,8 +151,15 @@ const PricingSettings = () => {
     setIsSubmitting(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      if (!storeId) {
+        throw new Error('No store found to update pricing');
+      }
+      
+      // Update pricing in the backend
+      const response = await updateStorePricing(storeId, prices);
+      
+      // Update the last updated date
+      setLastUpdated(new Date().toLocaleDateString());
       
       toast({
         title: "Pricing updated",
@@ -110,12 +180,37 @@ const PricingSettings = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Pricing Settings</h1>
-          <p className="text-gray-600 mt-1">Manage pricing for print services</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Pricing Settings</h1>
+            <p className="text-gray-600 mt-1">Manage pricing for print services</p>
+            {lastUpdated && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Last updated: {lastUpdated}
+              </p>
+            )}
+          </div>
+          <Button disabled={isSubmitting} type="submit" form="pricing-form">
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Save Changes
+              </>
+            )}
+          </Button>
         </div>
         
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} id="pricing-form">
           <Tabs defaultValue="standard" className="w-full">
             <TabsList className="grid w-full max-w-md grid-cols-3">
               <TabsTrigger value="standard">Standard Pricing</TabsTrigger>
@@ -380,23 +475,7 @@ const PricingSettings = () => {
             </TabsContent>
           </Tabs>
           
-          <div className="mt-6 flex justify-end">
-            <Button
-              type="submit"
-              className="bg-primary hover:bg-primary-500"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating Pricing...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" /> Save Pricing Settings
-                </>
-              )}
-            </Button>
-          </div>
+          {/* Bottom section removed to avoid duplicate Save Changes button */}
         </form>
         
         <Card>
@@ -431,7 +510,11 @@ const PricingSettings = () => {
             </div>
           </CardContent>
           <CardFooter className="bg-gray-50 border-t border-gray-100 text-sm text-gray-500">
-            <p>Last updated: April 15, 2025</p>
+            {lastUpdated ? (
+              <p>Last updated: {lastUpdated}</p>
+            ) : (
+              <p>Not updated yet</p>
+            )}
           </CardFooter>
         </Card>
       </div>

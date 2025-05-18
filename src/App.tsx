@@ -24,6 +24,7 @@ import ManageOrders from "./pages/admin/ManageOrders";
 import ManageUsers from "./pages/admin/ManageUsers";
 import PricingSettings from "./pages/admin/PricingSettings";
 import Messages from "./pages/admin/Messages";
+import AdminProfile from "./pages/admin/Profile";
 import NotFound from "./pages/NotFound";
 
 // Protected Route Component
@@ -136,6 +137,14 @@ const App = () => (
                 element={
                   <ProtectedRoute allowedRole="admin">
                     <Messages />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/profile" 
+                element={
+                  <ProtectedRoute allowedRole="admin">
+                    <AdminProfile />
                   </ProtectedRoute>
                 } 
               />

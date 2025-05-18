@@ -9,6 +9,7 @@ export interface FileDetails {
     type: 'spiralBinding' | 'staplingBinding' | 'hardcoverBinding' | 'none';
   };
   specificRequirements: string;
+  pageCount?: number; // Optional page count for more accurate pricing
 }
 
 export interface OrderFormData {

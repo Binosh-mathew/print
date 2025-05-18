@@ -6,8 +6,10 @@ import { registerUser, loginUser, updateUserProfile as apiUpdateUserProfile } fr
 interface User {
   id: string;
   name: string;
+  username?: string; // Added username field to match MongoDB data structure
   email: string;
   role: 'user' | 'admin' | 'developer';
+  token?: string;
 }
 
 type AuthContextType = {
@@ -17,7 +19,7 @@ type AuthContextType = {
   login: (email: string, password: string, role?: 'user' | 'admin' | 'developer') => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
-  updateUserProfile: (userData: Partial<User>) => Promise<void>;
+  updateUserProfile: (userData: Partial<User>) => Promise<User>;
 };
 
 // Create context with default values
@@ -28,7 +30,10 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => false,
   register: async () => {},
   logout: () => {},
-  updateUserProfile: async () => {},
+  updateUserProfile: async () => {
+    throw new Error('Not implemented');
+    return {} as User; // This line is never reached due to the error above
+  },
 });
 
 // Hook to use auth context
@@ -68,11 +73,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     try {
       const response = await loginUser(email, password, role);
-      setUser(response);
-      localStorage.setItem('printShopUser', JSON.stringify(response));
+      
+      // Ensure we have a name property for display purposes
+      // For admin users, the backend might return username but not name
+      const userData = {
+        ...response,
+        // If name is missing but username exists, use username as name
+        name: response.name || response.username || email.split('@')[0]
+      };
+      
+      setUser(userData);
+      localStorage.setItem('printShopUser', JSON.stringify(userData));
+      
+      // Use the display name (name or username) for the welcome message
+      const displayName = userData.name || userData.username || 'user';
+      
       toast({
         title: "Login successful",
-        description: `Welcome back, ${response.name}!`,
+        description: `Welcome back, ${displayName}!`,
       });
       return true;
     } catch (error: any) {
@@ -135,11 +153,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       setIsLoading(true);
+      
+      // If updating name, also update username field for compatibility
+      const updatedFields = { ...userData };
+      if (userData.name) {
+        updatedFields.username = userData.name;
+      }
+      
       // Call the API to update the user profile
-      const updatedUser = await apiUpdateUserProfile(user.id, userData);
+      const updatedUser = await apiUpdateUserProfile(user.id, updatedFields);
       
       // Update local user state
-      const newUserData = { ...user, ...userData };
+      const newUserData = { 
+        ...user, 
+        ...updatedFields,
+        // Ensure both name and username are updated
+        name: updatedFields.name || user.name,
+        username: updatedFields.name || user.username || user.name
+      };
+      
       setUser(newUserData);
       
       // Update local storage
@@ -149,6 +181,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         title: "Profile updated",
         description: "Your profile has been updated successfully",
       });
+      
+      return updatedUser;
     } catch (error: any) {
       toast({
         title: "Update failed",

@@ -11,10 +11,23 @@ const MessagePanel = () => {
     const fetchMessages = async () => {
       setLoading(true);
       try {
-        const response = await axios.get('http://localhost:5000/api/messages');
+        // Get authentication data from localStorage
+        const storedUser = localStorage.getItem('printShopUser');
+        let headers = {};
+        
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          headers = {
+            'Authorization': `Bearer ${userData.token}`,
+            'X-User-ID': userData.id,
+            'X-User-Role': userData.role
+          };
+        }
+        
+        const response = await axios.get('http://localhost:5000/api/messages', { headers });
         setMessages(response.data);
       } catch (error) {
-        // handle error
+        console.error('Error fetching messages:', error);
       } finally {
         setLoading(false);
       }
@@ -26,11 +39,31 @@ const MessagePanel = () => {
     e.preventDefault();
     if (!newMessage.trim()) return;
     try {
-      const response = await axios.post('http://localhost:5000/api/messages', { content: newMessage });
+      // Get authentication data from localStorage
+      const storedUser = localStorage.getItem('printShopUser');
+      let headers = {};
+      
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        headers = {
+          'Authorization': `Bearer ${userData.token}`,
+          'X-User-ID': userData.id,
+          'X-User-Role': userData.role
+        };
+      } else {
+        throw new Error('Authentication required to send messages');
+      }
+      
+      const response = await axios.post(
+        'http://localhost:5000/api/messages', 
+        { content: newMessage },
+        { headers }
+      );
       setMessages([response.data, ...messages]);
       setNewMessage('');
     } catch (error) {
-      // handle error
+      console.error('Error sending message:', error);
+      alert('Failed to send message. Please make sure you are logged in.');
     }
   };
 

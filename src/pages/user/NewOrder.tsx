@@ -24,7 +24,7 @@ import { Loader2 } from 'lucide-react';
 import FileUploader from '@/components/FileUploader';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
-import { createOrder } from '@/api';
+import { createOrder, fetchStorePricing } from '@/api';
 import type { OrderFormData, FileDetails, Order } from '@/types/order';
 import axios from 'axios';
 
@@ -34,7 +34,9 @@ const NewOrder = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [files, setFiles] = useState<FileDetails[]>([]);
   const [totalPrice, setTotalPrice] = useState(0);
-  const [stores, setStores] = useState([]);
+  const [stores, setStores] = useState<any[]>([]);
+  const [selectedStorePricing, setSelectedStorePricing] = useState<any>(null);
+  const [storeSelected, setStoreSelected] = useState(false);
   
   const form = useForm<OrderFormData>({
     defaultValues: {
@@ -74,50 +76,58 @@ const NewOrder = () => {
     setFiles(prev => prev.filter(f => f.file !== file));
   };
 
-  const calculateTotalPrice = (fileDetails: FileDetails[]) => {
+  const calculateTotalPrice = (fileDetails: FileDetails[], pricing: any = null) => {
+    // If no pricing data is provided, use default pricing
+    const defaultPricing = {
+      blackAndWhite: { singleSided: 2, doubleSided: 3 },
+      color: { singleSided: 5, doubleSided: 8 },
+      binding: { spiralBinding: 25, staplingBinding: 10, hardcoverBinding: 50 },
+      paperTypes: { normal: 0, glossy: 5, matte: 7, transparent: 10 }
+    };
+    
+    // Use store pricing if available, otherwise use default pricing
+    const storePricing = pricing || selectedStorePricing || defaultPricing;
+    
     return fileDetails.reduce((total, file) => {
-      // Base price calculation (2 Rs per page for B&W, 5 Rs for color)
-      const basePricePerPage = file.printType === 'color' ? 5 : 2;
-      // Assuming each document is approximately 10 pages
-      const estimatedPages = 10;
-      const copiesMultiplier = file.copies || 1;
-      const doubleSidedDiscount = file.doubleSided ? 0.8 : 1; // 20% discount for double-sided
+      // Get the appropriate price based on print type and whether it's double-sided
+      let basePricePerPage;
+      if (file.printType === 'color') {
+        basePricePerPage = file.doubleSided 
+          ? (storePricing.color?.doubleSided || defaultPricing.color.doubleSided)
+          : (storePricing.color?.singleSided || defaultPricing.color.singleSided);
+      } else { // blackAndWhite
+        basePricePerPage = file.doubleSided 
+          ? (storePricing.blackAndWhite?.doubleSided || defaultPricing.blackAndWhite.doubleSided)
+          : (storePricing.blackAndWhite?.singleSided || defaultPricing.blackAndWhite.singleSided);
+      }
       
-      const basePrice = basePricePerPage * estimatedPages * copiesMultiplier * doubleSidedDiscount;
+      // Use actual page count from file metadata or estimate based on file size
+      // For PDF files, we can get a more accurate page count
+      let pageCount = 0;
+      
+      if (file.pageCount && file.pageCount > 0) {
+        // Use the page count if it's available in the file metadata
+        pageCount = file.pageCount;
+      } else {
+        // Estimate page count based on file size (rough estimate: 100KB per page for PDFs)
+        const fileSizeInKB = file.file.size / 1024;
+        pageCount = Math.max(1, Math.ceil(fileSizeInKB / 100));
+      }
+      
+      const copiesMultiplier = file.copies || 1;
+      
+      const basePrice = basePricePerPage * pageCount * copiesMultiplier;
       
       // Additional costs for special paper
       let specialPaperCost = 0;
-      switch (file.specialPaper) {
-        case 'glossy':
-          specialPaperCost = 5;
-          break;
-        case 'matte':
-          specialPaperCost = 7;
-          break;
-        case 'transparent':
-          specialPaperCost = 10;
-          break;
-        case 'none':
-        default:
-          specialPaperCost = 0;
+      if (file.specialPaper !== 'none') {
+        specialPaperCost = (storePricing.paperTypes?.[file.specialPaper] || defaultPricing.paperTypes[file.specialPaper]) * pageCount * copiesMultiplier;
       }
       
       // Binding costs
       let bindingCost = 0;
       if (file.binding.needed) {
-        switch (file.binding.type) {
-          case 'spiralBinding':
-            bindingCost = 25;
-            break;
-          case 'staplingBinding':
-            bindingCost = 10;
-            break;
-          case 'hardcoverBinding':
-            bindingCost = 50;
-            break;
-          default:
-            bindingCost = 0;
-        }
+        bindingCost = storePricing.binding?.[file.binding.type] || defaultPricing.binding[file.binding.type];
       }
       
       return total + basePrice + specialPaperCost + bindingCost;
@@ -142,6 +152,46 @@ const NewOrder = () => {
 
     fetchStores();
   }, []);
+  
+  // Handle store selection and fetch pricing data
+  const handleStoreSelection = async (storeId: string) => {
+    try {
+      setIsSubmitting(true); // Show loading state
+      const pricingData = await fetchStorePricing(storeId);
+      
+      if (pricingData) {
+        setSelectedStorePricing(pricingData);
+        setStoreSelected(true);
+        
+        // Update prices for any existing files
+        if (files.length > 0) {
+          // Recalculate prices with the new pricing data
+          const newTotalPrice = calculateTotalPrice(files, pricingData);
+          setTotalPrice(newTotalPrice);
+        }
+        
+        toast({
+          title: "Store Selected",
+          description: "You can now upload your documents for printing.",
+        });
+      } else {
+        toast({
+          title: "Pricing Not Available",
+          description: "Could not fetch pricing information for the selected store.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching store pricing:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load store pricing information.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const onSubmit = async (data: OrderFormData) => {
     if (files.length === 0) {
@@ -239,16 +289,23 @@ const NewOrder = () => {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Select Store</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select 
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              handleStoreSelection(value);
+                            }} 
+                            defaultValue={field.value}
+                            disabled={isSubmitting}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Choose a store to send your print order" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {activeStores.map((store) => (
-                                <SelectItem key={store.id} value={store.id}>
-                                  {store.name} - {store.location}
+                              {stores.filter(store => store.status === 'active').map((store) => (
+                                <SelectItem key={store._id || store.id} value={store._id || store.id}>
+                                  {store.name} - {store.location || 'Unknown location'}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -268,11 +325,18 @@ const NewOrder = () => {
                         <FormItem className="space-y-2">
                           <FormLabel>Upload Documents</FormLabel>
                           <FormControl>
-                            <FileUploader 
-                              onFileSelected={handleFileSelected}
-                              onFileRemoved={handleFileRemoved}
-                              files={files}
-                            />
+                            {!storeSelected ? (
+                              <div className="p-4 border-2 border-dashed border-gray-300 rounded-md text-center">
+                                <p className="text-gray-500 mb-2">Please select a store first</p>
+                                <p className="text-sm text-gray-400">You need to select a store before uploading documents</p>
+                              </div>
+                            ) : (
+                              <FileUploader 
+                                onFileSelected={handleFileSelected}
+                                onFileRemoved={handleFileRemoved}
+                                files={files}
+                              />
+                            )}
                           </FormControl>
                           <FormDescription>
                             Upload your documents and set specific preferences for each file
@@ -342,7 +406,7 @@ const NewOrder = () => {
                     <p className="text-sm text-gray-500 mb-1">Selected Store</p>
                     <p className="font-medium">
                       {form.watch('storeId') ? (
-                        activeStores.find(store => store.id === form.watch('storeId'))?.name
+                        stores.find(store => (store._id || store.id) === form.watch('storeId'))?.name || 'Selected store'
                       ) : (
                         <span className="text-gray-400">No store selected</span>
                       )}

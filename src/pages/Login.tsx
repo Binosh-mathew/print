@@ -20,11 +20,18 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      await login(email, password, 'user');
-      navigate('/dashboard');
-    } catch (error) {
+      const success = await login(email, password, 'user');
+      if (success) {
+        navigate('/dashboard');
+      }
+    } catch (error: any) {
       console.error('Login error:', error);
-      // Toast notification is handled by AuthContext
+      // Show a toast notification with the error message
+      toast({
+        title: "Login Failed",
+        description: error.message || "Invalid username or password",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }

@@ -20,11 +20,18 @@ const AdminLogin = () => {
     setIsLoading(true);
 
     try {
-      await login(email, password, 'admin');
-      navigate('/admin');
-    } catch (error) {
+      const success = await login(email, password, 'admin');
+      if (success) {
+        navigate('/admin');
+      }
+    } catch (error: any) {
       console.error('Admin login error:', error);
-      // Toast notification is handled by AuthContext
+      // Show a toast notification with the error message
+      toast({
+        title: "Admin Login Failed",
+        description: error.message || "Invalid admin credentials",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }

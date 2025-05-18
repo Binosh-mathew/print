@@ -75,4 +75,49 @@ router.post('/login', async (req, res) => {
   }
 });
 
-module.exports = router; 
+// Import auth middleware
+const auth = require('../middleware/auth');
+
+// Update user profile
+router.put('/update', auth, async (req, res) => {
+  try {
+    const { userId, name, username } = req.body;
+    
+    // Verify the authenticated user is updating their own profile
+    if (req.user.id !== userId) {
+      return res.status(403).json({ message: 'Not authorized to update this profile' });
+    }
+    
+    // Find the user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Update fields
+    if (username) {
+      // Check if username is already taken
+      const existingUser = await User.findOne({ username, _id: { $ne: userId } });
+      if (existingUser) {
+        return res.status(400).json({ message: 'Username already taken' });
+      }
+      user.username = username;
+    }
+    
+    // Save the updated user
+    await user.save();
+    
+    // Return the updated user data
+    res.json({ 
+      id: user._id, 
+      username: user.username, 
+      email: user.email, 
+      role: user.role 
+    });
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    res.status(500).json({ message: 'Error updating profile', error: error.message });
+  }
+});
+
+module.exports = router;
