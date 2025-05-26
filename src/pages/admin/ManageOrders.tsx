@@ -177,28 +177,45 @@ const ManageOrders = () => {
   };
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
-    if (isUpdating) return;
+    if (isUpdating || !orderId) {
+      console.error('Invalid order ID or update in progress');
+      return;
+    }
     
     setIsUpdating(true);
     
     try {
-      const normalizedStatus: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled' | 'Completed' = 'Pending';
+      // Validate the status is one of the allowed values
+      const validStatuses = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Completed'];
+      const normalizedStatus = validStatuses.includes(newStatus) 
+        ? newStatus as 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled' | 'Completed'
+        : 'Pending';
       
-      const updatedOrder = await updateOrder(orderId, { 
-        status: normalizedStatus 
-      });
+      console.log(`Updating order ${orderId} status to:`, normalizedStatus);
+      
+      const updateData = { status: normalizedStatus };
+      console.log('Sending update data:', { orderId, updateData });
+      
+      const updatedOrder = await updateOrder(orderId, updateData);
+      
+      if (!updatedOrder) {
+        throw new Error('No response from server after update');
+      }
+      
+      console.log('Server response:', updatedOrder);
       
       const updatedOrders = orders.map(order => {
-        if (order.id === orderId) {
-          return updatedOrder;
+        // Use _id instead of id for MongoDB
+        if (order._id === orderId || order.id === orderId) {
+          return { ...order, status: normalizedStatus };
         }
         return order;
       });
       
       setOrders(updatedOrders);
       
-      if (selectedOrder && selectedOrder.id === orderId) {
-        setSelectedOrder(updatedOrder);
+      if (selectedOrder && (selectedOrder._id === orderId || selectedOrder.id === orderId)) {
+        setSelectedOrder({ ...selectedOrder, status: normalizedStatus });
       }
       
       toast({
@@ -208,12 +225,13 @@ const ManageOrders = () => {
       
       setStatusChangeCompleted(true);
       
-      setIsDetailsOpen(false);
+      // Don't close the dialog automatically
+      // setIsDetailsOpen(false);
     } catch (error) {
       console.error('Error updating order status:', error);
       toast({
         title: "Update failed",
-        description: "There was a problem updating the order status.",
+        description: error.response?.data?.message || "There was a problem updating the order status.",
         variant: "destructive",
       });
     } finally {
@@ -380,28 +398,34 @@ const ManageOrders = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredOrders.length > 0 ? (
-                    filteredOrders.map((order) => {
+                    filteredOrders.map((order, index) => {
                       const { paper } = getPaperAndBindingInfo(order);
+                      const uniqueKey = order.id || `order-${index}`; // Fallback to index if id is missing
                       return (
-                        <TableRow key={order.id}>
-                          <TableCell className="font-medium">#{order.id}</TableCell>
-                          <TableCell>{order.userName}</TableCell>
-                          <TableCell className="truncate max-w-[200px]">{order.documentName}</TableCell>
-                          <TableCell>{paper}</TableCell>
-                          <TableCell className="text-gray-600">
+                        <TableRow key={uniqueKey}>
+                          <TableCell className="font-medium" key={`${uniqueKey}-id`}>#{order.id}</TableCell>
+                          <TableCell key={`${uniqueKey}-user`}>{order.userName}</TableCell>
+                          <TableCell className="truncate max-w-[200px]" key={`${uniqueKey}-doc`}>
+                            {order.documentName}
+                          </TableCell>
+                          <TableCell key={`${uniqueKey}-paper`}>{paper}</TableCell>
+                          <TableCell className="text-gray-600" key={`${uniqueKey}-date`}>
                             {new Date(order.createdAt).toLocaleDateString()}
                           </TableCell>
-                          <TableCell className="font-medium">₹{order.totalPrice}</TableCell>
-                          <TableCell>
+                          <TableCell className="font-medium" key={`${uniqueKey}-price`}>
+                            ₹{order.totalPrice}
+                          </TableCell>
+                          <TableCell key={`${uniqueKey}-status`}>
                             <OrderStatusBadge status={order.status} />
                           </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
+                          <TableCell className="text-right" key={`${uniqueKey}-actions`}>
+                            <div className="flex items-center justify-end gap-2" key={`${uniqueKey}-actions-container`}>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 className="h-8"
                                 onClick={() => handleOrderClick(order)}
+                                key={`${uniqueKey}-view`}
                               >
                                 View
                               </Button>
@@ -410,6 +434,7 @@ const ManageOrders = () => {
                                 size="sm"
                                 className="h-8"
                                 onClick={() => handleDownload(order.id)}
+                                key={`${uniqueKey}-download`}
                               >
                                 <Download className="h-4 w-4" />
                               </Button>
@@ -499,22 +524,33 @@ const ManageOrders = () => {
                 <div className="border-t border-gray-200 pt-4 pb-4">
                   <h4 className="text-sm font-medium mb-2">File Details</h4>
                   <div className="space-y-3 max-h-40 overflow-y-auto pr-2">
-                    {selectedOrder.files.map((file, index) => (
-                      <div key={index} className="bg-gray-50 p-3 rounded-md">
-                        <p className="font-medium text-sm mb-1">{file.file.name}</p>
-                        <div className="grid grid-cols-2 text-xs text-gray-600">
-                          <div>Copies: {file.copies}</div>
-                          <div>Print: {file.printType === 'blackAndWhite' ? 'B&W' : 'Color'}</div>
-                          <div>Paper: {file.specialPaper === 'none' ? 'Normal A4' : file.specialPaper}</div>
-                          <div>Binding: {file.binding.needed ? file.binding.type.replace('Binding', '') : 'None'}</div>
-                          {file.specificRequirements && (
-                            <div className="col-span-2 mt-2">
-                              <span className="font-medium">Requirements:</span> {file.specificRequirements}
-                            </div>
-                          )}
+                    {selectedOrder.files.map((file, index) => {
+                      // Skip if file data is invalid
+                      if (!file) return null;
+                      
+                      const fileName = file.file?.name || 'Unknown file';
+                      const copies = file.copies || 1;
+                      const printType = file.printType || 'blackAndWhite';
+                      const specialPaper = file.specialPaper || 'none';
+                      const binding = file.binding || { needed: false };
+                      
+                      return (
+                        <div key={index} className="bg-gray-50 p-3 rounded-md">
+                          <p className="font-medium text-sm mb-1">{fileName}</p>
+                          <div className="grid grid-cols-2 text-xs text-gray-600">
+                            <div>Copies: {copies}</div>
+                            <div>Print: {printType === 'blackAndWhite' ? 'B&W' : 'Color'}</div>
+                            <div>Paper: {specialPaper === 'none' ? 'Normal A4' : specialPaper}</div>
+                            <div>Binding: {binding?.needed ? (binding.type || '').replace('Binding', '') : 'None'}</div>
+                            {file.specificRequirements && (
+                              <div className="col-span-2 mt-2">
+                                <span className="font-medium">Requirements:</span> {file.specificRequirements}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -533,7 +569,7 @@ const ManageOrders = () => {
                     variant={isStatus(selectedOrder.status, "Pending") ? 'default' : 'outline'}
                     size="sm"
                     disabled={isUpdating || isStatus(selectedOrder.status, "Pending")}
-                    onClick={() => handleStatusChange(selectedOrder.id, 'Pending')}
+                    onClick={() => handleStatusChange(selectedOrder._id || selectedOrder.id, 'Pending')}
                     className={isStatus(selectedOrder.status, "Pending") ? 'bg-yellow-500 hover:bg-yellow-600' : ''}
                   >
                     Pending
@@ -542,7 +578,7 @@ const ManageOrders = () => {
                     variant={isStatus(selectedOrder.status, "Processing") ? 'default' : 'outline'}
                     size="sm"
                     disabled={isUpdating || isStatus(selectedOrder.status, "Processing")}
-                    onClick={() => handleStatusChange(selectedOrder.id, 'Processing')}
+                    onClick={() => handleStatusChange(selectedOrder._id || selectedOrder.id, 'Processing')}
                     className={isStatus(selectedOrder.status, "Processing") ? 'bg-blue-500 hover:bg-blue-600' : ''}
                   >
                     Processing
@@ -551,7 +587,7 @@ const ManageOrders = () => {
                     variant={isStatus(selectedOrder.status, "Completed") ? 'default' : 'outline'}
                     size="sm"
                     disabled={isUpdating || isStatus(selectedOrder.status, "Completed")}
-                    onClick={() => handleStatusChange(selectedOrder.id, 'Completed')}
+                    onClick={() => handleStatusChange(selectedOrder._id || selectedOrder.id, 'Completed')}
                     className={isStatus(selectedOrder.status, "Completed") ? 'bg-green-500 hover:bg-green-600' : ''}
                   >
                     Completed
@@ -560,7 +596,7 @@ const ManageOrders = () => {
                     variant={isStatus(selectedOrder.status, "Cancelled") ? 'default' : 'outline'}
                     size="sm"
                     disabled={isUpdating || isStatus(selectedOrder.status, "Cancelled")}
-                    onClick={() => handleStatusChange(selectedOrder.id, 'Cancelled')}
+                    onClick={() => handleStatusChange(selectedOrder._id || selectedOrder.id, 'Cancelled')}
                     className={isStatus(selectedOrder.status, "Cancelled") ? 'bg-red-500 hover:bg-red-600' : ''}
                   >
                     Cancelled
