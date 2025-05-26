@@ -24,9 +24,9 @@ import { Loader2 } from 'lucide-react';
 import FileUploader from '@/components/FileUploader';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
-import { createOrder, fetchStorePricing } from '@/api';
+import { createOrder, fetchStorePricing, fetchStores } from '@/api';
 import type { OrderFormData, FileDetails, Order } from '@/types/order';
-import axios from 'axios';
+import type { Store } from '@/types/store';
 
 const NewOrder = () => {
   const { user } = useAuth();
@@ -34,9 +34,10 @@ const NewOrder = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [files, setFiles] = useState<FileDetails[]>([]);
   const [totalPrice, setTotalPrice] = useState(0);
-  const [stores, setStores] = useState<any[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
   const [selectedStorePricing, setSelectedStorePricing] = useState<any>(null);
   const [storeSelected, setStoreSelected] = useState(false);
+  const [loadingStores, setLoadingStores] = useState(false);
   
   const form = useForm<OrderFormData>({
     defaultValues: {
@@ -141,16 +142,24 @@ const NewOrder = () => {
   }, [files]);
 
   useEffect(() => {
-    const fetchStores = async () => {
+    const loadStores = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/stores');
-        setStores(response.data);
+        setLoadingStores(true);
+        const storesData = await fetchStores();
+        setStores(storesData);
       } catch (error) {
         console.error('Error fetching stores:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load stores. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoadingStores(false);
       }
     };
 
-    fetchStores();
+    loadStores();
   }, []);
   
   // Handle store selection and fetch pricing data
@@ -289,29 +298,43 @@ const NewOrder = () => {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Select Store</FormLabel>
-                          <Select 
+                          <Select
                             onValueChange={(value) => {
                               field.onChange(value);
                               handleStoreSelection(value);
-                            }} 
-                            defaultValue={field.value}
-                            disabled={isSubmitting}
+                            }}
+                            value={field.value}
+                            disabled={loadingStores}
                           >
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Choose a store to send your print order" />
+                                {loadingStores ? (
+                                  <div className="flex items-center">
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    <span>Loading stores...</span>
+                                  </div>
+                                ) : (
+                                  <SelectValue placeholder="Select a store" />
+                                )}
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {stores.filter(store => store.status === 'active').map((store) => (
-                                <SelectItem key={store._id || store.id} value={store._id || store.id}>
-                                  {store.name} - {store.location || 'Unknown location'}
-                                </SelectItem>
-                              ))}
+                              {stores.length > 0 ? (
+                                stores.map((store) => (
+                                  <SelectItem key={store._id || store.id} value={store._id || store.id}>
+                                    {store.name}
+                                    {store.location && <span className="text-gray-500 text-xs ml-2">({store.location})</span>}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <div className="p-2 text-center text-sm text-gray-500">
+                                  {loadingStores ? 'Loading stores...' : 'No stores available'}
+                                </div>
+                              )}
                             </SelectContent>
                           </Select>
                           <FormDescription>
-                            Select the store where you want your documents to be printed
+                            Choose a store to print your documents
                           </FormDescription>
                           <FormMessage />
                         </FormItem>

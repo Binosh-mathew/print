@@ -6,11 +6,44 @@ const router = express.Router();
 // Create a new order
 router.post('/', async (req, res) => {
   try {
+    // Log the incoming request body for debugging
+    console.log('Order creation request body:', req.body);
+    
+    // Process the files array to ensure it matches our schema
+    if (req.body.files && Array.isArray(req.body.files)) {
+      req.body.files = req.body.files.map(file => {
+        return {
+          fileName: file.fileName || '',
+          copies: file.copies || 1,
+          specialPaper: file.specialPaper || 'none',
+          printType: file.printType || 'blackAndWhite',
+          doubleSided: file.doubleSided || false,
+          binding: {
+            needed: file.binding?.needed || false,
+            type: file.binding?.type || 'none'
+          },
+          specificRequirements: file.specificRequirements || ''
+        };
+      });
+    }
+    
+    // Create a new order with the processed request body
     const order = new Order(req.body);
-    await order.save();
-    res.status(201).json(order);
+    
+    // Save the order to the database
+    const savedOrder = await order.save();
+    console.log('Order saved successfully:', savedOrder);
+    
+    // Return the created order
+    res.status(201).json(savedOrder);
   } catch (error) {
-    res.status(500).json({ message: 'Error creating order', error });
+    // Log the detailed error for debugging
+    console.error('Error creating order:', error);
+    res.status(500).json({ 
+      message: 'Error creating order', 
+      error: error.message,
+      details: error.toString() 
+    });
   }
 });
 

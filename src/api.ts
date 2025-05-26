@@ -57,8 +57,68 @@ export const fetchOrders = async (): Promise<Order[]> => {
 };
 
 export const createOrder = async (orderData: Partial<Order>): Promise<Order> => {
-  const response = await axios.post(`${API_BASE_URL}/orders`, orderData);
-  return response.data;
+  try {
+    // Get the user data from localStorage for authentication
+    const storedUser = localStorage.getItem('printShopUser');
+    let token = '';
+    let userId = '';
+    let userRole = '';
+    
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      token = user.token || '';
+      userId = user.id || '';
+      userRole = user.role || '';
+    }
+
+    // Add authentication headers
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'X-User-ID': userId,
+        'X-User-Role': userRole
+      }
+    };
+
+    // Create a copy of orderData to avoid mutating the original
+    const orderPayload = { ...orderData };
+
+    // Handle file data formatting if needed
+    if (orderPayload.files && Array.isArray(orderPayload.files)) {
+      const formattedFiles = orderPayload.files.map(file => {
+        // Format the file data appropriately for the backend
+        const formattedFile: any = {
+          fileName: file.file ? (file.file as File).name : '',
+          copies: file.copies,
+          specialPaper: file.specialPaper,
+          printType: file.printType,
+          doubleSided: file.doubleSided,
+          binding: {
+            needed: file.binding.needed,
+            type: file.binding.type,
+          },
+          specificRequirements: file.specificRequirements,
+        };
+        return formattedFile;
+      });
+
+      // Replace the files array with our formatted version
+      orderPayload.files = formattedFiles as any;
+    }
+    
+    console.log('Sending order to backend:', JSON.stringify(orderPayload));
+    
+    const response = await axios.post(`${API_BASE_URL}/orders`, orderPayload, config);
+    return response.data;
+  } catch (error) {
+    console.error('Error creating order:', error);
+    // Add more detailed error logging
+    if (error.response) {
+      console.error('Server response:', error.response.data);
+    }
+    throw error; // Re-throw to allow component to handle the error
+  }
 };
 
 export const updateOrder = async (id: string, orderData: Partial<Order>): Promise<Order> => {
@@ -77,8 +137,37 @@ export const fetchOrderById = async (id: string): Promise<Order> => {
 
 // API functions for stores
 export const fetchStores = async (): Promise<Store[]> => {
-  const response = await axios.get(`${API_BASE_URL}/stores`);
-  return response.data;
+  try {
+    // Get the user data from localStorage for authentication
+    const storedUser = localStorage.getItem('printShopUser');
+    let token = '';
+    let userId = '';
+    let userRole = '';
+    
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      token = user.token || '';
+      userId = user.id || '';
+      userRole = user.role || '';
+    }
+
+    // Add authentication headers
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'X-User-ID': userId,
+        'X-User-Role': userRole
+      }
+    };
+
+    const response = await axios.get(`${API_BASE_URL}/stores`, config);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching stores:', error);
+    // Return empty array if there's an error
+    return [];
+  }
 };
 
 // Fetch store profile for admin
@@ -143,11 +232,40 @@ export const fetchStoreById = async (id: string): Promise<Store> => {
 
 export const fetchStorePricing = async (id: string): Promise<any> => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/stores/${id}`);
+    // Get the user data from localStorage for authentication
+    const storedUser = localStorage.getItem('printShopUser');
+    let token = '';
+    let userId = '';
+    let userRole = '';
+    
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      token = user.token || '';
+      userId = user.id || '';
+      userRole = user.role || '';
+    }
+
+    // Add authentication headers
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'X-User-ID': userId,
+        'X-User-Role': userRole
+      }
+    };
+
+    const response = await axios.get(`${API_BASE_URL}/stores/${id}`, config);
     return response.data.pricing || null;
   } catch (error) {
     console.error('Error fetching store pricing:', error);
-    return null;
+    // Return default pricing if there's an error
+    return {
+      blackAndWhite: { singleSided: 2, doubleSided: 3 },
+      color: { singleSided: 5, doubleSided: 8 },
+      binding: { spiralBinding: 25, staplingBinding: 10, hardcoverBinding: 50 },
+      paperTypes: { normal: 0, glossy: 5, matte: 7, transparent: 10 }
+    };
   }
 };
 

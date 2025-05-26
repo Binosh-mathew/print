@@ -1,28 +1,34 @@
 const mongoose = require('mongoose');
 
+// Define a separate schema for the binding object
+const bindingSchema = new mongoose.Schema({
+  needed: Boolean,
+  type: String
+}, { _id: false }); // _id: false prevents MongoDB from creating IDs for subdocuments
+
+// Define a separate schema for file details
+const fileSchema = new mongoose.Schema({
+  fileName: String,
+  copies: Number,
+  specialPaper: String,
+  printType: String,
+  doubleSided: Boolean,
+  binding: bindingSchema,
+  specificRequirements: String
+}, { _id: false });
+
 const orderSchema = new mongoose.Schema({
   customerName: { type: String, required: true },
   documentName: { type: String, required: true },
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  userId: { type: String, required: true },
   status: { type: String, enum: ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Completed'], default: 'Pending' },
-  files: [{
-    fileName: String,
-    copies: Number,
-    specialPaper: String,
-    printType: String,
-    doubleSided: Boolean,
-    binding: {
-      needed: Boolean,
-      type: String,
-    },
-    specificRequirements: String,
-  }],
+  files: [fileSchema],
   details: String,
   copies: Number,
   colorType: String,
   doubleSided: Boolean,
   totalPrice: Number,
-  storeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Store' },
+  storeId: { type: String },
   storeName: String,
 }, { timestamps: true });
 

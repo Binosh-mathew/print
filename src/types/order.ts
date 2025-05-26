@@ -1,5 +1,12 @@
+export interface FileMetadata {
+  name: string;
+  type: string;
+  size: number;
+  lastModified: number;
+}
+
 export interface FileDetails {
-  file: File;
+  file: File | FileMetadata;
   copies: number;
   specialPaper: 'none' | 'glossy' | 'matte' | 'transparent';
   printType: 'blackAndWhite' | 'color';

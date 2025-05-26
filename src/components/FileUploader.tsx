@@ -176,7 +176,21 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFileSelected, onFileRemov
                 newFiles[index] = updatedDetails;
                 onFileSelected(updatedDetails);
               }}
-              onRemove={() => onFileRemoved(fileDetail.file)}
+              onRemove={() => {
+                // Only call onFileRemoved if file is an actual File object
+                if (fileDetail.file instanceof File) {
+                  onFileRemoved(fileDetail.file);
+                } else {
+                  // If it's FileMetadata, we need to handle it differently
+                  // Create a temporary File object to pass to onFileRemoved
+                  // This is a workaround since we can't directly remove FileMetadata
+                  const tempFile = new File([""], fileDetail.file.name, {
+                    type: fileDetail.file.type,
+                    lastModified: fileDetail.file.lastModified
+                  });
+                  onFileRemoved(tempFile);
+                }
+              }}
             />
           ))}
         </div>
