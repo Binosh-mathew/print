@@ -151,41 +151,56 @@ const UserDashboard = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {recentOrders.map((order) => (
-                        <tr key={order.id} className="border-b border-gray-200 hover:bg-gray-50">
-                          <td className="py-3 px-4">
-                            <div className="flex items-center">
-                              <File size={16} className="text-gray-400 mr-2" />
-                              <span className="text-sm font-medium text-gray-700 truncate max-w-[200px]">
-                                {order.documentName}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 text-sm text-gray-600">
-                            {new Date(order.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="py-3 px-4 text-sm text-gray-600">
-                            {order.copies}
-                          </td>
-                          <td className="py-3 px-4 text-sm text-gray-600">
-                            {order.colorType === 'color' ? 'Color' : 'B&W'}
-                            {order.doubleSided ? ', Double-sided' : ''}
-                          </td>
-                          <td className="py-3 px-4 text-sm font-medium">
-                            ₹{order.totalPrice}
-                          </td>
-                          <td className="py-3 px-4">
-                            <OrderStatusBadge status={order.status} />
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <Link to={`/orders/${order.id}`}>
-                              <Button variant="ghost" size="sm" className="text-primary h-8">
-                                View
-                              </Button>
-                            </Link>
-                          </td>
-                        </tr>
-                      ))}
+                      {recentOrders.map((order, index) => {
+                        const orderId = order._id || order.id || `order-${index}`;
+                        const documentName = order.documentName || 'Untitled Document';
+                        const copies = order.copies || 1;
+                        const colorType = order.colorType === 'color' ? 'Color' : 'B&W';
+                        const doubleSided = order.doubleSided ? ', Double-sided' : '';
+                        const totalPrice = order.totalPrice || 0;
+                        const status = order.status || 'pending';
+                        const createdAt = order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A';
+                        
+                        return (
+                          <tr key={orderId} className="border-b border-gray-200 hover:bg-gray-50">
+                            <td className="py-3 px-4">
+                              <div className="flex items-center">
+                                <File size={16} className="text-gray-400 mr-2" />
+                                <span className="text-sm font-medium text-gray-700 truncate max-w-[200px]" title={documentName}>
+                                  {documentName}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-600">
+                              {createdAt}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-600">
+                              {copies}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-600">
+                              {colorType}{doubleSided}
+                            </td>
+                            <td className="py-3 px-4 text-sm font-medium">
+                              ₹{totalPrice}
+                            </td>
+                            <td className="py-3 px-4">
+                              <OrderStatusBadge status={status} />
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <Link to={`/orders/${orderId}`}>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="text-primary h-8"
+                                  aria-label={`View order ${orderId}`}
+                                >
+                                  View
+                                </Button>
+                              </Link>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

@@ -85,19 +85,37 @@ const OrderDetails = () => {
   }, [id, user, navigate]);
 
   const getPaperAndBindingInfo = () => {
-    if (!order || !order.files || order.files.length === 0) {
+    if (!order || !order.files || !Array.isArray(order.files) || order.files.length === 0) {
       return { papers: [], bindings: [] };
     }
     
-    const papers = order.files.map(file => ({
-      name: file.file.name,
-      paper: file.specialPaper === 'none' ? 'None' : file.specialPaper,
-      binding: file.binding.needed 
-        ? file.binding.type.replace('Binding', '') 
-        : 'None'
-    }));
+    const papers = order.files
+      .filter(file => file) // Filter out any null/undefined files
+      .map((file, index) => {
+        // Safely access file properties with defaults
+        const fileName = file?.file?.name || `Document ${index + 1}`;
+        const specialPaper = file?.specialPaper || 'none';
+        
+        // Handle binding with proper type checking
+        let bindingDisplay = 'None';
+        if (file?.binding?.needed && file.binding.type) {
+          bindingDisplay = file.binding.type.replace('Binding', '') || 'Standard';
+        }
+        
+        return {
+          name: fileName,
+          paper: specialPaper === 'none' ? 'Standard' : specialPaper,
+          binding: bindingDisplay,
+          copies: file?.copies || 1,
+          printType: file?.printType || 'blackAndWhite',
+          doubleSided: file?.doubleSided || false
+        };
+      });
     
-    return { papers };
+    return { 
+      papers,
+      bindings: papers.filter(p => p.binding !== 'None').map(p => p.binding)
+    };
   };
 
   const handleDownload = () => {
