@@ -1,8 +1,8 @@
-const express = require('express');
-const Message = require('../models/Message');
-const auth = require('../middleware/auth');
+import {Router} from 'express';
+import {Message} from '../models/Message.js';
+import {auth} from '../middleware/auth.js';
 
-const router = express.Router();
+const router = Router();
 
 // Get all messages
 router.get('/', auth, async (req, res) => {
@@ -74,4 +74,4 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-module.exports = router; 
+export default router;

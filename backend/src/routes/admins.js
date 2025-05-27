@@ -1,8 +1,8 @@
-const express = require('express');
-const router = express.Router();
-const Store = require('../models/Store');
-const bcrypt = require('bcryptjs');
+import {Router} from 'express';
+import {Store} from '../models/Store.js';
+import bcrypt from "bcrypt";
 
+const router = Router();
 // POST /api/admins
 router.post('/', async (req, res) => {
   const { name, email, password, storeName, storeLocation } = req.body;
@@ -33,4 +33,4 @@ router.post('/', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 const loginActivitySchema = new mongoose.Schema({
   userName: String,
@@ -8,4 +8,4 @@ const loginActivitySchema = new mongoose.Schema({
   action: String
 });
 
-module.exports = mongoose.model('LoginActivity', loginActivitySchema);
+export const LoginActivity = mongoose.model('LoginActivity', loginActivitySchema);

@@ -1,9 +1,10 @@
-const express = require('express');
-const router = express.Router();
-const Order = require('../models/Order');
-const Store = require('../models/Store');
-const User = require('../models/User');
+import {Router} from 'express';
+import {Order} from '../models/Order.js';
+import {Store} from '../models/Store.js';
+import {User} from '../models/User.js';
 
+
+const router = Router();
 // GET /api/platform-stats
 router.get('/', async (req, res) => {
   try {
@@ -53,4 +54,4 @@ router.get('/', async (req, res) => {
   }
 });
 
-module.exports = router; 
+export default router;

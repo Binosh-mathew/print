@@ -1,6 +1,7 @@
-const express = require('express');
-const router = express.Router();
-const LoginActivity = require('../models/LoginActivity');
+import {Router} from 'express';
+import {LoginActivity} from '../models/LoginActivity.js';
+
+const router = Router();
 
 // GET /api/login-activity
 router.get('/', async (req, res) => {
@@ -13,4 +14,4 @@ router.get('/', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

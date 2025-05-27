@@ -2,7 +2,7 @@
  * Middleware to check if the authenticated user has admin role
  * This middleware should be used after the auth middleware
  */
-const isAdmin = (req, res, next) => {
+export const isAdmin = (req, res, next) => {
   try {
     // Check if user exists and has role property
     if (!req.user) {
@@ -23,5 +23,3 @@ const isAdmin = (req, res, next) => {
     res.status(500).json({ message: 'Server error in authorization check' });
   }
 };
-
-module.exports = isAdmin;

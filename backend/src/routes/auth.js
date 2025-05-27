@@ -1,12 +1,12 @@
-const express = require('express');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const Developer = require('../models/Developer');
-const Store = require('../models/Store');
-const LoginActivity = require('../models/LoginActivity');
+import {Router} from 'express'
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import {User} from '../models/User.js';
+import {Developer} from '../models/Developer.js';
+import {Store} from '../models/Store.js';
+import {LoginActivity} from '../models/LoginActivity.js';
 
-const router = express.Router();
+const router = Router();
 
 // Register a new user
 router.post('/register', async (req, res) => {
@@ -76,7 +76,7 @@ router.post('/login', async (req, res) => {
 });
 
 // Import auth middleware
-const auth = require('../middleware/auth');
+import { auth } from '../middleware/auth.js';
 
 // Update user profile
 router.put('/update', auth, async (req, res) => {
@@ -120,4 +120,4 @@ router.put('/update', auth, async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

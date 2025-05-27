@@ -1,7 +1,7 @@
-const express = require('express');
-const Order = require('../models/Order');
+import {Router} from 'express';
+import {Order} from '../models/Order.js';
 
-const router = express.Router();
+const router = Router();
 
 // Create a new order
 router.post('/', async (req, res) => {
@@ -90,4 +90,4 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-module.exports = router; 
+export default router;

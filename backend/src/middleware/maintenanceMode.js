@@ -1,10 +1,10 @@
-const MaintenanceMode = require('../models/maintenanceMode');
+import {MaintenanceMode} from "../models/maintenanceMode.js";
 
 /**
  * Middleware to check if the system is in maintenance mode
  * If in maintenance mode, only developers can access the system
  */
-const maintenanceCheck = async (req, res, next) => {
+export const maintenanceCheck = async (req, res, next) => {
   try {
     // Skip maintenance check for maintenance mode API endpoints
     if (req.path.startsWith('/api/system/maintenance')) {
@@ -49,5 +49,3 @@ const maintenanceCheck = async (req, res, next) => {
     next();
   }
 };
-
-module.exports = maintenanceCheck;

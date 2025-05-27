@@ -1,6 +1,6 @@
-const jwt = require('jsonwebtoken');
+import jwt from "jsonwebtoken"
 
-const auth = async (req, res, next) => {
+export const auth = async (req, res, next) => {
   try {
     // First try to authenticate with JWT token
     const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -32,4 +32,3 @@ const auth = async (req, res, next) => {
   }
 };
 
-module.exports = auth;

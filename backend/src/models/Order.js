@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 // Define a separate schema for the binding object
 const bindingSchema = new mongoose.Schema({
@@ -32,4 +32,4 @@ const orderSchema = new mongoose.Schema({
   storeName: String,
 }, { timestamps: true });
 
-module.exports = mongoose.model('Order', orderSchema); 
+export const Order = mongoose.model('Order', orderSchema); 

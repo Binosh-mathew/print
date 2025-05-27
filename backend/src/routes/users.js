@@ -1,9 +1,9 @@
-const express = require('express');
-const User = require('../models/User');
-const auth = require('../middleware/auth');
-const { isAdmin } = require('../middleware/roleCheck');
+import {Router} from "express"
+import {User} from "../models/User.js";
+import { auth } from "../middleware/auth.js";
+import { isAdmin } from "../middleware/isAdmin.js";
 
-const router = express.Router();
+const router = Router();
 
 // Get all users (admin only)
 router.get('/', auth, isAdmin, async (req, res) => {
@@ -71,4 +71,4 @@ router.delete('/:id', auth, isAdmin, async (req, res) => {
   }
 });
 
-module.exports = router; 
+export default router;

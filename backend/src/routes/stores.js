@@ -1,9 +1,9 @@
-const express = require('express');
-const Store = require('../models/Store');
-const auth = require('../middleware/auth');
-const isAdmin = require('../middleware/isAdmin');
+import {Router} from 'express';
+import {Store} from '../models/Store.js';
+import { auth } from '../middleware/auth.js';
+import { isAdmin } from '../middleware/isAdmin.js';
 
-const router = express.Router();
+const router = Router();
 
 // Create a new store
 router.post('/', async (req, res) => {
@@ -149,4 +149,4 @@ router.put('/:id/pricing', auth, isAdmin, async (req, res) => {
   }
 });
 
-module.exports = router; 
+export default router;
