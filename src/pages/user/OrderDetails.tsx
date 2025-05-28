@@ -108,7 +108,8 @@ const OrderDetails = () => {
           binding: bindingDisplay,
           copies: file?.copies || 1,
           printType: file?.printType || 'blackAndWhite',
-          doubleSided: file?.doubleSided || false
+          doubleSided: file?.doubleSided || false,
+          specificRequirements: file?.specificRequirements || ''
         };
       });
     
@@ -205,16 +206,7 @@ const OrderDetails = () => {
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              className="flex items-center" 
-              onClick={handleDownload}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Download File
-            </Button>
-          </div>
+          {/* Download button removed as requested */}
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -302,9 +294,23 @@ const OrderDetails = () => {
                           <div>
                             <span className="text-gray-500">Binding:</span> {file.binding}
                           </div>
+                          {file.specificRequirements && (
+                            <div className="col-span-2 mt-2">
+                              <span className="text-gray-500">Specific Requirements:</span> {file.specificRequirements}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+              
+              {order.details && (
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <h3 className="font-semibold mb-3">Additional Requirements</h3>
+                  <div className="p-3 bg-gray-50 rounded-md">
+                    <p className="text-sm">{order.details}</p>
                   </div>
                 </div>
               )}
