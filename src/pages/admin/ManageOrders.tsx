@@ -76,11 +76,25 @@ const ManageOrders = () => {
       setIsUpdating(true);
       
       const response = await axios.get('http://localhost:5000/api/orders');
-      setOrders(response.data);
       
-      console.log('Fetching orders from API:', response.data.length);
+      // Process the orders to ensure customer names are properly set
+      const processedOrders = response.data.map(order => {
+        // Ensure customerName is set, falling back to userName if needed
+        if (!order.customerName && order.userName) {
+          order.customerName = order.userName;
+        }
+        // If neither customerName nor userName is available, set a default
+        if (!order.customerName && !order.userName) {
+          order.customerName = 'Unknown User';
+        }
+        return order;
+      });
       
-      const sortedOrders = [...response.data].sort((a, b) => 
+      setOrders(processedOrders);
+      
+      console.log('Fetching orders from API:', processedOrders.length);
+      
+      const sortedOrders = [...processedOrders].sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       
@@ -88,7 +102,7 @@ const ManageOrders = () => {
       setIsUpdating(false);
       
       if (orderId) {
-        const order = sortedOrders.find(o => o.id === orderId);
+        const order = sortedOrders.find(o => o.id === orderId || o._id === orderId);
         if (order) {
           setSelectedOrder(order);
           setIsDetailsOpen(true);
@@ -127,18 +141,63 @@ const ManageOrders = () => {
   useEffect(() => {
     let result = [...orders];
     
-    if (statusFilter !== 'all') {
-      result = result.filter(order => order.status === statusFilter);
+    console.log('Filtering orders:', orders.length, 'Status filter:', statusFilter, 'Search query:', searchQuery);
+    
+    // Log some sample orders to see their structure
+    if (orders.length > 0) {
+      console.log('Sample order data:', orders[0]);
+      console.log('Customer name field:', orders[0].customerName);
+      console.log('User name field:', orders[0].userName);
     }
+    
+    if (statusFilter !== 'all') {
+      // Convert status values to lowercase for case-insensitive comparison
+      const filterValue = statusFilter.toLowerCase();
+      result = result.filter(order => {
+        // Handle case where order.status might be undefined
+        if (!order.status) return false;
+        
+        // Normalize the status for comparison
+        const orderStatus = order.status.toLowerCase();
+        return orderStatus === filterValue;
+      });
+    }
+    
+    // Log the filtered results count by status
+    console.log('Filtered orders count:', result.length);
     
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(order => 
-        order.id.toLowerCase().includes(query) ||
-        (order.customerName && order.customerName.toLowerCase().includes(query)) ||
-        (order.userName && order.userName.toLowerCase().includes(query)) ||
-        (order.documentName && order.documentName.toLowerCase().includes(query))
-      );
+      console.log('Searching for:', query);
+      
+      result = result.filter(order => {
+        // Check if the order ID contains the query
+        if (order.id && order.id.toLowerCase().includes(query)) {
+          console.log('Match by ID:', order.id);
+          return true;
+        }
+        
+        // Check if the customer name contains the query (prioritize customerName over userName)
+        if (order.customerName && order.customerName.toLowerCase().includes(query)) {
+          console.log('Match by customerName:', order.customerName);
+          return true;
+        }
+        
+        if (order.userName && order.userName.toLowerCase().includes(query)) {
+          console.log('Match by userName:', order.userName);
+          return true;
+        }
+        
+        // Check if the document name contains the query
+        if (order.documentName && order.documentName.toLowerCase().includes(query)) {
+          console.log('Match by documentName:', order.documentName);
+          return true;
+        }
+        
+        return false;
+      });
+      
+      console.log('Search results count:', result.length);
     }
     
     result.sort((a, b) => {
@@ -318,29 +377,7 @@ const ManageOrders = () => {
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
-            <div className="flex items-center space-x-2">
-              <Button
-                onClick={refreshOrders}
-                variant="outline"
-                size="sm"
-                disabled={isUpdating}
-                className="h-9 px-2 lg:px-3"
-              >
-                <RefreshCw className={cn("h-4 w-4 mr-0 lg:mr-2", isUpdating && "animate-spin")} />
-                <span className="hidden lg:inline">Refresh</span>
-              </Button>
-              
-              <Button
-                onClick={() => setAutoRefresh(!autoRefresh)}
-                variant={autoRefresh ? "default" : "outline"}
-                size="sm"
-                className="h-9 px-2 lg:px-3"
-                title={autoRefresh ? "Auto-refresh is on (30s)" : "Auto-refresh is off"}
-              >
-                <Clock className={cn("h-4 w-4 mr-0 lg:mr-2", autoRefresh && "text-green-500")} />
-                <span className="hidden lg:inline">{autoRefresh ? "Auto: ON" : "Auto: OFF"}</span>
-              </Button>
-            </div>
+            {/* Refresh and auto-refresh buttons removed */}
           </div>
         </div>
         
