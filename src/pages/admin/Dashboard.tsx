@@ -440,20 +440,7 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
         
-        {/* Activity Calendar Placeholder */}
-        <Card key="activity-calendar">
-          <CardHeader>
-            <CardTitle className="flex items-center text-xl">
-              <Calendar className="h-5 w-5 mr-2" />
-              Activity Calendar
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-500 italic text-center py-6">
-              Activity calendar will be implemented in a future update.
-            </p>
-          </CardContent>
-        </Card>
+        {/* Activity Calendar section removed */}
       </div>
     </AdminLayout>
   );
