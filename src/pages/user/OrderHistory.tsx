@@ -3,9 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import UserLayout from '@/components/layouts/UserLayout';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Search } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import OrderStatusBadge from '@/components/OrderStatusBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchOrders } from '@/api';
@@ -15,8 +14,6 @@ import { toast } from '@/components/ui/use-toast';
 const OrderHistory = () => {
   const { user } = useAuth();
   const [userOrders, setUserOrders] = useState<Order[]>([]);
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -39,7 +36,6 @@ const OrderHistory = () => {
           );
           
           setUserOrders(sortedOrders);
-          setFilteredOrders(sortedOrders);
         }
       } catch (error) {
         console.error('Error fetching orders:', error);
@@ -56,19 +52,7 @@ const OrderHistory = () => {
     loadOrders();
   }, [user]);
 
-  // Handle search
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredOrders(userOrders);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const filtered = userOrders.filter(order => 
-        order.orderId?.toLowerCase().includes(query) ||
-        order.status?.toLowerCase().includes(query)
-      );
-      setFilteredOrders(filtered);
-    }
-  }, [searchQuery, userOrders]);
+  // Search functionality removed
 
   // Function to get special paper info from files
   const getPaperAndBindingInfo = (order: Order) => {
@@ -107,18 +91,7 @@ const OrderHistory = () => {
         
         <Card>
           <CardHeader className="pb-2">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <CardTitle>Your Orders</CardTitle>
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                <Input
-                  placeholder="Search orders..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-            </div>
+            <CardTitle>Your Orders</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -126,7 +99,7 @@ const OrderHistory = () => {
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
                 <p className="text-gray-500 mt-4">Loading your orders...</p>
               </div>
-            ) : filteredOrders.length > 0 ? (
+            ) : userOrders.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
@@ -143,7 +116,7 @@ const OrderHistory = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredOrders.map((order) => {
+                    {userOrders.map((order) => {
                       const { paper } = getPaperAndBindingInfo(order);
                       return (
                         <tr key={order._id} className="border-b border-gray-200 hover:bg-gray-50">
@@ -194,15 +167,11 @@ const OrderHistory = () => {
               <div className="text-center py-8">
                 <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-500 mb-2">No orders found</p>
-                {searchQuery ? (
-                  <p className="text-sm text-gray-400">Try a different search term</p>
-                ) : (
                   <Link to="/new-order">
                     <Button className="mt-4 bg-primary hover:bg-primary-500">
                       Create your first order
                     </Button>
                   </Link>
-                )}
               </div>
             )}
           </CardContent>
