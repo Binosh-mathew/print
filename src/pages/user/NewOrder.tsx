@@ -235,7 +235,7 @@ const NewOrder = () => {
       
       // Create the order in the backend
       const orderData: Partial<Order> = {
-        customerName: data.documentName,
+        customerName: user?.name || 'Unknown User',
         documentName: data.documentName,
         userId: user?.id,
         status: 'Pending',

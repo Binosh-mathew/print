@@ -1,0 +1,114 @@
+/* Print styles for the application */
+
+@media print {
+  /* Hide elements that shouldn't be printed */
+  nav, 
+  header, 
+  footer,
+  .no-print,
+  button:not(.print-include),
+  [role="dialog"] > div:first-child {
+    display: none !important;
+  }
+  
+  /* Show the dialog content for printing */
+  [role="dialog"] {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    display: block !important;
+    background: white !important;
+    color: black !important;
+    z-index: 9999 !important;
+    padding: 20px !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+    max-height: none !important;
+    max-width: none !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  
+  /* Format the dialog content for printing */
+  [role="dialog"] > div:nth-child(2) {
+    position: relative !important;
+    display: block !important;
+    background: white !important;
+    color: black !important;
+    border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+  
+  /* Ensure text is black for better printing */
+  * {
+    color: black !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+  
+  /* Ensure backgrounds are white or transparent */
+  * {
+    background: transparent !important;
+  }
+  
+  /* Add page breaks before major sections */
+  h1, h2, h3 {
+    page-break-after: avoid;
+  }
+  
+  /* Ensure images and tables don't break across pages */
+  img, table {
+    page-break-inside: avoid;
+  }
+  
+  /* Format links for printing */
+  a {
+    text-decoration: underline;
+  }
+  
+  /* Format tables for better printing */
+  table {
+    border-collapse: collapse !important;
+  }
+  
+  table, th, td {
+    border: 1px solid #ddd !important;
+  }
+  
+  /* Order details specific styles */
+  .order-details-print {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 20px !important;
+  }
+  
+  .order-header {
+    border-bottom: 2px solid #000 !important;
+    margin-bottom: 20px !important;
+    padding-bottom: 10px !important;
+  }
+  
+  .order-section {
+    margin-bottom: 20px !important;
+  }
+  
+  /* Hide dialog backdrop */
+  [data-radix-popper-content-wrapper] {
+    position: static !important;
+    transform: none !important;
+    top: 0 !important;
+    left: 0 !important;
+  }
+}

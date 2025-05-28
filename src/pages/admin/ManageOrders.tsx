@@ -25,14 +25,19 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { 
-  FileText, 
-  Search, 
+  ArrowDown, 
+  ArrowUp, 
+  Clock, 
   Download, 
-  Filter,
-  ArrowDown,
-  ArrowUp
+  FileText, 
+  Filter, 
+  Printer,
+  RefreshCw, 
+  Search 
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import OrderStatusBadge from '@/components/OrderStatusBadge';
+import DocumentViewer from '@/components/DocumentViewer';
 import { toast } from '@/components/ui/use-toast';
 import { normalizeStatus, hasStatus } from '@/utils/orderUtils';
 import {
@@ -100,13 +105,24 @@ const ManageOrders = () => {
     }
   };
 
+  // State to control auto-refresh behavior
+  const [autoRefresh, setAutoRefresh] = useState(false);
+
   useEffect(() => {
+    // Initial fetch when component mounts or orderId changes
     refreshOrders();
     
-    const intervalId = setInterval(refreshOrders, 5000);
+    // Only set up interval if autoRefresh is enabled
+    let intervalId: NodeJS.Timeout | null = null;
+    if (autoRefresh) {
+      intervalId = setInterval(refreshOrders, 30000); // Reduced frequency to 30 seconds
+    }
     
-    return () => clearInterval(intervalId);
-  }, [orderId]);
+    // Clean up interval on unmount or when dependencies change
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [orderId, autoRefresh]);
 
   useEffect(() => {
     let result = [...orders];
@@ -119,8 +135,9 @@ const ManageOrders = () => {
       const query = searchQuery.toLowerCase();
       result = result.filter(order => 
         order.id.toLowerCase().includes(query) ||
-        order.userName.toLowerCase().includes(query) ||
-        order.documentName.toLowerCase().includes(query)
+        (order.customerName && order.customerName.toLowerCase().includes(query)) ||
+        (order.userName && order.userName.toLowerCase().includes(query)) ||
+        (order.documentName && order.documentName.toLowerCase().includes(query))
       );
     }
     
@@ -301,9 +318,29 @@ const ManageOrders = () => {
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" onClick={refreshOrders}>
-              Refresh
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Button
+                onClick={refreshOrders}
+                variant="outline"
+                size="sm"
+                disabled={isUpdating}
+                className="h-9 px-2 lg:px-3"
+              >
+                <RefreshCw className={cn("h-4 w-4 mr-0 lg:mr-2", isUpdating && "animate-spin")} />
+                <span className="hidden lg:inline">Refresh</span>
+              </Button>
+              
+              <Button
+                onClick={() => setAutoRefresh(!autoRefresh)}
+                variant={autoRefresh ? "default" : "outline"}
+                size="sm"
+                className="h-9 px-2 lg:px-3"
+                title={autoRefresh ? "Auto-refresh is on (30s)" : "Auto-refresh is off"}
+              >
+                <Clock className={cn("h-4 w-4 mr-0 lg:mr-2", autoRefresh && "text-green-500")} />
+                <span className="hidden lg:inline">{autoRefresh ? "Auto: ON" : "Auto: OFF"}</span>
+              </Button>
+            </div>
           </div>
         </div>
         
@@ -333,11 +370,11 @@ const ManageOrders = () => {
                     </TableHead>
                     <TableHead 
                       className="cursor-pointer"
-                      onClick={() => handleSort('userName')}
+                      onClick={() => handleSort('customerName')}
                     >
                       <div className="flex items-center">
                         Customer
-                        {sortConfig.key === 'userName' && (
+                        {sortConfig.key === 'customerName' && (
                           sortConfig.direction === 'ascending' ? (
                             <ArrowUp className="ml-1 h-4 w-4" />
                           ) : (
@@ -404,7 +441,7 @@ const ManageOrders = () => {
                       return (
                         <TableRow key={uniqueKey}>
                           <TableCell className="font-medium" key={`${uniqueKey}-id`}>#{order.id}</TableCell>
-                          <TableCell key={`${uniqueKey}-user`}>{order.userName}</TableCell>
+                          <TableCell key={`${uniqueKey}-user`}>{order.customerName || order.userName || 'Unknown User'}</TableCell>
                           <TableCell className="truncate max-w-[200px]" key={`${uniqueKey}-doc`}>
                             {order.documentName}
                           </TableCell>
@@ -428,15 +465,6 @@ const ManageOrders = () => {
                                 key={`${uniqueKey}-view`}
                               >
                                 View
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8"
-                                onClick={() => handleDownload(order.id)}
-                                key={`${uniqueKey}-download`}
-                              >
-                                <Download className="h-4 w-4" />
                               </Button>
                             </div>
                           </TableCell>
@@ -468,62 +496,72 @@ const ManageOrders = () => {
         <DialogContent className="sm:max-w-3xl">
           {selectedOrder && (
             <>
-              <DialogHeader>
+              <div className="print-only" style={{ display: 'none' }}>
+                <style type="text/css" media="print">
+                  {`
+                    @page { size: auto; margin: 10mm; }
+                    body { margin: 0; padding: 0; }
+                    .dialog-content-print { display: block !important; }
+                    .no-print { display: none !important; }
+                  `}
+                </style>
+              </div>
+              <DialogHeader className="order-header">
                 <DialogTitle className="flex items-center justify-between">
                   <span>Order #{selectedOrder.id}</span>
                   <OrderStatusBadge status={selectedOrder.status} />
                 </DialogTitle>
                 <DialogDescription>
-                  Placed on {new Date(selectedOrder.createdAt).toLocaleDateString()} by {selectedOrder.userName}
+                  Placed on {new Date(selectedOrder.createdAt).toLocaleDateString()} by {selectedOrder.customerName || selectedOrder.userName || 'Unknown User'}
                 </DialogDescription>
               </DialogHeader>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4 order-section dialog-content-print">
                 <div>
-                  <h4 className="text-sm font-medium mb-2">Document Details</h4>
+                  <h4 className="text-sm font-medium mb-2 print-heading">Document Details</h4>
                   <div className="space-y-3">
                     <div className="flex items-center text-sm">
-                      <FileText className="h-4 w-4 mr-2 text-gray-500" />
-                      <span className="truncate">{selectedOrder.documentName}</span>
+                      <FileText className="h-4 w-4 mr-2 text-gray-500 no-print" />
+                      <span className="truncate print-text">{selectedOrder.documentName}</span>
                     </div>
-                    <div className="flex items-start gap-x-6 text-sm">
-                      <div>
-                        <p className="text-gray-500">Copies</p>
-                        <p className="font-medium">{selectedOrder.copies}</p>
+                    <div className="flex items-start gap-x-6 text-sm print-grid" style={{ display: 'flex' }}>
+                      <div className="print-item">
+                        <p className="text-gray-500 print-label">Copies</p>
+                        <p className="font-medium print-value">{selectedOrder.copies}</p>
                       </div>
-                      <div>
-                        <p className="text-gray-500">Print Type</p>
-                        <p className="font-medium">
+                      <div className="print-item">
+                        <p className="text-gray-500 print-label">Print Type</p>
+                        <p className="font-medium print-value">
                           {selectedOrder.colorType === 'color' ? 'Color' : 'Black & White'}
                         </p>
                       </div>
-                      <div>
-                        <p className="text-gray-500">Double-sided</p>
-                        <p className="font-medium">{selectedOrder.doubleSided ? 'Yes' : 'No'}</p>
+                      <div className="print-item">
+                        <p className="text-gray-500 print-label">Double-sided</p>
+                        <p className="font-medium print-value">{selectedOrder.doubleSided ? 'Yes' : 'No'}</p>
                       </div>
                     </div>
                   </div>
                 </div>
                 
                 <div>
-                  <h4 className="text-sm font-medium mb-2">Payment Details</h4>
+                  <h4 className="text-sm font-medium mb-2 print-heading">Payment Details</h4>
                   <div className="space-y-3">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Total Amount</span>
-                      <span className="font-bold">₹{selectedOrder.totalPrice}</span>
+                    <div className="flex justify-between text-sm print-row">
+                      <span className="text-gray-500 print-label">Total Amount</span>
+                      <span className="font-bold print-value">₹{selectedOrder.totalPrice}</span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Payment Status</span>
-                      <span className="font-medium text-green-600">Paid</span>
+                    <div className="flex justify-between text-sm print-row">
+                      <span className="text-gray-500 print-label">Payment Status</span>
+                      <span className="font-medium text-green-600 print-value">Paid</span>
                     </div>
                   </div>
                 </div>
               </div>
               
               {selectedOrder.files && selectedOrder.files.length > 0 && (
-                <div className="border-t border-gray-200 pt-4 pb-4">
-                  <h4 className="text-sm font-medium mb-2">File Details</h4>
-                  <div className="space-y-3 max-h-40 overflow-y-auto pr-2">
+                <div className="border-t border-gray-200 pt-4 pb-4 order-section dialog-content-print">
+                  <h4 className="text-sm font-medium mb-2 print-heading">File Details</h4>
+                  <div className="space-y-3 max-h-40 overflow-y-auto pr-2 print-files" style={{ maxHeight: 'none' }}>
                     {selectedOrder.files.map((file, index) => {
                       // Skip if file data is invalid
                       if (!file) return null;
@@ -535,15 +573,15 @@ const ManageOrders = () => {
                       const binding = file.binding || { needed: false };
                       
                       return (
-                        <div key={index} className="bg-gray-50 p-3 rounded-md">
-                          <p className="font-medium text-sm mb-1">{fileName}</p>
-                          <div className="grid grid-cols-2 text-xs text-gray-600">
-                            <div>Copies: {copies}</div>
-                            <div>Print: {printType === 'blackAndWhite' ? 'B&W' : 'Color'}</div>
-                            <div>Paper: {specialPaper === 'none' ? 'Normal A4' : specialPaper}</div>
-                            <div>Binding: {binding?.needed ? (binding.type || '').replace('Binding', '') : 'None'}</div>
+                        <div key={index} className="bg-gray-50 p-3 rounded-md print-file-item" style={{ border: '1px solid #ddd', marginBottom: '10px' }}>
+                          <p className="font-medium text-sm mb-1 print-filename">{fileName}</p>
+                          <div className="grid grid-cols-2 text-xs text-gray-600 print-file-details">
+                            <div className="print-detail">Copies: {copies}</div>
+                            <div className="print-detail">Print: {printType === 'blackAndWhite' ? 'B&W' : 'Color'}</div>
+                            <div className="print-detail">Paper: {specialPaper === 'none' ? 'Normal A4' : specialPaper}</div>
+                            <div className="print-detail">Binding: {binding?.needed ? (binding.type || '').replace('Binding', '') : 'None'}</div>
                             {file.specificRequirements && (
-                              <div className="col-span-2 mt-2">
+                              <div className="col-span-2 mt-2 print-requirements">
                                 <span className="font-medium">Requirements:</span> {file.specificRequirements}
                               </div>
                             )}
@@ -562,7 +600,7 @@ const ManageOrders = () => {
                 </div>
               )}
               
-              <div className="border-t border-gray-200 pt-4">
+              <div className="border-t border-gray-200 pt-4 no-print">
                 <h4 className="text-sm font-medium mb-3">Update Order Status</h4>
                 <div className="flex flex-wrap gap-2">
                   <Button
@@ -604,14 +642,62 @@ const ManageOrders = () => {
                 </div>
               </div>
               
-              <DialogFooter className="flex gap-2">
+              <div className="print-only order-status-section" style={{ display: 'none', marginTop: '20px', borderTop: '1px solid #ddd', paddingTop: '15px' }}>
+                <h4 className="text-sm font-medium mb-2">Current Status: <span className="font-bold">{selectedOrder.status}</span></h4>
+              </div>
+              
+              {/* Document Viewer Section */}
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <h4 className="text-sm font-medium mb-3">Document Preview & Actions</h4>
+                <DocumentViewer 
+                  orderId={selectedOrder._id || selectedOrder.id}
+                  documentName={selectedOrder.documentName || selectedOrder.files?.[0]?.file?.name || 'Document'}
+                  fallbackMessage="The document file is not available for preview or printing. Please contact the customer for the original file."
+                  onDocumentLoaded={(url) => {
+                    console.log('Document loaded:', url);
+                    // You can add additional logic here when the document is loaded
+                  }}
+                />
+              </div>
+              
+              <DialogFooter className="flex flex-wrap gap-2 justify-end mt-4">
                 <Button
                   variant="outline"
-                  onClick={() => handleDownload(selectedOrder.id)}
+                  onClick={() => {
+                    // Create a dedicated print stylesheet for this specific order
+                    const style = document.createElement('style');
+                    style.type = 'text/css';
+                    style.id = 'temp-print-style';
+                    style.media = 'print';
+                    style.innerHTML = `
+                      @page { size: auto; margin: 15mm; }
+                      body * { visibility: hidden; }
+                      .dialog-content-print, .dialog-content-print * { visibility: visible; }
+                      .dialog-content-print { position: absolute; left: 0; top: 0; width: 100%; }
+                      .no-print { display: none !important; }
+                      .print-only { display: block !important; }
+                    `;
+                    document.head.appendChild(style);
+                    
+                    // Trigger print dialog
+                    window.print();
+                    
+                    // Remove the temporary style after printing
+                    setTimeout(() => {
+                      const tempStyle = document.getElementById('temp-print-style');
+                      if (tempStyle) tempStyle.remove();
+                    }, 2000);
+                    
+                    toast({
+                      title: "Print dialog opened",
+                      description: `Printing order #${selectedOrder.id} details.`,
+                    });
+                  }}
                   disabled={isUpdating}
+                  className="bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-300"
                 >
-                  <Download className="mr-2 h-4 w-4" />
-                  Download Document
+                  <Printer className="mr-2 h-4 w-4" />
+                  Print Order
                 </Button>
                 <Button 
                   onClick={() => {

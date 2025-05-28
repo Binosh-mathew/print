@@ -397,7 +397,7 @@ const AdminDashboard = () => {
                       // Provide default values to prevent undefined errors
                       const orderWithDefaults = {
                         id: order?.id || `order-${index}`,
-                        userName: order?.userName || 'Unknown User',
+                        customerName: order?.customerName || order?.userName || 'Unknown User',
                         documentName: order?.documentName || 'Untitled Document',
                         createdAt: order?.createdAt || new Date().toISOString(),
                         totalPrice: order?.totalPrice || 0,
@@ -407,7 +407,7 @@ const AdminDashboard = () => {
                       return (
                         <tr key={rowKey} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
                           <td className="p-4 align-middle font-medium">#{orderWithDefaults.id}</td>
-                          <td className="p-4 align-middle">{orderWithDefaults.userName}</td>
+                          <td className="p-4 align-middle">{orderWithDefaults.customerName}</td>
                           <td className="p-4 align-middle truncate max-w-[200px]">{orderWithDefaults.documentName}</td>
                           <td className="p-4 align-middle text-gray-600">
                             {new Date(orderWithDefaults.createdAt).toLocaleDateString()}
