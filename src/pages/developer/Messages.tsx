@@ -10,7 +10,7 @@ const Messages = () => {
           <p className="text-gray-600">Communication center for developer-admin messages</p>
         </div>
 
-        <GmailStyleMessagePanel role="developer" />
+        <GmailStyleMessagePanel  />
       </div>
     </DeveloperLayout>
   );

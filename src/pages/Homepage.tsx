@@ -1,7 +1,6 @@
 
-import React from 'react';
 import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { Button } from '../components/ui/button';
 import { 
   FileText, 
   Upload, 
@@ -20,7 +19,7 @@ const Homepage = () => {
           <Link to="/" className="font-bold text-xl text-primary">PrintSpark Studio</Link>
           <div className="flex space-x-4">
             <Link to="/login">
-              <Button variant="ghost" className="text-gray-600 hover:text-primary">Login</Button>
+              <Button variant="ghost" className="text-gray-600 hover:text-white ">Login</Button>
             </Link>
             <Link to="/register">
               <Button className="bg-primary hover:bg-primary-500">Register</Button>

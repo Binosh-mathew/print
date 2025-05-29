@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Button } from './ui/button';
 // import { messages, addMessage, markMessageAsRead, type Message, stores } from '@/services/mockData';
 
 const GmailStyleMessagePanel = () => {
@@ -37,13 +38,14 @@ const GmailStyleMessagePanel = () => {
   return (
     <div>
       <h2>Gmail Style Messages</h2>
-      <form onSubmit={handleSend} style={{ marginBottom: 16 }}>
+      <form onSubmit={handleSend} style={{ marginBottom: 16,  marginTop:12}}>
         <input
           value={newMessage}
           onChange={e => setNewMessage(e.target.value)}
           placeholder="Type a message..."
+          className='p-2 border rounded outline-none focus:ring-2 focus:ring-primary-500'
         />
-        <button type="submit">Send</button>
+        <Button className='primary ml-2 '>Send</Button>
       </form>
       {loading ? (
         <p>Loading...</p>
