@@ -1,34 +1,30 @@
-import jwt from "jsonwebtoken"
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+dotenv.config();
 
 export const auth = async (req, res, next) => {
   try {
-    // First try to authenticate with JWT token
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    
-    if (token) {
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-        req.user = decoded;
-        return next();
-      } catch (tokenError) {
-        console.log('Token verification failed, trying custom headers');
-      }
+    const token = req.cookies?.jwt || req.header("Authorization")?.split(" ")[1];
+    if (!token) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthorized, no token provided" });
     }
-    
-    // If JWT authentication fails, try custom headers
-    const userId = req.header('X-User-ID');
-    const userRole = req.header('X-User-Role');
-    
-    if (userId && userRole) {
-      req.user = { id: userId, role: userRole };
-      return next();
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!decoded) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthorized, invalid token" });
     }
-    
-    // If both authentication methods fail
-    return res.status(401).json({ message: 'Authentication failed, access denied' });
+    req.user = {
+      id: decoded.id,
+      role: decoded.role,
+    };
+
+    next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
-    res.status(401).json({ message: 'Authentication error' });
+    console.error("Auth middleware error:", error);
+    res.status(401).json({ message: "Authentication error" });
   }
 };
-
