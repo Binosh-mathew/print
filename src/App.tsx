@@ -39,6 +39,7 @@ import SystemStatus from '@/pages/developer/SystemStatus';
 import Database from '@/pages/developer/Database';
 import Logs from '@/pages/developer/Logs';
 import CreateAdmin from '@/pages/developer/CreateAdmin';
+import LoginActivity from '@/pages/developer/LoginActivity';
 
 const queryClient = new QueryClient();
 
@@ -196,6 +197,14 @@ const App = () => (
                 element={
                   <ProtectedRoute allowedRole="developer">
                     <Logs />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/developer/login-activity" 
+                element={
+                  <ProtectedRoute allowedRole="developer">
+                    <LoginActivity />
                   </ProtectedRoute>
                 } 
               />
