@@ -4,7 +4,8 @@ dotenv.config();
 
 export const auth = async (req, res, next) => {
   try {
-    const token = req.cookies?.jwt || req.header("Authorization")?.split(" ")[1];
+    const token =
+      req.cookies?.jwt || req.header("Authorization")?.split(" ")[1];
     if (!token) {
       return res
         .status(401)

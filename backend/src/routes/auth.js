@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import { Router } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -5,6 +8,7 @@ import { User } from "../models/User.js";
 import { Developer } from "../models/Developer.js";
 import { Store } from "../models/Store.js";
 import { LoginActivity } from "../models/LoginActivity.js";
+import { auth } from "../middleware/auth.js";
 
 const router = Router();
 
@@ -12,28 +16,41 @@ const router = Router();
 router.post("/register", async (req, res) => {
   try {
     const { username, email, password } = req.body;
-    console.log("Received registration data:", req.body);
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       console.log("User already exists:", email);
-      return res
-        .status(400)
-        .json({ success: false, message: "User already exists" });
+      return res.status(400).json({
+        success: false,
+        message: "User already exists",
+      });
     }
 
-    const user = new User({ username, email, password });
-    await user.save();
-    console.log("User registered:", user);
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-    res
-      .status(201)
-      .json({ success: true, message: "User registered successfully" });
+    if (!hashedPassword) {
+      console.error("Error hashing password");
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error: unable to hash password",
+      });
+    }
+    const user = new User({ username, email, password: hashedPassword });
+    await user.save();
+
+    res.status(201).json({
+      success: true,
+      message: "User registered successfully",
+      user,
+    });
   } catch (error) {
     console.error("Error registering user:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Error registering user", error });
+    res.status(500).json({
+      success: false,
+      message: "Internal server error:Error registering user",
+      error,
+    });
   }
 });
 
@@ -41,6 +58,14 @@ router.post("/register", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   const { email, password, role } = req.body;
+
+  if (!email || !password || !role) {
+    return res.status(400).json({
+      success: false,
+      message: "All fields are required",
+    });
+  }
+
   try {
     let user;
     if (role === "developer") {
@@ -60,13 +85,13 @@ router.post("/login", async (req, res) => {
     } else {
       user = await User.findOne({ email });
     }
-    console.log("Login attempt:", email, user);
+
     if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(400).json({ message: "No User found" });
     }
     const isMatch = bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(400).json({ message: "Invalid Password" });
     }
     const token = jwt.sign(
       { id: user._id, role: user.role },
@@ -79,7 +104,7 @@ router.post("/login", async (req, res) => {
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
     });
-    
+
     await LoginActivity.create({
       userName: user.username,
       userRole: user.role,
@@ -102,13 +127,10 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// Import auth middleware
-import { auth } from "../middleware/auth.js";
-
 // Update user profile
 router.put("/update", auth, async (req, res) => {
   try {
-    const { userId, name, username } = req.body;
+    const { userId, username } = req.body;
 
     // Verify the authenticated user is updating their own profile
     if (req.user.id !== userId) {
@@ -151,6 +173,35 @@ router.put("/update", auth, async (req, res) => {
     res
       .status(500)
       .json({ message: "Error updating profile", error: error.message });
+  }
+});
+
+//Find user by email
+
+router.get("/:email", auth, async (req, res) => {
+  try {
+    const email = req.params.email;
+    if (!email || !req.params) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid request",
+      });
+    }
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "user not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "User found",
+      user,
+    });
+  } catch (error) {
+    console.log(error);
   }
 });
 
