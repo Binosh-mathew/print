@@ -1,4 +1,3 @@
-import React from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import MessagePanel from '@/components/MessagePanel';

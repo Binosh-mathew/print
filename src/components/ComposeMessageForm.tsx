@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import axios from '../config/axios';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Send } from 'lucide-react';
@@ -17,23 +17,16 @@ const ComposeMessageForm: React.FC = () => {
     try {
       // Get authentication data from localStorage
       const storedUser = localStorage.getItem('printShopUser');
-      let headers = {};
       
       if (storedUser) {
         const userData = JSON.parse(storedUser);
-        headers = {
-          'Authorization': `Bearer ${userData.token}`,
-          'X-User-ID': userData.id,
-          'X-User-Role': userData.role
-        };
       } else {
         throw new Error('Authentication required to send messages');
       }
       
       await axios.post(
-        'http://localhost:5000/api/messages', 
+        '/api/messages', 
         { content: message },
-        { headers }
       );
       
       setMessage('');

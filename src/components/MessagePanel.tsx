@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import axios from '../config/axios';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+// import { Input } from '@/components/ui/input';
+// import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2, Send, MessageSquare, User, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
@@ -56,20 +56,14 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ role = 'user' }) => {
     try {
       // Get authentication data from localStorage
       const storedUser = localStorage.getItem('printShopUser');
-      let headers = {};
       
       if (storedUser) {
         const userData = JSON.parse(storedUser);
-        headers = {
-          'Authorization': `Bearer ${userData.token}`,
-          'X-User-ID': userData.id,
-          'X-User-Role': userData.role
-        };
       }
       
-      const response = await axios.get('http://localhost:5000/api/messages', { headers });
+      const response = await axios.get('/messages');
       // Sort messages by date (newest at the bottom)
-      const sortedMessages = response.data.sort((a: Message, b: Message) => 
+      const sortedMessages = await response.data.sort((a: Message, b: Message) => 
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       );
       setMessages(sortedMessages);
@@ -88,7 +82,6 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ role = 'user' }) => {
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
-    
     setSending(true);
     try {
       // Get authentication data from localStorage

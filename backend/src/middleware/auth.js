@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import { User } from "../models/User.js";
 dotenv.config();
 
 export const auth = async (req, res, next) => {
@@ -13,14 +14,18 @@ export const auth = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
     if (!decoded) {
       return res
         .status(401)
         .json({ success: false, message: "Unauthorized, invalid token" });
     }
+    
     req.user = {
       id: decoded.id,
       role: decoded.role,
+      email: decoded?.email,
+      username:decoded?.name,
     };
 
     next();
