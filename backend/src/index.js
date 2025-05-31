@@ -24,11 +24,15 @@ import {maintenanceCheck} from "./middleware/maintenanceMode.js";
 
 const app = express();
 const PORT = process.env.PORT;
-const MONGO_URI = process.env.MONGODB_URI;
 
 // Middleware
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin:true,
+  credentials:true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+}));
 app.use(morgan("dev"));
 app.use(cookieParser());
 
