@@ -1,6 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
-import { registerUser, loginUser, updateUserProfile as apiUpdateUserProfile } from '@/api';
+import {
+  registerUser,
+  loginUser,
+  updateUserProfile as apiUpdateUserProfile,
+} from "@/api";
 
 // Define types
 interface User {
@@ -8,7 +12,7 @@ interface User {
   name: string;
   username?: string; // Added username field to match MongoDB data structure
   email: string;
-  role: 'user' | 'admin' | 'developer';
+  role: "user" | "admin" | "developer";
   token?: string;
 }
 
@@ -16,7 +20,11 @@ type AuthContextType = {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string, role?: 'user' | 'admin' | 'developer') => Promise<boolean>;
+  login: (
+    email: string,
+    password: string,
+    role?: "user" | "admin" | "developer"
+  ) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   updateUserProfile: (userData: Partial<User>) => Promise<User>;
@@ -31,7 +39,7 @@ const AuthContext = createContext<AuthContextType>({
   register: async () => {},
   logout: () => {},
   updateUserProfile: async () => {
-    throw new Error('Not implemented');
+    throw new Error("Not implemented");
     return {} as User; // This line is never reached due to the error above
   },
 });
@@ -40,7 +48,9 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 // Provider component
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
@@ -48,46 +58,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Check for existing user session on load
   useEffect(() => {
     try {
-      const storedUser = localStorage.getItem('printShopUser');
+      const storedUser = localStorage.getItem("printShopUser");
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
-        if (parsedUser && typeof parsedUser === 'object') {
+        if (parsedUser && typeof parsedUser === "object") {
           setUser(parsedUser);
         } else {
           // If the stored data is not a valid user object, remove it
-          localStorage.removeItem('printShopUser');
+          localStorage.removeItem("printShopUser");
         }
       }
     } catch (error) {
       // If there's any error parsing the stored data, remove it
-      console.error('Error parsing stored user data:', error);
-      localStorage.removeItem('printShopUser');
+      console.error("Error parsing stored user data:", error);
+      localStorage.removeItem("printShopUser");
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   // Login function
-  const login = async (email: string, password: string, role: 'user' | 'admin' | 'developer' = 'user') => {
+  const login = async (
+    email: string,
+    password: string,
+    role: "user" | "admin" | "developer" = "user"
+  ) => {
     setIsLoading(true);
-    
+
     try {
       const response = await loginUser(email, password, role);
-      
+
       // Ensure we have a name property for display purposes
       // For admin users, the backend might return username but not name
       const userData = {
         ...response,
         // If name is missing but username exists, use username as name
-        name: response.name || response.username || email.split('@')[0]
+        name: response.name || response.username || email.split("@")[0],
       };
-      
+
       setUser(userData);
-      localStorage.setItem('printShopUser', JSON.stringify(userData));
-      
+      localStorage.setItem("printShopUser", JSON.stringify(userData));
+
       // Use the display name (name or username) for the welcome message
-      const displayName = userData.name || userData.username || 'user';
-      
+      const displayName = userData.name || userData.username || "user";
+
       toast({
         title: "Login successful",
         description: `Welcome back, ${displayName}!`,
@@ -108,12 +122,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Register function
   const register = async (name: string, email: string, password: string) => {
     setIsLoading(true);
-    
+
     try {
       const userData = await registerUser(name, email, password);
-      
+
       setUser(userData);
-      localStorage.setItem('printShopUser', JSON.stringify(userData));
+      localStorage.setItem("printShopUser", JSON.stringify(userData));
       toast({
         title: "Registration successful",
         description: `Welcome, ${name}!`,
@@ -133,7 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Logout function
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('printShopUser');
+    localStorage.removeItem("printShopUser");
     toast({
       title: "Logged out",
       description: "You have been successfully logged out.",
@@ -153,35 +167,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       setIsLoading(true);
-      
+
       // If updating name, also update username field for compatibility
       const updatedFields = { ...userData };
       if (userData.name) {
         updatedFields.username = userData.name;
       }
-      
+
       // Call the API to update the user profile
       const updatedUser = await apiUpdateUserProfile(user.id, updatedFields);
-      
+
       // Update local user state
-      const newUserData = { 
-        ...user, 
+      const newUserData = {
+        ...user,
         ...updatedFields,
         // Ensure both name and username are updated
         name: updatedFields.name || user.name,
-        username: updatedFields.name || user.username || user.name
+        username: updatedFields.name || user.username || user.name,
       };
-      
+
       setUser(newUserData);
-      
+
       // Update local storage
-      localStorage.setItem('printShopUser', JSON.stringify(newUserData));
-      
+      localStorage.setItem("printShopUser", JSON.stringify(newUserData));
+
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully",
       });
-      
+
       return updatedUser;
     } catch (error: any) {
       toast({
