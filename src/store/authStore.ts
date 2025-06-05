@@ -2,6 +2,10 @@ import { create } from "zustand";
 import { authState } from "../types/auth";
 import { loginUser } from "@/api";
 
+
+const authStoreKey = "auth_data";
+const jwtExpirationDays = 14* 24 * 60 * 60 ; // 14 days in seconds
+
 const useAuthStore = create<authState>((set) => ({
   user: null,
   isAuthenticated: false,
@@ -22,8 +26,10 @@ const useAuthStore = create<authState>((set) => ({
         role: response?.data?.user?.role,
         error: null,
       });
+
+      
       localStorage.setItem(
-        "printShopUser",
+        authStoreKey,
         JSON.stringify(response?.data?.user)
       );
     } catch (error) {
@@ -43,11 +49,11 @@ const useAuthStore = create<authState>((set) => ({
       error: null,
       isAdmin: false,
     });
-    localStorage.removeItem("printShopUser");
+    localStorage.removeItem(authStoreKey);
   },
 
   checkauth: async () => {
-    const user = localStorage.getItem("printshopUser");
+    const user = localStorage.getItem(authStoreKey);
     if (user) {
       set({
         user: JSON.parse(user),

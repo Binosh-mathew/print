@@ -25,7 +25,7 @@ const ComposeMessageForm: React.FC = () => {
       }
       
       await axios.post(
-        '/api/messages', 
+        '/messages', 
         { content: message },
       );
       
