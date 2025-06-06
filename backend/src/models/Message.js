@@ -7,7 +7,7 @@ const messageSchema = new mongoose.Schema({
     role: { type: String, enum: ['user', 'admin', 'developer'], required: true }
   },
   recipient: {
-    id: { type: mongoose.Schema.Types.ObjectId, required: true },
+    id: { type: mongoose.Schema.Types.ObjectId, required: false },
     name: { type: String, required: true },
     role: { type: String, enum: ['user', 'admin', 'developer'], required: true }
   },

@@ -1,37 +1,52 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from '../config/axios';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 // import { Input } from '@/components/ui/input';
 // import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, Send, MessageSquare, User, RefreshCw } from 'lucide-react';
+
+import { Loader2, MessageSquare, RefreshCw, Reply } from 'lucide-react'; // Removed Send, User
 import { format } from 'date-fns';
 import { toast } from '@/components/ui/use-toast';
 
 interface Message {
   _id: string;
-  id: string;
+  id: string; // This might be the same as _id, depending on backend response
   content: string;
   sender: {
     id: string;
     name: string;
     role: string;
   };
+  recipient: { // Added recipient field
+    id?: string; // For direct user-to-user or user-to-admin messages
+    name: string; // e.g., "Developer Team", or an admin's name if sent directly
+    role?: string; // Role of the recipient or recipient group
+  };
   createdAt: string;
   read: boolean;
 }
 
 interface MessagePanelProps {
-  role?: string;
+  viewType?: 'inbox' | 'sent' | 'all';
+  userId?: string; // ID of the current user viewing the panel
+  onReply?: (recipient: { id?: string; name: string; role?: string }) => void;
 }
 
-const MessagePanel: React.FC<MessagePanelProps> = ({ role = 'user' }) => {
+const MessagePanel: React.FC<MessagePanelProps> = ({ viewType = 'all', userId, onReply }) => { // Removed role
   const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [userData, setUserData] = useState<any>(null);
+  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  // const [userData, setUserData] = useState<any>(null); // Removed as it was only used for Avatar fallback
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -39,10 +54,10 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ role = 'user' }) => {
 
   useEffect(() => {
     // Get user data from localStorage
-    const storedUser = localStorage.getItem('printShopUser');
-    if (storedUser) {
-      setUserData(JSON.parse(storedUser));
-    }
+    // const storedUser = localStorage.getItem('printShopUser'); // No longer setting userData state
+    // if (storedUser) {
+    //   setUserData(JSON.parse(storedUser));
+    // }
     
     fetchMessages();
   }, []);
@@ -54,17 +69,26 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ role = 'user' }) => {
   const fetchMessages = async () => {
     setLoading(true);
     try {
-      // Get authentication data from localStorage
-      const storedUser = localStorage.getItem('printShopUser');
-      
-      if (storedUser) {
-        const userData = JSON.parse(storedUser);
-      }
+      // const storedUser = localStorage.getItem('printShopUser'); // userData state is already set in useEffect
+      // if (storedUser) {
+      //   // This local userData was not used and shadowed the state variable.
+      // }
       
       const response = await axios.get('/messages');
       // Sort messages by date (newest at the bottom)
-      const sortedMessages = await response.data.sort((a: Message, b: Message) => 
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      let fetchedMessages: Message[] = response.data;
+
+      // Apply filtering based on viewType and userId
+      if (userId && viewType === 'inbox') {
+        // For inbox, show messages where the current user is the recipient by ID
+        fetchedMessages = fetchedMessages.filter(msg => msg.recipient?.id === userId);
+      } else if (userId && viewType === 'sent') {
+        fetchedMessages = fetchedMessages.filter(msg => msg.sender?.id === userId);
+      }
+
+      // Sort messages by date (newest at the top for list/email style)
+      const sortedMessages = fetchedMessages.sort((a: Message, b: Message) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       setMessages(sortedMessages);
     } catch (error) {
@@ -79,46 +103,37 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ role = 'user' }) => {
     }
   };
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim()) return;
-    setSending(true);
-    try {
-      // Get authentication data from localStorage
-      const storedUser = localStorage.getItem('printShopUser');
-      let headers = {};
-      
-      if (storedUser) {
-        const userData = JSON.parse(storedUser);
-        headers = {
-          'Authorization': `Bearer ${userData.token}`,
-          'X-User-ID': userData.id,
-          'X-User-Role': userData.role
-        };
-      } else {
-        throw new Error('Authentication required to send messages');
+  const handleMessageClick = async (message: Message) => {
+    setSelectedMessage(message);
+    setIsViewModalOpen(true);
+
+    if (viewType === 'inbox' && !message.read) {
+      try {
+        // Optimistically update UI
+        setMessages(prevMessages =>
+          prevMessages.map(m =>
+            m._id === message._id ? { ...m, read: true } : m
+          )
+        );
+        await axios.put(`/messages/${message._id}/read`);
+        // No need for toast on success, UI update is enough
+      } catch (error) {
+        console.error('Error marking message as read:', error);
+        // Revert UI update on error
+        setMessages(prevMessages =>
+          prevMessages.map(m =>
+            m._id === message._id ? { ...m, read: false } : m
+          )
+        );
+        toast({
+          title: 'Error',
+          description: 'Could not mark message as read. Please try again.',
+          variant: 'destructive',
+        });
       }
-      
-      const response = await axios.post(
-        'http://localhost:5000/api/messages', 
-        { content: newMessage },
-        { headers }
-      );
-      
-      // Add the new message to the end of the list
-      setMessages([...messages, response.data]);
-      setNewMessage('');
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast({
-        title: "Failed to send message",
-        description: "Please make sure you are logged in and try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setSending(false);
     }
   };
+
 
   const formatMessageDate = (dateString: string) => {
     try {
@@ -128,16 +143,15 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ role = 'user' }) => {
     }
   };
 
-  const isCurrentUser = (senderId: string) => {
-    return userData && userData.id === senderId;
-  };
 
   return (
     <div className="flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
           <MessageSquare className="h-5 w-5 mr-2 text-primary" />
-          <h2 className="text-lg font-semibold">Inbox</h2>
+          <h2 className="text-lg font-semibold">
+          {viewType === 'inbox' ? 'Inbox' : viewType === 'sent' ? 'Sent Messages' : 'All Messages'}
+        </h2>
         </div>
         <Button 
           variant="outline" 
@@ -164,37 +178,50 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ role = 'user' }) => {
             <p className="text-sm">Use the compose section below to start a conversation.</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {messages.map((msg) => {
-              const isUser = isCurrentUser(msg.sender?.id);
+              // const isUser = isCurrentUser(msg.sender?.id); // Not needed for the new list style
               return (
                 <div 
                   key={msg._id || msg.id} 
-                  className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
+                  className={`bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer ${!msg.read && viewType === 'inbox' ? 'border-l-4 border-l-blue-500' : ''}`}
+                  onClick={() => handleMessageClick(msg)}
                 >
-                  <div className={`flex ${isUser ? 'flex-row-reverse' : 'flex-row'} items-start gap-2 max-w-[80%]`}>
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src="" />
-                      <AvatarFallback className={isUser ? 'bg-primary text-white' : 'bg-gray-200'}>
-                        {isUser ? userData?.name?.charAt(0) || 'U' : msg.sender?.role?.charAt(0) || 'D'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div 
-                        className={`rounded-lg p-3 ${isUser 
-                          ? 'bg-primary text-white' 
-                          : 'bg-white border border-gray-200'}`}
-                      >
-                        <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                      </div>
-                      <div className={`text-xs text-gray-500 mt-1 ${isUser ? 'text-right' : 'text-left'}`}>
-                        <span className="font-medium mr-1">
-                          {isUser ? 'You' : msg.sender?.name || (msg.sender?.role === 'developer' ? 'Developer' : 'Admin')}
-                        </span>
-                        • {formatMessageDate(msg.createdAt)}
-                      </div>
-                    </div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-semibold text-gray-700">
+                      {viewType === 'inbox' 
+                        ? `From: ${msg.sender?.name || 'Unknown Sender'}` 
+                        : `To: ${msg.recipient?.name || 'Unknown Recipient'}`}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {formatMessageDate(msg.createdAt)}
+                    </span>
                   </div>
+                  <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">
+                    {msg.content}
+                  </p>
+                  {viewType === 'inbox' && !msg.read && (
+                    <div className="mt-2 text-xs text-blue-600 font-medium">
+                      New Message
+                    </div>
+                  )}
+                  {viewType === 'inbox' && onReply && (
+                    <div className="mt-3 pt-3 border-t border-gray-100 flex justify-end">
+                      <Button 
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent opening the message view modal
+                          if (msg.sender) {
+                            onReply(msg.sender);
+                          }
+                        }}
+                      >
+                        <Reply className="h-4 w-4 mr-2" />
+                        Reply
+                      </Button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -202,6 +229,48 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ role = 'user' }) => {
           </div>
         )}
       </div>
+
+      {selectedMessage && (
+        <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
+          <DialogContent className="sm:max-w-[525px]">
+            <DialogHeader>
+              <DialogTitle>
+                {viewType === 'inbox' ? 'Message Received' : 'Message Sent'}
+              </DialogTitle>
+              <DialogDescription>
+                Details of the selected message.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <span className="text-right text-sm font-medium text-gray-600 col-span-1">
+                  {viewType === 'inbox' ? 'From:' : 'To:'}
+                </span>
+                <span className="col-span-3 text-sm">
+                  {viewType === 'inbox' 
+                    ? selectedMessage.sender?.name || 'Unknown Sender' 
+                    : selectedMessage.recipient?.name || 'Unknown Recipient'}
+                </span>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <span className="text-right text-sm font-medium text-gray-600 col-span-1">Date:</span>
+                <span className="col-span-3 text-sm">
+                  {formatMessageDate(selectedMessage.createdAt)}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-2 mt-2">
+                <span className="text-sm font-medium text-gray-600">Content:</span>
+                <div className="col-span-1 text-sm p-3 bg-gray-50 rounded-md border max-h-60 overflow-y-auto whitespace-pre-wrap break-words">
+                  {selectedMessage.content}
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsViewModalOpen(false)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };

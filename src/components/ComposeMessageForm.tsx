@@ -1,13 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from '../config/axios';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Send } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
-const ComposeMessageForm: React.FC = () => {
+interface ComposeMessageFormProps {
+  initialRecipient?: { id?: string; name: string; role?: string } | null;
+  onMessageSent?: () => void;
+}
+
+const ComposeMessageForm: React.FC<ComposeMessageFormProps> = ({ initialRecipient, onMessageSent }) => {
+  const [recipientDetails, setRecipientDetails] = useState<{ id?: string; name: string; role?: string } | null>(null);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    if (initialRecipient) {
+      setRecipientDetails(initialRecipient);
+    } else {
+      setRecipientDetails({ name: 'Developer Team', role: 'developer' }); // Default recipient
+    }
+  }, [initialRecipient]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,21 +33,22 @@ const ComposeMessageForm: React.FC = () => {
       const storedUser = localStorage.getItem('printShopUser');
       
       if (storedUser) {
-        const userData = JSON.parse(storedUser);
+        // const userData = JSON.parse(storedUser); // userData is not used
       } else {
         throw new Error('Authentication required to send messages');
       }
       
       await axios.post(
         '/messages', 
-        { content: message },
+        { content: message, recipient: recipientDetails }, 
       );
       
       setMessage('');
       toast({
         title: "Message sent",
-        description: "Your message has been sent to the development team.",
+        description: `Your message has been sent to ${recipientDetails?.name || 'the recipient'}.`,
       });
+      onMessageSent?.(); // Call the callback
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -49,6 +64,10 @@ const ComposeMessageForm: React.FC = () => {
   return (
     <div className="space-y-4">
       <form onSubmit={handleSend} className="space-y-4">
+        <div className="mb-2">
+          <span className="text-sm font-medium text-gray-700">To: </span>
+          <span className="text-sm text-gray-900">{recipientDetails?.name || 'Loading...'}</span>
+        </div>
         <Textarea
           value={message}
           onChange={e => setMessage(e.target.value)}

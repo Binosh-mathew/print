@@ -18,8 +18,19 @@ router.get('/', auth, async (req, res) => {
 // Create a new message
 router.post('/', auth, async (req, res) => {
   try {
+        let recipientPayload = req.body.recipient;
+    if (typeof req.body.recipient === 'string') {
+      // Assuming a string recipient implies a 'developer' role for now
+      // and the name is the string itself.
+      recipientPayload = {
+        name: req.body.recipient,
+        role: 'developer' // Default role for string recipients
+      };
+    }
+
     const message = new Message({
-      ...req.body,
+            ...req.body,
+      recipient: recipientPayload, // Use the processed recipient
       sender: {
         id: req.user?.id,
         name: req.user?.username,
@@ -30,6 +41,34 @@ router.post('/', auth, async (req, res) => {
     res.status(201).json(message);
   } catch (error) {
     res.status(500).json({ message: 'Error creating message', error });
+  }
+});
+
+// Mark a message as read by the recipient
+router.put('/:id/read', auth, async (req, res) => {
+  try {
+    const message = await Message.findById(req.params.id);
+    if (!message) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+
+    // Authorization: Only the recipient of the message can mark it as read.
+    // Ensure recipient.id exists and matches the authenticated user's ID.
+    if (!message.recipient?.id || message.recipient.id.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to mark this message as read' });
+    }
+
+    if (message.read) {
+      // Optionally, you could just return the message if already read, or an indication.
+      return res.status(200).json({ message: 'Message already marked as read', updatedMessage: message });
+    }
+
+    message.read = true;
+    await message.save();
+    res.json({ message: 'Message marked as read successfully', updatedMessage: message });
+  } catch (error) {
+    console.error('Error marking message as read:', error);
+    res.status(500).json({ message: 'Error marking message as read', error });
   }
 });
 

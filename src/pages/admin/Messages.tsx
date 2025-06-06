@@ -1,31 +1,76 @@
+import { useState } from 'react'; // Removed React, useEffect
 import AdminLayout from '@/components/layouts/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import MessagePanel from '@/components/MessagePanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageSquare, Bell, Info, Send } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog'; // Removed DialogTrigger
+import { Bell, Send, Edit, Inbox, SendHorizontal } from 'lucide-react'; // Removed MessageSquare, Info; Corrected SendHorizIcon
 import ComposeMessageForm from '@/components/ComposeMessageForm';
+import { useAuth } from '@/contexts/AuthContext'; 
 
 const Messages = () => {
+  const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
+  const [replyToRecipient, setReplyToRecipient] = useState<{ id?: string; name: string; role?: string } | null>(null);
+  const { user } = useAuth(); 
+  const adminId = user?.id; // Assuming user object has 'id'. Verify this from AuthContext. 
+
   return (
     <AdminLayout>
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Developer Communications</h1>
+            <h1 className="text-3xl font-bold">Developer Communications</h1>
             <p className="text-gray-600">Communicate with system developers and receive important updates</p>
           </div>
           
-          <div className="flex items-center gap-2 bg-blue-50 text-blue-700 p-3 rounded-lg border border-blue-200">
-            <Info className="h-5 w-5 flex-shrink-0" />
-            <p className="text-sm">Messages are monitored during business hours (9 AM - 5 PM)</p>
-          </div>
+          <Button onClick={() => {
+            setReplyToRecipient(null); // Ensure it's a new message, not a reply
+            setIsComposeModalOpen(true);
+          }}>
+            <Edit className="h-4 w-4 mr-2" />
+            Compose New Message
+          </Button>
         </div>
 
-        <Tabs defaultValue="messages" className="w-full">
+        {/* Compose Message Modal Dialog */}
+        <Dialog open={isComposeModalOpen} onOpenChange={(isOpen) => {
+          setIsComposeModalOpen(isOpen);
+          if (!isOpen) {
+            setReplyToRecipient(null); // Clear reply recipient when modal closes
+          }
+        }}>
+          <DialogContent className="sm:max-w-[525px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center">
+                <Send className="h-5 w-5 mr-2" />
+                {replyToRecipient ? `Reply to ${replyToRecipient.name}` : 'Compose Message'}
+              </DialogTitle>
+              <DialogDescription>
+                {replyToRecipient ? `Your message will be sent to ${replyToRecipient.name}.` : 'Fill in the form below to send a message.'}
+              </DialogDescription>
+            </DialogHeader>
+            <ComposeMessageForm initialRecipient={replyToRecipient} onMessageSent={() => {
+              setIsComposeModalOpen(false);
+              setReplyToRecipient(null);
+            }} />
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">Close</Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Tabs defaultValue="inbox" className="w-full">
           <TabsList className="mb-4">
-            <TabsTrigger value="messages" className="flex items-center">
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Messages
+            <TabsTrigger value="inbox" className="flex items-center">
+              <Inbox className="h-4 w-4 mr-2" />
+              Inbox
+            </TabsTrigger>
+            <TabsTrigger value="sent" className="flex items-center">
+              <SendHorizontal className="h-4 w-4 mr-2" />
+              Sent Messages
             </TabsTrigger>
             <TabsTrigger value="notifications" className="flex items-center">
               <Bell className="h-4 w-4 mr-2" />
@@ -33,33 +78,36 @@ const Messages = () => {
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="messages">
-            <div className="grid gap-6 md:grid-cols-12">
-              {/* Message Inbox */}
-              <Card className="md:col-span-8">
-                <CardHeader className="pb-3">
-                  <CardTitle>Message Inbox</CardTitle>
-                  <CardDescription>View messages from the development team</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <MessagePanel role="admin" />
-                </CardContent>
-              </Card>
-              
-              {/* Compose Message Section */}
-              <Card className="md:col-span-4">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center">
-                    <Send className="h-5 w-5 mr-2" />
-                    Compose Message
-                  </CardTitle>
-                  <CardDescription>Send a new message to the development team</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ComposeMessageForm />
-                </CardContent>
-              </Card>
-            </div>
+          <TabsContent value="inbox">
+            <Card>
+              <CardHeader>
+                <CardTitle>Inbox</CardTitle>
+                <CardDescription>Messages received from the development team and others.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <MessagePanel 
+                  viewType="inbox" 
+                  userId={adminId} 
+                  onReply={(recipient) => {
+                    setReplyToRecipient(recipient);
+                    setIsComposeModalOpen(true);
+                  }}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="sent">
+            <Card>
+              <CardHeader>
+                <CardTitle>Sent Messages</CardTitle>
+                <CardDescription>Messages you have sent.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {/* TODO: Ensure MessagePanel can filter for sent messages using adminId */}
+                <MessagePanel viewType="sent" userId={adminId} />
+              </CardContent>
+            </Card>
           </TabsContent>
           
           <TabsContent value="notifications">
