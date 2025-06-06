@@ -49,15 +49,21 @@ const useAuthStore = create<authState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const response = await loginUser(email, password, role);
+
+      const userData: User = {
+        id: response?.id,
+        username: response?.username,
+        email: response?.email,
+        role: response?.role,
+      };
       set({
-        user: response?.data?.user,
+        user: userData,
         isAuthenticated: true,
         loading: false,
-        isAdmin: response?.data?.user?.role === "admin",
-        role: response?.data?.user?.role,
+        isAdmin: userData.role === "admin",
+        role: userData.role,
         error: null,
       });
-      const userData = response?.data?.user;
 
       get()._setAuthData(userData);
     } catch (error) {
@@ -88,22 +94,23 @@ const useAuthStore = create<authState>((set, get) => ({
       set({
         user: data.user,
         isAuthenticated: true,
-        role: data.user.role,
-        isAdmin: data.user.role === "admin",
+        role: data?.user?.role,
+        isAdmin: data?.user?.role === "admin",
       });
       set({ loading: false, error: null });
       return true;
+    } else {
+      get()._clearAuthData();
+      set({
+        user: null,
+        isAuthenticated: false,
+        loading: false,
+        error: null,
+        isAdmin: false,
+        role: null,
+      });
+      return false;
     }
-    get()._clearAuthData();
-    set({
-      user: null,
-      isAuthenticated: false,
-      loading: false,
-      error: null,
-      isAdmin: false,
-      role: null,
-    });
-    return false;
   },
 
   initialize: () => {
