@@ -31,16 +31,17 @@ interface Message {
     role?: string; // Role of the recipient or recipient group
   };
   createdAt: string;
-  read: boolean;
+  status: 'read' | 'unread'; // Changed from read: boolean
 }
 
 interface MessagePanelProps {
   viewType?: 'inbox' | 'sent' | 'all';
   userId?: string; // ID of the current user viewing the panel
+  userRole?: 'admin' | 'developer' | 'store'; // Role of the current user
   onReply?: (recipient: { id?: string; name: string; role?: string }) => void;
 }
 
-const MessagePanel: React.FC<MessagePanelProps> = ({ viewType = 'all', userId, onReply }) => { // Removed role
+const MessagePanel: React.FC<MessagePanelProps> = ({ viewType = 'all', userId, userRole, onReply }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -53,14 +54,20 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ viewType = 'all', userId, o
   };
 
   useEffect(() => {
-    // Get user data from localStorage
-    // const storedUser = localStorage.getItem('printShopUser'); // No longer setting userData state
-    // if (storedUser) {
-    //   setUserData(JSON.parse(storedUser));
-    // }
-    
-    fetchMessages();
-  }, []);
+    // Only fetch if we have the necessary user identifiers for specific views,
+    // or if it's an 'all' view which doesn't need them for filtering.
+    if (viewType === 'inbox' || viewType === 'sent') {
+      if (userId) { // For inbox/sent, userId is crucial for filtering
+        fetchMessages();
+      } else {
+        // Clear messages or show a placeholder if userId is missing for these specific views
+        setMessages([]); 
+        setLoading(false); // Ensure loading is also reset if we're not fetching
+      }
+    } else { // For 'all' view or any other views that don't rely on userId for initial fetch
+      fetchMessages();
+    }
+  }, [userId, userRole, viewType]); // Re-fetch if userId, userRole, or viewType changes
 
   useEffect(() => {
     scrollToBottom();
@@ -80,8 +87,14 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ viewType = 'all', userId, o
 
       // Apply filtering based on viewType and userId
       if (userId && viewType === 'inbox') {
-        // For inbox, show messages where the current user is the recipient by ID
-        fetchedMessages = fetchedMessages.filter(msg => msg.recipient?.id === userId);
+        fetchedMessages = fetchedMessages.filter(msg => {
+          if (msg.recipient?.id) {
+            return msg.recipient.id === userId; // Direct message to user
+          } else if (msg.recipient?.role && userRole) {
+            return msg.recipient.role === userRole; // Message to user's role group
+          }
+          return false;
+        });
       } else if (userId && viewType === 'sent') {
         fetchedMessages = fetchedMessages.filter(msg => msg.sender?.id === userId);
       }
@@ -107,12 +120,12 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ viewType = 'all', userId, o
     setSelectedMessage(message);
     setIsViewModalOpen(true);
 
-    if (viewType === 'inbox' && !message.read) {
+    if (viewType === 'inbox' && message.status === 'unread') {
       try {
         // Optimistically update UI
         setMessages(prevMessages =>
           prevMessages.map(m =>
-            m._id === message._id ? { ...m, read: true } : m
+            m._id === message._id ? { ...m, status: 'read' as 'read' } : m // Ensure type correctness
           )
         );
         await axios.put(`/messages/${message._id}/read`);
@@ -122,7 +135,8 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ viewType = 'all', userId, o
         // Revert UI update on error
         setMessages(prevMessages =>
           prevMessages.map(m =>
-            m._id === message._id ? { ...m, read: false } : m
+            // Revert to unread, or ideally, store original status if more complex states were possible
+            m._id === message._id ? { ...m, status: 'unread' as 'unread' } : m 
           )
         );
         toast({
@@ -184,7 +198,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ viewType = 'all', userId, o
               return (
                 <div 
                   key={msg._id || msg.id} 
-                  className={`bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer ${!msg.read && viewType === 'inbox' ? 'border-l-4 border-l-blue-500' : ''}`}
+                  className={`bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer ${msg.status === 'unread' && viewType === 'inbox' ? 'border-l-4 border-l-blue-500' : ''}`}
                   onClick={() => handleMessageClick(msg)}
                 >
                   <div className="flex justify-between items-center mb-2">
@@ -200,7 +214,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ viewType = 'all', userId, o
                   <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">
                     {msg.content}
                   </p>
-                  {viewType === 'inbox' && !msg.read && (
+                  {viewType === 'inbox' && msg.status === 'unread' && (
                     <div className="mt-2 text-xs text-blue-600 font-medium">
                       New Message
                     </div>
@@ -242,6 +256,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ viewType = 'all', userId, o
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              {/* From/To Section */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <span className="text-right text-sm font-medium text-gray-600 col-span-1">
                   {viewType === 'inbox' ? 'From:' : 'To:'}
@@ -252,12 +267,24 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ viewType = 'all', userId, o
                     : selectedMessage.recipient?.name || 'Unknown Recipient'}
                 </span>
               </div>
+
+              {/* Date Section */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <span className="text-right text-sm font-medium text-gray-600 col-span-1">Date:</span>
                 <span className="col-span-3 text-sm">
                   {formatMessageDate(selectedMessage.createdAt)}
                 </span>
               </div>
+
+              {/* Status Section */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <span className="text-right text-sm font-medium text-gray-600 col-span-1">Status:</span>
+                <span className="col-span-3 text-sm">
+                  {selectedMessage.status === 'read' ? 'Read' : 'Unread'}
+                </span>
+              </div>
+
+              {/* Content Section */}
               <div className="grid grid-cols-1 gap-2 mt-2">
                 <span className="text-sm font-medium text-gray-600">Content:</span>
                 <div className="col-span-1 text-sm p-3 bg-gray-50 rounded-md border max-h-60 overflow-y-auto whitespace-pre-wrap break-words">

@@ -9,7 +9,7 @@ const messageSchema = new mongoose.Schema({
   recipient: {
     id: { type: mongoose.Schema.Types.ObjectId, required: false },
     name: { type: String, required: true },
-    role: { type: String, enum: ['user', 'admin', 'developer'], required: true }
+    role: { type: String, enum: ['user', 'admin', 'developer', 'store'], required: true }
   },
   content: { type: String, required: true },
   status: { type: String, enum: ['unread', 'read'], default: 'unread' },

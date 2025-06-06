@@ -50,7 +50,10 @@ const Messages = () => {
                 {replyToRecipient ? `Your message will be sent to ${replyToRecipient.name}.` : 'Fill in the form below to send a message.'}
               </DialogDescription>
             </DialogHeader>
-            <ComposeMessageForm initialRecipient={replyToRecipient} onMessageSent={() => {
+            <ComposeMessageForm 
+              currentUserRole="admin"
+              initialRecipient={replyToRecipient} 
+              onMessageSent={() => {
               setIsComposeModalOpen(false);
               setReplyToRecipient(null);
             }} />
@@ -88,6 +91,7 @@ const Messages = () => {
                 <MessagePanel 
                   viewType="inbox" 
                   userId={adminId} 
+                  userRole={user?.role as 'developer' | 'admin' | 'store'}
                   onReply={(recipient) => {
                     setReplyToRecipient(recipient);
                     setIsComposeModalOpen(true);
@@ -105,7 +109,7 @@ const Messages = () => {
               </CardHeader>
               <CardContent>
                 {/* TODO: Ensure MessagePanel can filter for sent messages using adminId */}
-                <MessagePanel viewType="sent" userId={adminId} />
+                <MessagePanel viewType="sent" userId={adminId} userRole={user?.role as 'developer' | 'admin' | 'store'} />
               </CardContent>
             </Card>
           </TabsContent>

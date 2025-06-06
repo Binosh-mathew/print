@@ -52,18 +52,30 @@ router.put('/:id/read', auth, async (req, res) => {
       return res.status(404).json({ message: 'Message not found' });
     }
 
-    // Authorization: Only the recipient of the message can mark it as read.
-    // Ensure recipient.id exists and matches the authenticated user's ID.
-    if (!message.recipient?.id || message.recipient.id.toString() !== req.user.id) {
+    // Authorization:
+    let authorizedToRead = false;
+    if (message.recipient?.id) {
+      // If recipient.id exists, it must match the user's ID
+      if (message.recipient.id.toString() === req.user.id) {
+        authorizedToRead = true;
+      }
+    } else if (message.recipient?.role && message.recipient.role === req.user.role) {
+      // If recipient.id does NOT exist, but recipient.role matches user's role
+      // (e.g., message to 'admin' role, and user is an 'admin')
+      // This also covers messages sent to 'store' role if a store representative is logged in and their role is 'store'.
+      authorizedToRead = true;
+    }
+
+    if (!authorizedToRead) {
       return res.status(403).json({ message: 'Not authorized to mark this message as read' });
     }
 
-    if (message.read) {
+    if (message.status === 'read') {
       // Optionally, you could just return the message if already read, or an indication.
       return res.status(200).json({ message: 'Message already marked as read', updatedMessage: message });
     }
 
-    message.read = true;
+    message.status = 'read';
     await message.save();
     res.json({ message: 'Message marked as read successfully', updatedMessage: message });
   } catch (error) {
