@@ -1,18 +1,25 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
-import { Loader2 } from 'lucide-react';
+import { Loader2 } from "lucide-react";
+import useAuthStore from "@/store/authStore";
 
 const DeveloperLogin = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login } = useAuthStore();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -20,16 +27,14 @@ const DeveloperLogin = () => {
     setIsLoading(true);
 
     try {
-      const success = await login(email, password, 'developer');
-      if (success) {
-        toast({
-          title: "Login Successful",
-          description: "Welcome back, Developer!",
-        });
-        navigate('/developer');
-      }
+      await login(email, password, "developer");
+      toast({
+        title: "Login Successful",
+        description: "Welcome back, Developer!",
+      });
+      navigate("/developer");
     } catch (error) {
-      console.error('Developer login error:', error);
+      console.error("Developer login error:", error);
       toast({
         title: "Login Failed",
         description: "Invalid developer credentials.",
@@ -45,9 +50,7 @@ const DeveloperLogin = () => {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Developer Login</CardTitle>
-          <CardDescription>
-            Access the developer dashboard
-          </CardDescription>
+          <CardDescription>Access the developer dashboard</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -81,7 +84,7 @@ const DeveloperLogin = () => {
                   Logging in...
                 </>
               ) : (
-                'Login'
+                "Login"
               )}
             </Button>
           </form>
@@ -91,4 +94,4 @@ const DeveloperLogin = () => {
   );
 };
 
-export default DeveloperLogin; 
+export default DeveloperLogin;

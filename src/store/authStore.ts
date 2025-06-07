@@ -1,12 +1,43 @@
 import { create } from "zustand";
-import { authState } from "../types/auth";
+import { authState, User } from "../types/auth";
 import { loginUser } from "@/api";
 
-
 const authStoreKey = "auth_data";
-const jwtExpirationDays = 14* 24 * 60 * 60 ; // 14 days in seconds
+const jwtExpirationDays = 14 * 24 * 60 * 60; // 14 days in seconds
 
-const useAuthStore = create<authState>((set) => ({
+const useAuthStore = create<authState>((set, get) => ({
+  //Internal methods to manage authentication data in localStorage
+  _setAuthData: (user: User) => {
+    const authData = {
+      user: user,
+      expiresIn: Date.now() + jwtExpirationDays * 1000, // Convert seconds to milliseconds
+    };
+
+    localStorage.setItem(authStoreKey, JSON.stringify(authData));
+  },
+
+  _clearAuthData: () => {
+    localStorage.removeItem(authStoreKey);
+  },
+
+  _validateAuthData: () => {
+    const authData = localStorage.getItem(authStoreKey);
+    const parsedData = JSON.parse(authData || "{}");
+    return (
+      typeof parsedData.expiresIn === "number" &&
+      parsedData.expiresIn > Date.now()
+    );
+  },
+
+  _getAuthData: () => {
+    try {
+      const authData = localStorage.getItem(authStoreKey);
+      return authData ? JSON.parse(authData) : null;
+    } catch {
+      return null;
+    }
+  },
+
   user: null,
   isAuthenticated: false,
   loading: false,
@@ -18,21 +49,25 @@ const useAuthStore = create<authState>((set) => ({
     set({ loading: true, error: null });
     try {
       const response = await loginUser(email, password, role);
+
+      const userData: User = {
+        id: response?.id,
+        username: response?.username,
+        email: response?.email,
+        role: response?.role,
+      };
       set({
-        user: response?.data?.user,
+        user: userData,
         isAuthenticated: true,
         loading: false,
-        isAdmin: response?.data?.user?.role === "admin",
-        role: response?.data?.user?.role,
+        isAdmin: userData.role === "admin",
+        role: userData.role,
         error: null,
       });
 
-      
-      localStorage.setItem(
-        authStoreKey,
-        JSON.stringify(response?.data?.user)
-      );
+      get()._setAuthData(userData);
     } catch (error) {
+      get()._clearAuthData();
       set({
         error:
           error instanceof Error ? error.message : "Unknown error occurred",
@@ -49,20 +84,39 @@ const useAuthStore = create<authState>((set) => ({
       error: null,
       isAdmin: false,
     });
-    localStorage.removeItem(authStoreKey);
+    get()._clearAuthData();
   },
 
-  checkauth: async () => {
-    const user = localStorage.getItem(authStoreKey);
-    if (user) {
+  checkauth: () => {
+    set({ loading: true, error: null });
+    const data = get()._getAuthData();
+    if (data && get()._validateAuthData()) {
       set({
-        user: JSON.parse(user),
+        user: data.user,
         isAuthenticated: true,
-        loading: false,
-        isAdmin: JSON.parse(user).role === "admin",
-        error: null,
+        role: data?.user?.role,
+        isAdmin: data?.user?.role === "admin",
       });
+      set({ loading: false, error: null });
+      return true;
+    } else {
+      get()._clearAuthData();
+      set({
+        user: null,
+        isAuthenticated: false,
+        loading: false,
+        error: null,
+        isAdmin: false,
+        role: null,
+      });
+      return false;
     }
+  },
+
+  initialize: () => {
+    set({ loading: true });
+    get().checkauth();
+    set({ loading: false });
   },
 }));
 

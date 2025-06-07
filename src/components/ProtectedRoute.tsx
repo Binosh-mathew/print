@@ -1,31 +1,28 @@
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { Navigate } from "react-router-dom";
+import useAuthStore from "@/store/authStore";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRole: 'user' | 'admin' | 'developer';
+  allowedRole: "user" | "admin" | "developer";
 }
 
 const ProtectedRoute = ({ children, allowedRole }: ProtectedRouteProps) => {
-  const { user } = useAuth();
+  const { isAuthenticated, user } = useAuthStore();
 
-  if (!user) {
-    // Redirect to appropriate login page based on role
+  // If not authenticated or role doesn't match, redirect accordingly.
+  if (!isAuthenticated || user?.role !== allowedRole) {
+    // Redirect based on the allowed role
     switch (allowedRole) {
-      case 'admin':
+      case "admin":
         return <Navigate to="/admin/login" />;
-      case 'developer':
+      case "developer":
         return <Navigate to="/developer/login" />;
       default:
         return <Navigate to="/login" />;
     }
   }
 
-  if (user.role !== allowedRole) {
-    // If user is logged in but doesn't have the right role
-    return <Navigate to="/" />;
-  }
-
+  // Otherwise, render protected content
   return <>{children}</>;
 };
 
