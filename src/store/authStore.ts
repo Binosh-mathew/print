@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { authState, User } from "../types/auth";
-import { loginUser } from "@/api";
+import { loginUser, logoutUser, registerUser } from "@/api";
 
 const authStoreKey = "auth_data";
 const jwtExpirationDays = 14 * 24 * 60 * 60; // 14 days in seconds
@@ -75,8 +75,59 @@ const useAuthStore = create<authState>((set, get) => ({
       });
     }
   },
+  register: async (name, email, password, confirmPassword) => {
+    set({ loading: true, error: null });
+
+    if (!name || !email || !password || !confirmPassword) {
+      set({ error: "All fields are required", loading: false });
+      return;
+    }
+    if (password.length < 6) {
+      set({
+        error: "Password must be at least 6 characters long",
+        loading: false,
+      });
+      return;
+    }
+    if (password !== confirmPassword) {
+      set({ error: "Passwords do not match", loading: false });
+      return;
+    }
+    try {
+      const response = await registerUser(name, email, password);
+      const userData: User = {
+        id: response?.id,
+        username: response?.username,
+        email: response?.email,
+        role: response?.role,
+      };
+      set({
+        user: userData,
+        isAuthenticated: true,
+        loading: false,
+        isAdmin: userData.role === "admin",
+        role: userData.role,
+        error: null,
+      });
+
+      get()._setAuthData(userData);
+    } catch (error) {
+      get()._clearAuthData();
+      set({
+        error:
+          error instanceof Error ? error.message : "Unknown error occurred",
+        loading: false,
+      });
+    }
+  },
 
   logout: async () => {
+    set({ loading: true, error: null });
+    try {
+      await logoutUser();
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
     set({
       user: null,
       isAuthenticated: false,

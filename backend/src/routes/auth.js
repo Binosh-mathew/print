@@ -55,7 +55,6 @@ router.post("/register", async (req, res) => {
 });
 
 // Login a user, admin, or developer
-
 router.post("/login", async (req, res) => {
   const { email, password, role } = req.body;
 
@@ -130,6 +129,27 @@ router.post("/login", async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: "Error logging in", error });
   }
+});
+
+router.post("/logout", auth, (req, res) => {
+  // Clear the JWT cookie
+  if (!req.cookies.jwt) {
+    return res
+      .status(400)
+      .json({ success: false, message: "No user logged in" });
+  }
+
+  res.clearCookie("jwt", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/",
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Logged out successfully",
+  });
 });
 
 // Update user profile

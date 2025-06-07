@@ -5,16 +5,16 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { User, Mail, Loader2 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
+import useAuthStore from '@/store/authStore';
 
 const Profile = () => {
-  const { user, updateUserProfile } = useAuth();
+  const { user } = useAuthStore();
   const { toast } = useToast();
   
   // Initialize state with user data
   const [profileData, setProfileData] = useState({
-    name: user?.username || user?.name || '',
+    name: user?.username || user?.username || '',
   });
   
   // Update profile data when user data changes
@@ -22,7 +22,7 @@ const Profile = () => {
     console.log('User data in Profile:', user);
     if (user) {
       setProfileData({
-        name: user.username || user.name || ''
+        name: user.username || user.username || ''
       });
     }
   }, [user]);
@@ -30,29 +30,29 @@ const Profile = () => {
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsUpdatingProfile(true);
+    // e.preventDefault();
+    // setIsUpdatingProfile(true);
     
-    try {
-      // Update user profile using the context method - only update name
-      await updateUserProfile({
-        name: profileData.name
-      });
+    // try {
+    //   // Update user profile using the context method - only update name
+    //   await updateUserProfile({
+    //     name: profileData.name
+    //   });
       
-      toast({
-        title: "Profile updated",
-        description: "Your username has been updated successfully.",
-      });
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      toast({
-        title: "Update failed",
-        description: "There was a problem updating your profile.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUpdatingProfile(false);
-    }
+    //   toast({
+    //     title: "Profile updated",
+    //     description: "Your username has been updated successfully.",
+    //   });
+    // } catch (error) {
+    //   console.error('Error updating profile:', error);
+    //   toast({
+    //     title: "Update failed",
+    //     description: "There was a problem updating your profile.",
+    //     variant: "destructive",
+    //   });
+    // } finally {
+    //   setIsUpdatingProfile(false);
+    // }
   };
 
   return (

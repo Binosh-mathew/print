@@ -21,8 +21,8 @@ export const registerUser = async (
   } catch (error: any) {
     console.error("Registration error:", error);
     // Handle specific error messages
-    if (error.response && error.response.data) {
-      throw new Error(error.response.data.message || "Registration failed");
+    if (error?.response?.data) {
+      throw new Error(error?.response?.data?.message || "Registration failed");
     }
     throw new Error("An unexpected error occurred during registration");
   }
@@ -37,12 +37,24 @@ export const loginUser = async (
     const response = await axios.post("/auth/login", { email, password, role });
     return response.data.user;
   } catch (error: any) {
-    console.error("Login error:", error);
     // Handle specific error messages
-    if (error.response && error.response.data) {
+    if (error?.response?.data) {
       throw new Error(error.response.data.message || "Login failed");
     }
     throw new Error("An unexpected error occurred during login");
+  }
+};
+
+export const logoutUser = async (): Promise<void> => {
+  try {
+    await axios.post("/auth/logout");
+  } catch (error: any) {
+    console.error("Logout error:", error);
+    // Handle specific error messages
+    if (error?.response?.data) {
+      throw new Error(error.response.data.message || "Logout failed");
+    }
+    throw new Error("An unexpected error occurred during logout");
   }
 };
 
@@ -51,10 +63,12 @@ export const fetchOrders = async (): Promise<Order[]> => {
   try {
     const response = await axios.get("/orders");
     return response.data;
-  } catch (error) {
-    console.error("Error fetching orders:", error);
-    // Return empty array if there's an error
-    return [];
+  } catch (error: any) {
+    // Handle specific error messages
+    if (error?.response?.data) {
+      throw new Error(error.response.data.message || "Failed to fetch orders");
+    }
+    throw new Error("An unexpected error occurred while fetching orders");
   }
 };
 
@@ -129,17 +143,44 @@ export const updateOrder = async (
   id: string,
   orderData: Partial<Order>
 ): Promise<Order> => {
-  const response = await axios.put("/orders/${id}", orderData);
-  return response.data;
+  try {
+    const response = await axios.put(`/orders/${id}`, orderData);
+    return response.data;
+  } catch (error: any) {
+    console.error("Error updating order:", error);
+    // Handle specific error messages
+    if (error?.response?.data) {
+      throw new Error(error.response.data.message || "Failed to update order");
+    }
+    throw new Error("An unexpected error occurred while updating order");
+  }
 };
 
 export const deleteOrder = async (id: string): Promise<void> => {
-  await axios.delete(`/orders/${id}`);
+  try {
+    await axios.delete(`/orders/${id}`);
+  } catch (error: any) {
+    console.error("Error deleting order:", error);
+    // Handle specific error messages
+    if (error?.response?.data) {
+      throw new Error(error.response.data.message || "Failed to delete order");
+    }
+    throw new Error("An unexpected error occurred while deleting order");
+  }
 };
 
 export const fetchOrderById = async (id: string): Promise<Order> => {
-  const response = await axios.get(`/orders/${id}`);
-  return response.data;
+  try {
+    const response = await axios.get(`/orders/${id}`);
+    return response.data;
+  } catch (error: any) {
+    console.error("Error fetching order:", error);
+    // Handle specific error messages
+    if (error?.response?.data) {
+      throw new Error(error.response.data.message || "Failed to fetch order");
+    }
+    throw new Error("An unexpected error occurred while fetching order");
+  }
 };
 
 // API functions for stores
@@ -170,10 +211,13 @@ export const fetchStores = async (): Promise<Store[]> => {
 
     const response = await axios.get(`/stores`, config);
     return response.data;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching stores:", error);
-    // Return empty array if there's an error
-    return [];
+    // Handle specific error messages
+    if (error?.response?.data) {
+      throw new Error(error.response.data.message || "Failed to fetch stores");
+    }
+    throw new Error("An unexpected error occurred while fetching stores");
   }
 };
 
@@ -205,41 +249,78 @@ export const fetchAdminStoreProfile = async (): Promise<any> => {
 
     const response = await axios.get(`/stores/admin/profile`, config);
     return response.data;
-  } catch (error) {
-    console.log("Error fetching admin store profile:", error);
-    // Return mock data for development
-    return {
-      id: "mock-store-id",
-      name: "Sample Print Store",
-      location: "123 Main St, City",
-      email: "admin@printstore.com",
-      status: "active",
-    };
+  } catch (error: any) {
+    console.error("Error fetching admin store profile:", error);
+    // Handle specific error messages
+    if (error?.response?.data) {
+      throw new Error(
+        error.response.data.message || "Failed to fetch admin store profile"
+      );
+    }
+    throw new Error(
+      "An unexpected error occurred while fetching admin store profile"
+    );
   }
 };
 
 export const createStore = async (
   storeData: Partial<Store>
 ): Promise<Store> => {
-  const response = await axios.post(`/stores`, storeData);
-  return response.data;
+  try {
+    const response = await axios.post(`/stores`, storeData);
+    return response.data;
+  } catch (error: any) {
+    console.error("Error creating store:", error);
+    // Handle specific error messages
+    if (error?.response?.data) {
+      throw new Error(error.response.data.message || "Failed to create store");
+    }
+    throw new Error("An unexpected error occurred while creating store");
+  }
 };
 
 export const updateStore = async (
   id: string,
   storeData: Partial<Store>
 ): Promise<Store> => {
-  const response = await axios.put(`/stores/${id}`, storeData);
-  return response.data;
+  try {
+    const response = await axios.put(`/stores/${id}`, storeData);
+    return response.data;
+  } catch (error: any) {
+    console.error("Error updating store:", error);
+    // Handle specific error messages
+    if (error?.response?.data) {
+      throw new Error(error.response.data.message || "Failed to update store");
+    }
+    throw new Error("An unexpected error occurred while updating store");
+  }
 };
 
 export const deleteStore = async (id: string): Promise<void> => {
-  await axios.delete(`/stores/${id}`);
+  try {
+    await axios.delete(`/stores/${id}`);
+  } catch (error: any) {
+    console.error("Error deleting store:", error);
+    // Handle specific error messages
+    if (error?.response?.data) {
+      throw new Error(error.response.data.message || "Failed to delete store");
+    }
+    throw new Error("An unexpected error occurred while deleting store");
+  }
 };
 
 export const fetchStoreById = async (id: string): Promise<Store> => {
-  const response = await axios.get(`/stores/${id}`);
-  return response.data;
+  try {
+    const response = await axios.get(`/stores/${id}`);
+    return response.data;
+  } catch (error: any) {
+    console.error("Error fetching store:", error);
+    // Handle specific error messages
+    if (error?.response?.data) {
+      throw new Error(error.response.data.message || "Failed to fetch store");
+    }
+    throw new Error("An unexpected error occurred while fetching store");
+  }
 };
 
 export const fetchStorePricing = async (id: string): Promise<any> => {
@@ -269,15 +350,17 @@ export const fetchStorePricing = async (id: string): Promise<any> => {
 
     const response = await axios.get(`/stores/${id}`, config);
     return response.data.pricing || null;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching store pricing:", error);
-    // Return default pricing if there's an error
-    return {
-      blackAndWhite: { singleSided: 2, doubleSided: 3 },
-      color: { singleSided: 5, doubleSided: 8 },
-      binding: { spiralBinding: 25, staplingBinding: 10, hardcoverBinding: 50 },
-      paperTypes: { normal: 0, glossy: 5, matte: 7, transparent: 10 },
-    };
+    // Handle specific error messages
+    if (error?.response?.data) {
+      throw new Error(
+        error.response.data.message || "Failed to fetch store pricing"
+      );
+    }
+    throw new Error(
+      "An unexpected error occurred while fetching store pricing"
+    );
   }
 };
 
@@ -287,30 +370,52 @@ export const updateStorePricing = async (
   id: string,
   pricingData: any
 ): Promise<any> => {
-  // Get the user data from localStorage for authentication
-  const storedUser = localStorage.getItem("printShopUser");
-  let headers = {};
+  try {
+    // Get the user data from localStorage for authentication
+    const storedUser = localStorage.getItem("printShopUser");
+    let headers = {};
 
-  if (storedUser) {
-    const userData = JSON.parse(storedUser);
-    headers = {
-      "X-User-ID": userData.id,
-      "X-User-Role": userData.role,
-    };
+    if (storedUser) {
+      const userData = JSON.parse(storedUser);
+      headers = {
+        "X-User-ID": userData.id,
+        "X-User-Role": userData.role,
+      };
+    }
+
+    const response = await axios.put(
+      `/stores/${id}/pricing`,
+      { pricing: pricingData },
+      { headers }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error("Error updating store pricing:", error);
+    // Handle specific error messages
+    if (error?.response?.data) {
+      throw new Error(
+        error.response.data.message || "Failed to update store pricing"
+      );
+    }
+    throw new Error(
+      "An unexpected error occurred while updating store pricing"
+    );
   }
-
-  const response = await axios.put(
-    `/stores/${id}/pricing`,
-    { pricing: pricingData },
-    { headers }
-  );
-  return response.data;
 };
 
 // User APIs
 export const fetchUsers = async (): Promise<User[]> => {
-  const response = await axios.get(`/users`);
-  return response.data;
+  try {
+    const response = await axios.get(`/users`);
+    return response.data;
+  } catch (error: any) {
+    console.error("Error fetching users:", error);
+    // Handle specific error messages
+    if (error?.response?.data) {
+      throw new Error(error.response.data.message || "Failed to fetch users");
+    }
+    throw new Error("An unexpected error occurred while fetching users");
+  }
 };
 
 export const updateUserProfile = async (
