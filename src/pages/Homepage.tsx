@@ -14,10 +14,10 @@ import useAuthStore from "../store/authStore";
 
 const Homepage = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuthStore((state) => state);
+  const { isAuthenticated } = useAuthStore();
   useEffect(() => {
     if (isAuthenticated) navigate("/dashboard");
-  });
+  }, [isAuthenticated, navigate]);
   return (
     <div className="flex flex-col min-h-screen">
       {/* Header */}

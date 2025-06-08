@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FilePlus, File, Clock, CheckCircle } from "lucide-react";
 import OrderStatusBadge from "@/components/OrderStatusBadge";
-import { useAuth } from "@/contexts/AuthContext";
 import type { Order } from "@/types/order";
 import { hasStatus } from "@/utils/orderUtils";
-import axios from "../../config/axios";
+import useAuthStore from "@/store/authStore";
+import { fetchOrders as apiGetOrders } from "@/api";
 
 const UserDashboard = () => {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState({
     totalOrders: 0,
@@ -19,39 +19,45 @@ const UserDashboard = () => {
     completedOrders: 0,
   });
   const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchOrders = async () => {
+    const getOrders = async () => {
       try {
-        const response = await axios.get("/orders");
-        setOrders(response.data);
+        setIsLoading(true);
+        const response = await apiGetOrders();
+        console.log("API Response:", response);
+        setOrders(Array.isArray(response) ? response : []);
       } catch (error: any) {
+        console.error("Error fetching orders:", error);
         if (error.response) {
-          console.error("Error fetching orders:", error.response.data);
+          console.error("Error details:", error.response.data);
         }
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    fetchOrders();
+    getOrders();
   }, []);
 
   useEffect(() => {
-    // Simulate API call
     if (user) {
-      // Get user orders
-      const userOrders: Order[] = orders.filter(
-        (order) => order?.userId === user.id
-      );
+      console.log("Processing orders, count:", orders.length);
 
-      // Set recent orders (last 5)
-      setRecentOrders(
-        userOrders
-          .sort(
-            (a, b) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          )
-          .slice(0, 5)
-      );
+      // Ensure userOrders is always an array
+      const userOrders: Order[] = Array.isArray(orders) ? orders : [];
+
+      // Create a copy of the array before sorting to avoid mutation issues
+      const sortedOrders = [...userOrders].sort((a, b) => {
+        // Handle possible null/undefined createdAt values
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
+
+      // Take the first 5 orders
+      setRecentOrders(sortedOrders.slice(0, 5));
 
       // Calculate stats using case-insensitive status check
       setStats({
@@ -73,7 +79,7 @@ const UserDashboard = () => {
         {/* Welcome section */}
         <section>
           <h1 className="text-3xl font-bold mb-2">
-            Welcome back, {user?.name}
+            Welcome back, {user?.username}
           </h1>
           <p className="text-gray-600">
             Here's an overview of your printing activities
@@ -165,7 +171,12 @@ const UserDashboard = () => {
               <CardTitle className="text-xl">Recent Orders</CardTitle>
             </CardHeader>
             <CardContent>
-              {recentOrders.length > 0 ? (
+              {isLoading ? (
+                <div className="py-8 text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
+                  <p className="text-gray-500 mt-4">Loading your orders...</p>
+                </div>
+              ) : recentOrders.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse">
                     <thead>

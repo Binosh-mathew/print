@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { Order } from "../models/Order.js";
+import { auth } from "../middleware/auth.js";
 
 const router = Router();
 
 // Create a new order
-router.post("/", async (req, res) => {
+router.post("/", auth, async (req, res) => {
   try {
     // Log the incoming request body for debugging
     console.log("Order creation request body:", req.body);
@@ -52,16 +53,35 @@ router.post("/", async (req, res) => {
 });
 
 // Get all orders
-router.get("/", async (req, res) => {
+router.get("/", auth, async (req, res) => {
   try {
-    const orders = await Order.find();
+    const userId = req.user.id;
+    if (!userId) {
+      console.log("Unauthorized access attempt, user ID not found");
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized, user ID not found",
+      });
+    }
+    const orders = await Order.find({ userId });
+    if (!orders || orders.length === 0) {
+      console.log("No orders found for user:", userId);
+      return res.status(404).json({
+        success: false,
+        message: "No orders found for this user",
+      });
+    }
     res.status(200).json({
       success: true,
       message: "Orders fetched successfully",
       orders: orders,
     });
   } catch (error) {
-    res.status(500).json({ message: "Error fetching orders", error });
+    res.status(500).json({
+      success: false,
+      message: "Error fetching orders",
+      error,
+    });
   }
 });
 

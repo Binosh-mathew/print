@@ -62,7 +62,13 @@ export const logoutUser = async (): Promise<void> => {
 export const fetchOrders = async (): Promise<Order[]> => {
   try {
     const response = await axios.get("/orders");
-    return response.data;
+    // Check both possible response structures
+    if (response.data.orders && Array.isArray(response.data.orders)) {
+      return response.data.orders;
+    } else if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    return [];
   } catch (error: any) {
     // Handle specific error messages
     if (error?.response?.data) {
@@ -76,29 +82,6 @@ export const createOrder = async (
   orderData: Partial<Order>
 ): Promise<Order> => {
   try {
-    // Get the user data from localStorage for authentication
-    const storedUser = localStorage.getItem("printShopUser");
-    let token = "";
-    let userId = "";
-    let userRole = "";
-
-    if (storedUser) {
-      const user = JSON.parse(storedUser);
-      token = user.token || "";
-      userId = user.id || "";
-      userRole = user.role || "";
-    }
-
-    // Add authentication headers
-    const config = {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        "X-User-ID": userId,
-        "X-User-Role": userRole,
-      },
-    };
-
     // Create a copy of orderData to avoid mutating the original
     const orderPayload = { ...orderData };
 
@@ -127,7 +110,7 @@ export const createOrder = async (
 
     console.log("Sending order to backend:", JSON.stringify(orderPayload));
 
-    const response = await axios.post("/orders", orderPayload, config);
+    const response = await axios.post("/orders", orderPayload);
     return response.data;
   } catch (error: any) {
     console.error("Error creating order:", error);
@@ -186,31 +169,9 @@ export const fetchOrderById = async (id: string): Promise<Order> => {
 // API functions for stores
 export const fetchStores = async (): Promise<Store[]> => {
   try {
-    // Get the user data from localStorage for authentication
-    const storedUser = localStorage.getItem("printShopUser");
-    let token = "";
-    let userId = "";
-    let userRole = "";
-
-    if (storedUser) {
-      const user = JSON.parse(storedUser);
-      token = user.token || "";
-      userId = user.id || "";
-      userRole = user.role || "";
-    }
-
-    // Add authentication headers
-    const config = {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        "X-User-ID": userId,
-        "X-User-Role": userRole,
-      },
-    };
-
-    const response = await axios.get(`/stores`, config);
-    return response.data;
+    const response = await axios.get("/stores");
+    // Extract the stores array from the response data
+    return response.data.stores || [];
   } catch (error: any) {
     console.error("Error fetching stores:", error);
     // Handle specific error messages
@@ -325,30 +286,7 @@ export const fetchStoreById = async (id: string): Promise<Store> => {
 
 export const fetchStorePricing = async (id: string): Promise<any> => {
   try {
-    // Get the user data from localStorage for authentication
-    const storedUser = localStorage.getItem("printShopUser");
-    let token = "";
-    let userId = "";
-    let userRole = "";
-
-    if (storedUser) {
-      const user = JSON.parse(storedUser);
-      token = user.token || "";
-      userId = user.id || "";
-      userRole = user.role || "";
-    }
-
-    // Add authentication headers
-    const config = {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        "X-User-ID": userId,
-        "X-User-Role": userRole,
-      },
-    };
-
-    const response = await axios.get(`/stores/${id}`, config);
+    const response = await axios.get(`/stores/${id}`);
     return response.data.pricing || null;
   } catch (error: any) {
     console.error("Error fetching store pricing:", error);
