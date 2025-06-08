@@ -422,54 +422,20 @@ export const updateUserProfile = async (
   userId: string,
   userData: any
 ): Promise<any> => {
+  if (!userId || !userData) {
+    throw new Error("User ID and user data are required for profile update");
+  }
   try {
-    // Get the user data from localStorage for authentication
-    const storedUser = localStorage.getItem("printShopUser");
-    let token = "";
-
-    if (storedUser) {
-      const user = JSON.parse(storedUser);
-      token = user.token || "";
-    }
-
-    // Add authentication headers
-    const config = {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        "X-User-ID": userId, // Fallback authentication
-        "X-User-Role": "user", // Fallback authentication
-      },
-    };
-
     // Make the API call to update the user profile
-    const response = await axios.put(
-      `/auth/update`,
-      {
-        userId,
-        ...userData,
-      },
-      config
-    );
-
-    console.log("Profile update successful:", response.data);
-
+    const response = await axios.put("auth/update", {
+      id: userId,
+      ...userData, // Spread the userData to include all fields
+    });
     return response.data;
-  } catch (error) {
-    console.error("Error in updateUserProfile:", error);
-
-    // Simulate successful update even if the API fails
-    // This is a temporary solution until the backend is updated
-    const storedUser = localStorage.getItem("printShopUser");
-    if (storedUser) {
-      const user = JSON.parse(storedUser);
-      return {
-        ...user,
-        ...userData,
-      };
+  } catch (error: any) {
+    if (error.response && error.response.data) {
+      throw new Error(error.response.data.message || "Profile update failed");
     }
-
-    throw error;
   }
 };
 

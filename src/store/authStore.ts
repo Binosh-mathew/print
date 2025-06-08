@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { authState, User } from "../types/auth";
-import { loginUser, logoutUser, registerUser } from "@/api";
+import { loginUser, logoutUser, registerUser, updateUserProfile } from "@/api";
 
 const authStoreKey = "auth_data";
 const jwtExpirationDays = 14 * 24 * 60 * 60; // 14 days in seconds
@@ -121,6 +121,38 @@ const useAuthStore = create<authState>((set, get) => ({
     }
   },
 
+  updateUserProfile:async(userData:Partial<User> )=>{
+    set({ loading: true, error: null });
+    
+    if (!userData || !userData.id) {
+      set({ error: "User data is required", loading: false });
+      return; 
+    }
+    try {
+      const response = await updateUserProfile(userData.id, userData);
+      const updatedUser: User = {
+        id: response?.id,
+        username: response?.username,
+        email: response?.email,
+        role: response?.role,
+      };
+      set({
+        user: updatedUser,
+        isAuthenticated: true,
+        loading: false,
+        isAdmin: updatedUser.role === "admin",
+        role: updatedUser.role,
+        error: null,
+      });
+      get()._setAuthData(updatedUser);
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error ? error.message : "Unknown error occurred",
+        loading: false,
+      });
+    }
+  },
   logout: async () => {
     set({ loading: true, error: null });
     try {

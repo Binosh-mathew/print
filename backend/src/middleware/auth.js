@@ -6,6 +6,7 @@ export const auth = async (req, res, next) => {
   try {
     const token =
       req.cookies?.jwt || req.header("Authorization")?.split(" ")[1];
+
     if (!token) {
       return res
         .status(401)
@@ -15,16 +16,17 @@ export const auth = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     if (!decoded) {
+      console.error("Invalid token provided");
       return res
         .status(401)
         .json({ success: false, message: "Unauthorized, invalid token" });
     }
-    
+
     req.user = {
       id: decoded.id,
       role: decoded.role,
       email: decoded?.email,
-      username:decoded?.name,
+      username: decoded?.name,
     };
 
     next();

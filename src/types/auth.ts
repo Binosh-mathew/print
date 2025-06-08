@@ -28,6 +28,7 @@ export interface authState extends InternalMethods {
     password: string,
     confirmPassword: string
   ) => Promise<void>;
+  updateUserProfile: (userData: Partial<User>) => Promise<void>;
   logout: () => void;
   checkauth: () => boolean | void;
   initialize: () => void;
