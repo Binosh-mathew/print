@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,28 +10,28 @@ import useAuthStore from "@/store/authStore";
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuthStore();
+  const { login, isAuthenticated, error, loading } = useAuthStore();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      await login(email, password, "user");
+  useEffect(() => {
+    if (isAuthenticated) {
       navigate("/dashboard");
-    } catch (error: any) {
-      console.error("Login error:", error);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (error) {
       // Show a toast notification with the error message
       toast({
         title: "Login Failed",
-        description: error.message || "Invalid username or password",
+        description: error || "Invalid username or password",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
+  }, [error]);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await login(email, password, "user");
   };
 
   return (
@@ -98,9 +98,9 @@ const Login = () => {
               <Button
                 type="submit"
                 className="w-full bg-primary hover:bg-primary-500"
-                disabled={isLoading}
+                disabled={loading}
               >
-                {isLoading ? (
+                {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing
                     in...

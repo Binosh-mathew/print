@@ -1,63 +1,60 @@
-
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Loader2 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "@/components/ui/use-toast";
+import { Loader2 } from "lucide-react";
+import useAuthStore from "@/store/authStore";
 
 const Register = () => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const { register } = useAuth();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const { register, isAuthenticated, loading, error } = useAuthStore();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/dashboard");
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (error) {
+      // Show a toast notification with the error message
+      toast({
+        title: "Registration Failed",
+        description: error || "Please check your input and try again.",
+        variant: "destructive",
+      });
+    }
+  }, [error]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    
-    // Validate passwords match
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-    
-    // Validate password strength
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      return;
-    }
-    
-    setIsLoading(true);
-    
-    try {
-      await register(name, email, password);
-      navigate('/dashboard');
-    } catch (error: any) {
-      console.error('Registration error:', error);
-      setError(error.message || 'An error occurred during registration');
-    } finally {
-      setIsLoading(false);
-    }
+
+    await register(name, email, password, confirmPassword);
   };
 
   return (
     <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-gray-50">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <Link to="/" className="flex justify-center font-bold text-2xl text-primary">
+        <Link
+          to="/"
+          className="flex justify-center font-bold text-2xl text-primary"
+        >
           PrintSpark Studio
         </Link>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
           Create a new account
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Or{' '}
-          <Link to="/login" className="font-medium text-primary hover:text-primary-500">
+          Or{" "}
+          <Link
+            to="/login"
+            className="font-medium text-primary hover:text-primary-500"
+          >
             sign in to your existing account
           </Link>
         </p>
@@ -71,7 +68,7 @@ const Register = () => {
                 {error}
               </div>
             )}
-            
+
             <div>
               <Label htmlFor="name">Full Name</Label>
               <Input
@@ -128,26 +125,33 @@ const Register = () => {
               <Button
                 type="submit"
                 className="w-full bg-primary hover:bg-primary-500"
-                disabled={isLoading}
+                disabled={loading}
               >
-                {isLoading ? (
+                {loading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating account...
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating
+                    account...
                   </>
                 ) : (
-                  'Create account'
+                  "Create account"
                 )}
               </Button>
             </div>
           </form>
 
           <div className="mt-6 text-center text-sm text-gray-600">
-            By creating an account, you agree to our{' '}
-            <Link to="#" className="font-medium text-primary hover:text-primary-500">
+            By creating an account, you agree to our{" "}
+            <Link
+              to="#"
+              className="font-medium text-primary hover:text-primary-500"
+            >
               Terms of Service
-            </Link>{' '}
-            and{' '}
-            <Link to="#" className="font-medium text-primary hover:text-primary-500">
+            </Link>{" "}
+            and{" "}
+            <Link
+              to="#"
+              className="font-medium text-primary hover:text-primary-500"
+            >
               Privacy Policy
             </Link>
             .

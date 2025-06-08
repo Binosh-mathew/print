@@ -45,11 +45,10 @@ import useAuthStore from "./store/authStore";
 
 const queryClient = new QueryClient();
 const App = () => {
-  const { initialize, user } = useAuthStore();
+  const { initialize } = useAuthStore();
 
   useEffect(() => {
     initialize();
-    console.log(user);
   }, [initialize]);
   return (
     <QueryClientProvider client={queryClient}>

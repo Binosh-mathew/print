@@ -22,6 +22,13 @@ export interface authState extends InternalMethods {
   role: string | null;
   isAdmin: boolean;
   login: (email: string, password: string, role: string) => Promise<void>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    confirmPassword: string
+  ) => Promise<void>;
+  updateUserProfile: (userData: Partial<User>) => Promise<void>;
   logout: () => void;
   checkauth: () => boolean | void;
   initialize: () => void;
