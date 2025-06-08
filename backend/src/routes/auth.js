@@ -9,6 +9,7 @@ import { Developer } from "../models/Developer.js";
 import { Store } from "../models/Store.js";
 import { LoginActivity } from "../models/LoginActivity.js";
 import { auth } from "../middleware/auth.js";
+import { request } from "http";
 
 const router = Router();
 
@@ -55,7 +56,6 @@ router.post("/register", async (req, res) => {
 });
 
 // Login a user, admin, or developer
-
 router.post("/login", async (req, res) => {
   const { email, password, role } = req.body;
 
@@ -132,20 +132,40 @@ router.post("/login", async (req, res) => {
   }
 });
 
+router.post("/logout", auth, (req, res) => {
+  // Clear the JWT cookie
+  if (!req.cookies.jwt) {
+    return res
+      .status(400)
+      .json({ success: false, message: "No user logged in" });
+  }
+
+  res.clearCookie("jwt", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/",
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Logged out successfully",
+  });
+});
+
 // Update user profile
 router.put("/update", auth, async (req, res) => {
   try {
-    const { userId, username } = req.body;
-
+    const { id, username } = req.body;
     // Verify the authenticated user is updating their own profile
-    if (req.user.id !== userId) {
+    if (req.user.id !== id) {
       return res
         .status(403)
         .json({ message: "Not authorized to update this profile" });
     }
 
     // Find the user
-    const user = await User.findById(userId);
+    const user = await User.findById(id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -155,7 +175,7 @@ router.put("/update", auth, async (req, res) => {
       // Check if username is already taken
       const existingUser = await User.findOne({
         username,
-        _id: { $ne: userId },
+        _id: { $ne: id },
       });
       if (existingUser) {
         return res.status(400).json({ message: "Username already taken" });

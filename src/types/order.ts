@@ -34,7 +34,7 @@ export interface Order {
   status: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled' | 'Completed';
   details?: string;
   orderDate?: string;
-  createdAt?: string;
+  createdAt: string;
   updatedAt?: string;
   __v?: number;
   userId?: string;
