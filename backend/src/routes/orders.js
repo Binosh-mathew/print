@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { Order } from "../models/Order.js";
-import { auth } from "../middleware/auth.js";
-
+import { auth } from "../middleware/auth.js"
 const router = Router();
 
 // Create a new order
@@ -56,31 +55,57 @@ router.post("/", auth, async (req, res) => {
 router.get("/", auth, async (req, res) => {
   try {
     const userId = req.user.id;
+    const role = req.user.role;
+
     if (!userId) {
-      console.log("Unauthorized access attempt, user ID not found");
       return res.status(401).json({
         success: false,
         message: "Unauthorized, user ID not found",
       });
     }
-    const orders = await Order.find({ userId });
+    
+    // Fetch all orders from the database
+    const orders = await Order.find();
+    
     if (!orders || orders.length === 0) {
-      console.log("No orders found for user:", userId);
+      return res.status(404).json({
+        success: false,
+        message: "No orders found",
+      });
+    }
+    
+    // If user is admin or developer, return all orders
+    if (role === "admin" || role === "developer") {
+      return res.status(200).json({
+        success: true,
+        message: "All orders fetched successfully",
+        orders: orders,
+      });
+    }
+    
+    // For regular users, filter orders by userId
+    const userOrders = orders.filter((order) => order.userId === userId);
+    
+    // If no orders found for this user
+    if (userOrders.length === 0) {
       return res.status(404).json({
         success: false,
         message: "No orders found for this user",
       });
     }
-    res.status(200).json({
+    
+    // Return the user's orders
+    return res.status(200).json({
       success: true,
-      message: "Orders fetched successfully",
-      orders: orders,
+      message: "User orders fetched successfully",
+      orders: userOrders,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Error in GET /orders:", error);
+    return res.status(500).json({
       success: false,
       message: "Error fetching orders",
-      error,
+      error: error.message,
     });
   }
 });
