@@ -61,19 +61,21 @@ const NewOrder = () => {
   }, [files, form]);
 
   const handleFileSelected = (fileDetail: FileDetails) => {
-    const existingIndex = files.findIndex(
-      (f) => f.file.name === fileDetail.file.name
-    );
+    setFiles((prevFiles) => {
+      const existingIndex = prevFiles.findIndex(
+        (f) => f.file.name === fileDetail.file.name
+      );
 
-    if (existingIndex >= 0) {
-      // Update existing file details
-      const newFiles = [...files];
-      newFiles[existingIndex] = fileDetail;
-      setFiles(newFiles);
-    } else {
-      // Add new file
-      setFiles((prev) => [...prev, fileDetail]);
-    }
+      if (existingIndex >= 0) {
+        // Update existing file details
+        const newFiles = [...prevFiles];
+        newFiles[existingIndex] = fileDetail;
+        return newFiles;
+      } else {
+        // Add new file
+        return [...prevFiles, fileDetail];
+      }
+    });
   };
 
   const handleFileRemoved = (file: File) => {
