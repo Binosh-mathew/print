@@ -224,30 +224,7 @@ export const fetchStores = async (): Promise<Store[]> => {
 // Fetch store profile for admin
 export const fetchAdminStoreProfile = async (): Promise<any> => {
   try {
-    // Get the user data from localStorage for authentication
-    const storedUser = localStorage.getItem("printShopUser");
-    let token = "";
-    let userId = "";
-    let userRole = "";
-
-    if (storedUser) {
-      const user = JSON.parse(storedUser);
-      token = user.token || "";
-      userId = user.id || "";
-      userRole = user.role || "";
-    }
-
-    // Add authentication headers
-    const config = {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        "X-User-ID": userId,
-        "X-User-Role": userRole,
-      },
-    };
-
-    const response = await axios.get(`/stores/admin/profile`, config);
+    const response = await axios.get(`/stores/admin/profile`);
     return response.data;
   } catch (error: any) {
     console.error("Error fetching admin store profile:", error);
@@ -422,8 +399,29 @@ export const deleteUser = async (userId: string): Promise<void> => {
 
 // Message APIs
 export const fetchMessages = async (): Promise<Message[]> => {
-  const response = await axios.get(`/messages`);
-  return response.data;
+  try {
+    const response = await axios.get(`/messages`);
+    console.log('API fetchMessages response:', response.data);
+    
+    // Check different possible response structures
+    if (Array.isArray(response.data)) {
+      return response.data;
+    } else if (response.data.messages && Array.isArray(response.data.messages)) {
+      return response.data.messages;
+    } else if (response.data.data && Array.isArray(response.data.data)) {
+      return response.data.data;
+    }
+    
+    console.warn('Unexpected message response format:', response.data);
+    return [];
+  } catch (error: any) {
+    console.error('Error fetching messages:', error);
+    // Handle specific error messages
+    if (error?.response?.data) {
+      throw new Error(error.response.data.message || "Failed to fetch messages");
+    }
+    throw new Error("An unexpected error occurred while fetching messages");
+  }
 };
 
 export const createMessage = async (

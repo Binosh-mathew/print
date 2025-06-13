@@ -1,11 +1,9 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { 
   LayoutDashboard,
   FileText,
-  Users,
   Settings,
   LogOut,
   Menu,
@@ -13,20 +11,21 @@ import {
   MessageSquare,
   User
 } from 'lucide-react';
+import useAuthStore from '@/store/authStore';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
-  const { logout } = useAuth();
+  const { logout } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
   const handleLogout = () => {
     logout();
-    navigate('/admin/login');
+    navigate('/login');
   };
 
   const navItems = [

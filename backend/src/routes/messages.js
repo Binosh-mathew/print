@@ -7,11 +7,21 @@ const router = Router();
 // Get all messages
 router.get('/', auth, async (req, res) => {
   try {
+    // Log the user info to help with debugging
+    console.log('Fetching messages for user:', req.user?.id, 'with role:', req.user?.role);
+    
+    // Get all messages, role-based filtering will be handled client-side
     const messages = await Message.find()
       .sort({ createdAt: -1 });
+    
+    // Log how many messages we're returning
+    console.log(`Returning ${messages.length} messages`);
+    
+    // Return as an array for consistency (frontend expects an array)
     res.json(messages);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching messages', error });
+    console.error('Error fetching messages:', error);
+    res.status(500).json({ message: 'Error fetching messages', error: error.message });
   }
 });
 
@@ -123,14 +133,16 @@ router.delete('/:id', auth, async (req, res) => {
     }
     
     // Only allow sender to delete their message
-    if (message.sender.id !== req.user.id) {
+    if (message.sender.id.toString() !== req.user.id.toString()) {
       return res.status(403).json({ message: 'Not authorized to delete this message' });
     }
     
-    await message.remove();
+    // Use deleteOne instead of remove which is deprecated
+    await Message.deleteOne({ _id: req.params.id });
     res.json({ message: 'Message deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Error deleting message', error });
+    console.error('Error deleting message:', error);
+    res.status(500).json({ message: 'Error deleting message', error: error.message });
   }
 });
 

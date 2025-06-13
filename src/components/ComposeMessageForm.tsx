@@ -85,16 +85,19 @@ const ComposeMessageForm: React.FC<ComposeMessageFormProps> = ({ initialRecipien
       // Get authentication data from localStorage
       const storedUser = localStorage.getItem('printShopUser');
       
-      if (storedUser) {
-        // const userData = JSON.parse(storedUser); // userData is not used
-      } else {
+      if (!storedUser) {
         throw new Error('Authentication required to send messages');
       }
       
-      await axios.post(
+      // Log for debugging
+      console.log('Sending message to recipient:', recipientDetails);
+      
+      const response = await axios.post(
         '/messages', 
         { content: message, recipient: recipientDetails }, 
       );
+      
+      console.log('Message sent successfully:', response.data);
       
       setMessage('');
       toast({
@@ -104,9 +107,15 @@ const ComposeMessageForm: React.FC<ComposeMessageFormProps> = ({ initialRecipien
       onMessageSent?.(); // Call the callback
     } catch (error) {
       console.error('Error sending message:', error);
+      let errorMessage = "Please make sure you are logged in and try again.";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Failed to send message",
-        description: "Please make sure you are logged in and try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

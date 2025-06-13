@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from '../config/axios';
 import { Button } from '@/components/ui/button';
 import {
@@ -47,46 +47,39 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ viewType = 'all', userId, u
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  // const [userData, setUserData] = useState<any>(null); // Removed as it was only used for Avatar fallback
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  useEffect(() => {
-    // Only fetch if we have the necessary user identifiers for specific views,
-    // or if it's an 'all' view which doesn't need them for filtering.
-    if (viewType === 'inbox' || viewType === 'sent') {
-      if (userId) { // For inbox/sent, userId is crucial for filtering
-        fetchMessages();
-      } else {
-        // Clear messages or show a placeholder if userId is missing for these specific views
-        setMessages([]); 
-        setLoading(false); // Ensure loading is also reset if we're not fetching
-      }
-    } else { // For 'all' view or any other views that don't rely on userId for initial fetch
-      fetchMessages();
-    }
-  }, [userId, userRole, viewType]); // Re-fetch if userId, userRole, or viewType changes
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const fetchMessages = async () => {
+  // Convert fetchMessages to useCallback to properly handle dependencies
+  const fetchMessages = useCallback(async () => {
     setLoading(true);
     try {
-      // const storedUser = localStorage.getItem('printShopUser'); // userData state is already set in useEffect
-      // if (storedUser) {
-      //   // This local userData was not used and shadowed the state variable.
-      // }
-      
+      console.log('Fetching messages with userId:', userId, 'userRole:', userRole, 'viewType:', viewType);
       const response = await axios.get('/messages');
-      // Sort messages by date (newest at the bottom)
-      let fetchedMessages: Message[] = response.data;
+      console.log('Messages API response:', response.data); // Debug log to see structure
+      
+      // Extract messages array from response, handling different possible structures
+      let fetchedMessages: Message[] = [];
+      
+      if (Array.isArray(response.data)) {
+        // If response.data is already an array
+        fetchedMessages = response.data;
+      } else if (response.data.messages && Array.isArray(response.data.messages)) {
+        // If messages are in a "messages" property
+        fetchedMessages = response.data.messages;
+      } else if (response.data.data && Array.isArray(response.data.data)) {
+        // If messages are in a "data" property (common pattern)
+        fetchedMessages = response.data.data;
+      } else {
+        // Log an error for debugging but continue with empty array
+        console.error('Unexpected messages API response format:', response.data);
+      }
 
       // Apply filtering based on viewType and userId
       if (userId && viewType === 'inbox') {
+        console.log('Filtering for inbox messages for user:', userId);
         fetchedMessages = fetchedMessages.filter(msg => {
           if (msg.recipient?.id) {
             return msg.recipient.id === userId; // Direct message to user
@@ -96,6 +89,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ viewType = 'all', userId, u
           return false;
         });
       } else if (userId && viewType === 'sent') {
+        console.log('Filtering for sent messages from user:', userId);
         fetchedMessages = fetchedMessages.filter(msg => msg.sender?.id === userId);
       }
 
@@ -103,6 +97,8 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ viewType = 'all', userId, u
       const sortedMessages = fetchedMessages.sort((a: Message, b: Message) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
+      
+      console.log('Processed messages:', sortedMessages.length); // Debug log
       setMessages(sortedMessages);
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -114,7 +110,33 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ viewType = 'all', userId, u
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId, userRole, viewType]); // Include all dependencies
+
+  // Try to fix the issue where messages don't load on first mount by using an immediate loading effect
+  useEffect(() => {
+    console.log('MessagePanel mounted with viewType:', viewType, 'userId:', userId, 'userRole:', userRole);
+    // First load indicator
+    setLoading(true);
+  }, []);
+
+  useEffect(() => {
+    // Always attempt to fetch messages on initial mount, regardless of viewType
+    // The fetchMessages function will handle the filtering based on viewType, userId, and userRole
+    
+    // For inbox/sent views, we still want to check if userId exists since it's needed for filtering
+    if ((viewType === 'inbox' || viewType === 'sent') && !userId) {
+      // If userId is needed but not available, show empty state
+      setMessages([]);
+      setLoading(false);
+    } else {
+      // Otherwise, fetch messages
+      fetchMessages();
+    }
+  }, [fetchMessages, userId, viewType]); // Include userId and viewType to re-run when they change
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleMessageClick = async (message: Message) => {
     setSelectedMessage(message);
@@ -302,4 +324,4 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ viewType = 'all', userId, u
   );
 };
 
-export default MessagePanel; 
+export default MessagePanel;

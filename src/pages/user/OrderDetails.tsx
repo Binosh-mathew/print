@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import UserLayout from '@/components/layouts/UserLayout';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import OrderStatusBadge from '@/components/OrderStatusBadge';
-import useAuthStore from "@/store/authStore";
+import useAuthStore from '@/store/authStore';
 import { fetchOrders, fetchOrderById } from '@/api';
 import { type Order } from '@/types/order';
 import { toast } from '@/components/ui/use-toast';

@@ -12,7 +12,7 @@ const ProtectedRoute = ({ children, allowedRole }: ProtectedRouteProps) => {
   // If not authenticated or role doesn't match, redirect accordingly.
   if (!isAuthenticated || user?.role !== allowedRole) {
     // Redirect based on the allowed role
-    switch (allowedRole) {
+    switch (user?.role) {
       case "admin":
         return <Navigate to="/admin/login" />;
       case "developer":

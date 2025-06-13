@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { deleteOrder, fetchOrders } from '../api';
-import { useAuth } from '@/contexts/AuthContext';
+import useAuthStore from '@/store/authStore';
 import { type Order } from '@/types/order';
 import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,7 @@ interface OrderListProps {
 function OrderList({ searchQuery, onDelete, setLoading }: OrderListProps) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { user } = useAuthStore();
 
   const loadOrders = async () => {
     setLoading(true);

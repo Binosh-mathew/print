@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DeveloperLayout from '@/components/layouts/DeveloperLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import MessagePanel from '@/components/MessagePanel';
@@ -7,18 +7,23 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Bell, Send, Edit, Inbox, SendHorizontal } from 'lucide-react';
 import ComposeMessageForm from '@/components/ComposeMessageForm';
-import { useAuth } from '@/contexts/AuthContext';
+import useAuthStore from '@/store/authStore';
 
 const Messages = () => {
   const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
   const [replyToRecipient, setReplyToRecipient] = useState<{ id?: string; name: string; role?: string } | null>(null);
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const developerId = user?.id;
 
   const handleOpenComposeModal = (recipient: { id?: string; name: string; role?: string } | null = null) => {
     setReplyToRecipient(recipient); // For replies, recipient is set; for new, it's null.
     setIsComposeModalOpen(true);
   };
+
+  // Add an effect to log user information for debugging
+  useEffect(() => {
+    console.log('Messages page - Current user:', user);
+  }, [user]);
 
   return (
     <DeveloperLayout>

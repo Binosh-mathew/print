@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import useAuthStore from '@/store/authStore';
 import DeveloperLayout from '@/components/layouts/DeveloperLayout';
 import {
   Card,
@@ -15,7 +15,7 @@ import { toast } from "@/components/ui/use-toast";
 import axios from 'axios';
 
 const SystemStatus = () => {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [stats, setStats] = useState({
     dailyOrders: 0,

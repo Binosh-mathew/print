@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,32 +17,36 @@ import useAuthStore from "@/store/authStore";
 const DeveloperLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuthStore();
+  const { login, isAuthenticated, error, loading } = useAuthStore();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
 
-    try {
       await login(email, password, "developer");
       toast({
         title: "Login Successful",
         description: "Welcome back, Developer!",
       });
       navigate("/developer");
-    } catch (error) {
-      console.error("Developer login error:", error);
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/developer");
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (error) {
       toast({
-        title: "Login Failed",
-        description: "Invalid developer credentials.",
+        title: "Login Error",
+        description: error,
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
-  };
+  }, [error]);
+
 
   return (
     <div className="container mx-auto flex items-center justify-center min-h-screen p-4">
@@ -63,7 +66,7 @@ const DeveloperLogin = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                disabled={isLoading}
+                disabled={loading}
               />
             </div>
             <div className="space-y-2">
@@ -74,11 +77,11 @@ const DeveloperLogin = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                disabled={isLoading}
+                disabled={loading}
               />
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? (
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Logging in...

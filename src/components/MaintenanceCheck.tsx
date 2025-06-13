@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useLocation } from 'react-router-dom';
 import MaintenanceMode from './MaintenanceMode';
-import { useAuth } from '@/contexts/AuthContext';
+import useAuthStore from '@/store/authStore';
 
 interface MaintenanceCheckProps {
   children: React.ReactNode;
@@ -12,7 +12,7 @@ const MaintenanceCheck: React.FC<MaintenanceCheckProps> = ({ children }) => {
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const location = useLocation();
-  const { user } = useAuth();
+  const { user } = useAuthStore();
 
   useEffect(() => {
     const checkMaintenanceMode = async () => {
