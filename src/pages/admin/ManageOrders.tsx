@@ -39,8 +39,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { updateOrder } from "@/api";
-import axios from "../../config/axios";
+import { fetchOrders, updateOrder } from "@/api";
 import type { Order } from "@/types/order";
 
 const ManageOrders = () => {
@@ -61,15 +60,14 @@ const ManageOrders = () => {
   });
 
   const [statusChangeCompleted, setStatusChangeCompleted] = useState(false);
+  const [selectedFileIdx, setSelectedFileIdx] = useState(0);
 
   const refreshOrders = async () => {
     try {
       setIsUpdating(true);
-
-      const response = await axios.get("/orders");
-
+      const response = await fetchOrders();
       // Process the orders to ensure customer names are properly set
-      const processedOrders = response.data.map((order: any) => {
+      const processedOrders = response.map((order: any) => {
         // Ensure customerName is set, falling back to userName if needed
         if (!order.customerName && order.userName) {
           order.customerName = order.userName;
@@ -82,8 +80,6 @@ const ManageOrders = () => {
       });
 
       setOrders(processedOrders);
-
-      console.log("Fetching orders from API:", processedOrders.length);
 
       const sortedOrders = [...processedOrders].sort(
         (a, b) =>
@@ -100,6 +96,7 @@ const ManageOrders = () => {
         if (order) {
           setSelectedOrder(order);
           setIsDetailsOpen(true);
+          setSelectedFileIdx(0);
         }
       }
     } catch (error) {
@@ -113,46 +110,15 @@ const ManageOrders = () => {
     }
   };
 
-  // State to control auto-refresh behavior
-  const [autoRefresh, setAutoRefresh] = useState(false);
-
   useEffect(() => {
-    // Initial fetch when component mounts or orderId changes
+    // Initial fetch when component mounts
     refreshOrders();
-
-    // Only set up interval if autoRefresh is enabled
-    let intervalId: NodeJS.Timeout | null = null;
-    if (autoRefresh) {
-      intervalId = setInterval(refreshOrders, 30000); // Reduced frequency to 30 seconds
-    }
-
-    // Clean up interval on unmount or when dependencies change
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [orderId, autoRefresh]);
+  }, [orderId]);
 
   useEffect(() => {
     let result = [...orders];
 
-    console.log(
-      "Filtering orders:",
-      orders.length,
-      "Status filter:",
-      statusFilter,
-      "Search query:",
-      searchQuery
-    );
-
-    // Log some sample orders to see their structure
-    if (orders.length > 0) {
-      console.log("Sample order data:", orders[0]);
-      console.log("Customer name field:", orders[0].customerName);
-      console.log("User name field:", orders[0].userName);
-    }
-
     if (statusFilter !== "all") {
-      // Convert status values to lowercase for case-insensitive comparison
       const filterValue = statusFilter.toLowerCase();
       result = result.filter((order) => {
         // Handle case where order.status might be undefined
@@ -163,9 +129,6 @@ const ManageOrders = () => {
         return orderStatus === filterValue;
       });
     }
-
-    // Log the filtered results count by status
-    console.log("Filtered orders count:", result.length);
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -350,13 +313,7 @@ const ManageOrders = () => {
     setStatusChangeCompleted(false);
     setSelectedOrder(order);
     setIsDetailsOpen(true);
-  };
-
-  const handleDownload = (orderId: string) => {
-    toast({
-      title: "Document downloaded",
-      description: `The document for order #${orderId} has been downloaded.`,
-    });
+    setSelectedFileIdx(0);
   };
 
   const isStatus = (
@@ -596,8 +553,10 @@ const ManageOrders = () => {
                   {`
                     @page { size: auto; margin: 10mm; }
                     body { margin: 0; padding: 0; }
-                    .dialog-content-print { display: block !important; }
+                    .dialog-content-print, .dialog-content-print * { visibility: visible; }
+                    .dialog-content-print { position: absolute; left: 0; top: 0; width: 100%; }
                     .no-print { display: none !important; }
+                    .print-only { display: block !important; }
                   `}
                 </style>
               </div>
@@ -695,7 +654,7 @@ const ManageOrders = () => {
                       // Skip if file data is invalid
                       if (!file) return null;
 
-                      const fileName = file.file?.name || "Unknown file";
+                      const fileName = file.originalName || "Unknown file";
                       const copies = file.copies || 1;
                       const printType = file.printType || "blackAndWhite";
                       const specialPaper = file.specialPaper || "none";
@@ -882,19 +841,34 @@ const ManageOrders = () => {
                 <h4 className="text-sm font-medium mb-3">
                   Document Preview & Actions
                 </h4>
-                <DocumentViewer
-                  orderId={selectedOrder._id || selectedOrder.id}
-                  documentName={
-                    selectedOrder.documentName ||
-                    selectedOrder.files?.[0]?.file?.name ||
-                    "Document"
-                  }
-                  fallbackMessage="The document file is not available for preview or printing. Please contact the customer for the original file."
-                  onDocumentLoaded={(url) => {
-                    console.log("Document loaded:", url);
-                    // You can add additional logic here when the document is loaded
-                  }}
-                />
+                <div className="flex gap-4">
+                  {selectedOrder.files.length > 1 && (
+                    <div className="w-40 border-r pr-2 space-y-2 overflow-y-auto max-h-[520px]">
+                      {selectedOrder.files.map((file: any, idx: number) => (
+                        <Button
+                          key={idx}
+                          variant={idx === selectedFileIdx ? "default" : "outline"}
+                          size="sm"
+                          className="w-full text-xs truncate"
+                          onClick={() => setSelectedFileIdx(idx)}
+                        >
+                          {file.originalName}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <DocumentViewer
+                      documentName={selectedOrder.files[selectedFileIdx].originalName}
+                      orderId={selectedOrder._id}
+                      fileIndex={selectedFileIdx}
+                      fallbackMessage="The document file is not available for preview or printing. Please contact the customer for the original file."
+                      onDocumentLoaded={(url) => {
+                        console.log("Document loaded:", url);
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
 
               <DialogFooter className="flex flex-wrap gap-2 justify-end mt-4">

@@ -45,11 +45,12 @@ import useAuthStore from "./store/authStore";
 
 const queryClient = new QueryClient();
 const App = () => {
-  const { initialize } = useAuthStore();
+  const { initialize ,user} = useAuthStore();
 
   useEffect(() => {
     initialize();
   }, [initialize]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

@@ -1,4 +1,31 @@
 import axios from "./config/axios";
+
+// --- Global 401 handler ---
+
+// Only attach once (guards against hot reload)
+if (!(window as any)._axios401InterceptorAttached) {
+  axios.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.response && error.response.status === 401) {
+        // Clear auth and redirect to login
+        try {
+          // Clear auth store if available
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("auth_data");
+          }
+        } catch {}
+        // Redirect to login
+        if (typeof window !== "undefined") {
+          window.location.href = "/login";
+        }
+      }
+      return Promise.reject(error);
+    }
+  );
+  (window as any)._axios401InterceptorAttached = true;
+}
+
 import { Order } from "@/types/order";
 import { Store } from "@/types/store";
 import { User } from "@/types/user";
@@ -62,7 +89,13 @@ export const logoutUser = async (): Promise<void> => {
 export const fetchOrders = async (): Promise<Order[]> => {
   try {
     const response = await axios.get("/orders");
-    return response.data;
+    // Check both possible response structures
+    if (response.data.orders && Array.isArray(response.data.orders)) {
+      return response.data.orders;
+    } else if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    return [];
   } catch (error: any) {
     // Handle specific error messages
     if (error?.response?.data) {
@@ -75,67 +108,56 @@ export const fetchOrders = async (): Promise<Order[]> => {
 export const createOrder = async (
   orderData: Partial<Order>
 ): Promise<Order> => {
+  console.log("Creating order with data:", orderData);
+
+  const formData = new FormData();
+
+  // Append files and their details
+  if (orderData.files && orderData.files.length > 0) {
+    const fileDetails = orderData.files.map((file) => ({
+      originalName: (file as any).file.name,
+      copies: file.copies || 1,
+      specialPaper: file.specialPaper || "none",
+      printType: file.printType || "blackAndWhite",
+      doubleSided: file.doubleSided || false,
+      binding: file.binding || { needed: false, type: "none" },
+      specificRequirements: file.specificRequirements || "",
+    }));
+
+    // Append each file to the form data
+    orderData.files.forEach((file) => {
+      formData.append("files", (file as any).file);
+    });
+
+    // Append file details as a JSON string
+    formData.append("fileDetails", JSON.stringify(fileDetails));
+
+    // Remove files from orderData to avoid sending it twice
+    delete orderData.files;
+  }
+
+  // Append other order fields
+  Object.keys(orderData).forEach((key) => {
+    const value = orderData[key as keyof typeof orderData];
+    if (value !== undefined && value !== null) {
+      formData.append(key, String(value));
+    }
+  });
+
   try {
-    // Get the user data from localStorage for authentication
-    const storedUser = localStorage.getItem("printShopUser");
-    let token = "";
-    let userId = "";
-    let userRole = "";
-
-    if (storedUser) {
-      const user = JSON.parse(storedUser);
-      token = user.token || "";
-      userId = user.id || "";
-      userRole = user.role || "";
-    }
-
-    // Add authentication headers
-    const config = {
+    const response = await axios.post("/orders", formData, {
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        "X-User-ID": userId,
-        "X-User-Role": userRole,
+        "Content-Type": "multipart/form-data",
       },
-    };
-
-    // Create a copy of orderData to avoid mutating the original
-    const orderPayload = { ...orderData };
-
-    // Handle file data formatting if needed
-    if (orderPayload.files && Array.isArray(orderPayload.files)) {
-      const formattedFiles = orderPayload.files.map((file) => {
-        // Format the file data appropriately for the backend
-        const formattedFile: any = {
-          fileName: file.file ? (file.file as File).name : "",
-          copies: file.copies,
-          specialPaper: file.specialPaper,
-          printType: file.printType,
-          doubleSided: file.doubleSided,
-          binding: {
-            needed: file.binding.needed,
-            type: file.binding.type,
-          },
-          specificRequirements: file.specificRequirements,
-        };
-        return formattedFile;
-      });
-
-      // Replace the files array with our formatted version
-      orderPayload.files = formattedFiles as any;
-    }
-
-    console.log("Sending order to backend:", JSON.stringify(orderPayload));
-
-    const response = await axios.post("/orders", orderPayload, config);
-    return response.data;
+    });
+    console.log("Order creation response:", response.data);
+    return response.data.order;
   } catch (error: any) {
-    console.error("Error creating order:", error);
-    // Add more detailed error logging
-    if (error.response) {
-      console.error("Server response:", error.response.data);
-    }
-    throw error; // Re-throw to allow component to handle the error
+    console.error(
+      "Error creating order:",
+      error.response ? error.response.data : error.message
+    );
+    throw error.response?.data || new Error("Failed to create order");
   }
 };
 
@@ -186,31 +208,9 @@ export const fetchOrderById = async (id: string): Promise<Order> => {
 // API functions for stores
 export const fetchStores = async (): Promise<Store[]> => {
   try {
-    // Get the user data from localStorage for authentication
-    const storedUser = localStorage.getItem("printShopUser");
-    let token = "";
-    let userId = "";
-    let userRole = "";
-
-    if (storedUser) {
-      const user = JSON.parse(storedUser);
-      token = user.token || "";
-      userId = user.id || "";
-      userRole = user.role || "";
-    }
-
-    // Add authentication headers
-    const config = {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        "X-User-ID": userId,
-        "X-User-Role": userRole,
-      },
-    };
-
-    const response = await axios.get(`/stores`, config);
-    return response.data;
+    const response = await axios.get("/stores");
+    // Extract the stores array from the response data
+    return response.data.stores || [];
   } catch (error: any) {
     console.error("Error fetching stores:", error);
     // Handle specific error messages
@@ -325,30 +325,7 @@ export const fetchStoreById = async (id: string): Promise<Store> => {
 
 export const fetchStorePricing = async (id: string): Promise<any> => {
   try {
-    // Get the user data from localStorage for authentication
-    const storedUser = localStorage.getItem("printShopUser");
-    let token = "";
-    let userId = "";
-    let userRole = "";
-
-    if (storedUser) {
-      const user = JSON.parse(storedUser);
-      token = user.token || "";
-      userId = user.id || "";
-      userRole = user.role || "";
-    }
-
-    // Add authentication headers
-    const config = {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        "X-User-ID": userId,
-        "X-User-Role": userRole,
-      },
-    };
-
-    const response = await axios.get(`/stores/${id}`, config);
+    const response = await axios.get(`/stores/${id}`);
     return response.data.pricing || null;
   } catch (error: any) {
     console.error("Error fetching store pricing:", error);

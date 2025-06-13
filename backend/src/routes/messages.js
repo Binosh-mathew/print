@@ -47,9 +47,18 @@ router.post('/', auth, async (req, res) => {
 // Mark a message as read by the recipient
 router.put('/:id/read', auth, async (req, res) => {
   try {
-    const message = await Message.findById(req.params.id);
+    const userId = req.user.id;
+    if (!userId) {
+      return res.status(401).json({ success:false,message: 'Unauthorized' });
+    }
+
+    const messageId = req.params.id;
+    if (!messageId) {
+      return res.status(400).json({ success:false,message: 'Message ID is required' });
+    }
+    const message = await Message.findById(messageId);
     if (!message) {
-      return res.status(404).json({ message: 'Message not found' });
+      return res.status(404).json({ success:false,message: 'Message not found' });
     }
 
     // Authorization:
@@ -67,20 +76,20 @@ router.put('/:id/read', auth, async (req, res) => {
     }
 
     if (!authorizedToRead) {
-      return res.status(403).json({ message: 'Not authorized to mark this message as read' });
+      return res.status(403).json({success:false, message: 'Not authorized to mark this message as read' });
     }
 
     if (message.status === 'read') {
       // Optionally, you could just return the message if already read, or an indication.
-      return res.status(200).json({ message: 'Message already marked as read', updatedMessage: message });
+      return res.status(200).json({ success:true, message: 'Message already marked as read', updatedMessage: message });
     }
 
     message.status = 'read';
     await message.save();
-    res.json({ message: 'Message marked as read successfully', updatedMessage: message });
+    res.json({ success:true, message: 'Message marked as read successfully', updatedMessage: message });
   } catch (error) {
     console.error('Error marking message as read:', error);
-    res.status(500).json({ message: 'Error marking message as read', error });
+    res.status(500).json({ success:false, message: 'Error marking message as read', error });
   }
 });
 

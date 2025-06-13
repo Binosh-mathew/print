@@ -28,10 +28,16 @@ const PORT = process.env.PORT;
 // Middleware
 app.use(express.json());
 app.use(cors({
-  origin:true,
-  credentials:true,
+  origin: true,
+  credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "X-User-ID",
+    "X-User-Role"
+  ],
 }));
 app.use(morgan("dev"));
 app.use(cookieParser());

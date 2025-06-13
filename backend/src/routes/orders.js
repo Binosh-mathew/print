@@ -1,38 +1,56 @@
 import { Router } from "express";
 import { Order } from "../models/Order.js";
+import { auth } from "../middleware/auth.js"
+import cloudinary from "../utils/cloudinary.js";
+import upload from "../utils/upload.js";
+import rateLimit from "express-rate-limit";
+import { SIGNED_URL_TTL } from "../config.js";
 
 const router = Router();
 
-// Create a new order
-router.post("/", async (req, res) => {
+// Rate limiter for order creation (10 req/min per IP)
+const createLimiter = rateLimit({ windowMs: 60_000, max: 10 });
+
+// Create a new order with file upload
+router.post("/", auth, createLimiter, upload.array("files", 10), async (req, res) => {
   try {
-    // Log the incoming request body for debugging
-    console.log("Order creation request body:", req.body);
+    // Parse file details from the request body
+    const fileDetails = JSON.parse(req.body.fileDetails || '[]');
 
-    // Process the files array to ensure it matches our schema
-    if (req.body.files && Array.isArray(req.body.files)) {
-      req.body.files = req.body.files.map((file) => {
-        return {
-          fileName: file.fileName || "",
-          copies: file.copies || 1,
-          specialPaper: file.specialPaper || "none",
-          printType: file.printType || "blackAndWhite",
-          doubleSided: file.doubleSided || false,
-          binding: {
-            needed: file.binding?.needed || false,
-            type: file.binding?.type || "none",
-          },
-          specificRequirements: file.specificRequirements || "",
-        };
-      });
-    }
+    // Map uploaded files to their details
+    const filesForOrder = req.files.map((file, index) => {
+      const details = fileDetails[index] || {};
+      return {
+        fileName: file.path, // Cloudinary URL
+        publicId: file.filename, // Cloudinary public_id
+        originalName: file.originalname,
+        ...details, // Merge with additional details
+        copies: details.copies || 1,
+        specialPaper: details.specialPaper || 'none',
+        printType: details.printType || 'blackAndWhite',
+        doubleSided: details.doubleSided || false,
+        binding: {
+          needed: details.binding?.needed || false,
+          type: details.binding?.type || 'none',
+        },
+        specificRequirements: details.specificRequirements || '',
+      };
+    });
 
-    // Create a new order with the processed request body
-    const order = new Order(req.body);
+    // Create the order data object
+    const orderData = {
+      ...req.body,
+      files: filesForOrder,
+      totalPrice: Number(req.body.totalPrice),
+      copies: filesForOrder.reduce((acc, file) => acc + file.copies, 0),
+      doubleSided: filesForOrder.some(file => file.doubleSided),
+    };
+
+    // Create a new order with the processed data
+    const order = new Order(orderData);
 
     // Save the order to the database
     const savedOrder = await order.save();
-    console.log("Order saved successfully:", savedOrder);
 
     // Return the created order
     res.status(201).json({
@@ -41,7 +59,6 @@ router.post("/", async (req, res) => {
       order: savedOrder,
     });
   } catch (error) {
-    // Log the detailed error for debugging
     console.error("Error creating order:", error);
     res.status(500).json({
       message: "Error creating order",
@@ -52,27 +69,90 @@ router.post("/", async (req, res) => {
 });
 
 // Get all orders
-router.get("/", async (req, res) => {
+router.get("/", auth, async (req, res) => {
   try {
+    const userId = req.user.id;
+    const role = req.user.role;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized, user ID not found",
+      });
+    }
+    
+    // Fetch all orders from the database
     const orders = await Order.find();
-    res.status(200).json({
+    
+    if (!orders || orders.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No orders found",
+      });
+    }
+    
+    // If user is admin or developer, return all orders
+    if (role === "admin" || role === "developer") {
+      return res.status(200).json({
+        success: true,
+        message: "All orders fetched successfully",
+        orders: orders,
+      });
+    }
+    
+    // For regular users, filter orders by userId
+    const userOrders = orders.filter((order) => order.userId === userId);
+    
+    // If no orders found for this user
+    if (userOrders.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No orders found for this user",
+      });
+    }
+    
+    // Return the user's orders
+    return res.status(200).json({
       success: true,
-      message: "Orders fetched successfully",
-      orders: orders,
+      message: "User orders fetched successfully",
+      orders: userOrders,
     });
   } catch (error) {
-    res.status(500).json({ message: "Error fetching orders", error });
+    console.error("Error in GET /orders:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error fetching orders",
+      error: error.message,
+    });
   }
 });
 
-// Get a specific order
-router.get("/:id", async (req, res) => {
+// Rate-limit signed-URL fetch (10 req/min per IP)
+const fetchLimiter = rateLimit({ windowMs: 60_000, max: 10 });
+
+router.get("/:id", auth, fetchLimiter, async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: "Order not found" });
-    res.json(order);
+
+    // Generate signed URLs for each file
+    const filesWithSignedUrls = order.files.map(file => {
+      if (file.publicId) {
+                const signedUrl = cloudinary.url(file.publicId, {
+          resource_type: "raw",
+          sign_url: true,
+          secure: true,
+          expires_at: Math.floor(Date.now() / 1000) + SIGNED_URL_TTL,
+        });
+        return { ...file.toObject(), fileName: signedUrl };
+      }
+      return file.toObject();
+    });
+
+    res.json({ ...order.toObject(), files: filesWithSignedUrls });
   } catch (error) {
-    res.status(500).json({ message: "Error fetching order", error });
+    console.error("Error fetching single order:", error);
+    res.status(500).json({ message: "Error fetching order", error: error.message });
   }
 });
 

@@ -1,76 +1,80 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import AdminLayout from '@/components/layouts/AdminLayout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { 
-  FileText, 
-  Users, 
-  Clock, 
-  CheckCircle, 
-  CreditCard, 
-  TrendingUp,
-  Calendar
-} from 'lucide-react';
-import StatCard from '@/components/StatCard';
-import OrderStatusBadge from '@/components/OrderStatusBadge';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import AdminLayout from "@/components/layouts/AdminLayout";
+import { Button } from "@/components/ui/button";
+import type { Order } from "@/types/order";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { FileText, Clock, CreditCard, TrendingUp } from "lucide-react";
+import StatCard from "@/components/StatCard";
+import OrderStatusBadge from "@/components/OrderStatusBadge";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   LineChart,
   Line,
-  Legend
-} from 'recharts';
-import axios from 'axios';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Legend,
+} from "recharts";
+import axios from "../../config/axios";
 
 // Function to generate monthly data from orders
 const generateMonthlyData = (orders: any[]) => {
   const currentYear = new Date().getFullYear();
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  
+  const monthNames = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+
   // Initialize monthly data with all months
-  const monthlyData = monthNames.map((month, index) => ({
+  const monthlyData = monthNames.map((month) => ({
     name: month,
     revenue: 0,
     completed: 0,
     pending: 0,
-    total: 0
+    total: 0,
   }));
 
   // Process each order
-  orders.forEach(order => {
+  orders.forEach((order) => {
     if (!order.createdAt) return;
-    
+
     const orderDate = new Date(order.createdAt);
     if (orderDate.getFullYear() !== currentYear) return;
-    
+
     const monthIndex = orderDate.getMonth();
     const price = parseFloat(order.totalPrice) || 0;
-    const status = order.status?.toLowerCase() || '';
-    
+    const status = order.status?.toLowerCase() || "";
+
     monthlyData[monthIndex].total += 1;
     monthlyData[monthIndex].revenue += price;
-    
-    if (status === 'completed') {
+
+    if (status === "completed") {
       monthlyData[monthIndex].completed += 1;
-    } else if (status === 'pending') {
+    } else if (status === "pending") {
       monthlyData[monthIndex].pending += 1;
     }
   });
-  
+
   return monthlyData;
 };
 
@@ -78,30 +82,35 @@ const generateMonthlyData = (orders: any[]) => {
 const getCurrentYearData = (orders: any[]) => {
   const monthlyData = generateMonthlyData(orders);
   const currentMonth = new Date().getMonth();
-  
+
   // Get last 6 months data
   const startMonth = Math.max(0, currentMonth - 5);
   const chartData = monthlyData.slice(startMonth, currentMonth + 1);
-  
+
   return {
-    revenueData: chartData.map(month => ({
+    revenueData: chartData.map((month) => ({
       name: month.name,
-      revenue: parseFloat(month.revenue.toFixed(2))
+      revenue: parseFloat(month.revenue.toFixed(2)),
     })),
-    ordersData: chartData.map(month => ({
+    ordersData: chartData.map((month) => ({
       name: month.name,
       completed: month.completed,
       pending: month.pending,
-      total: month.total
-    }))
+      total: month.total,
+    })),
   };
 };
 
 const AdminDashboard = () => {
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [chartData, setChartData] = useState({
-    revenueData: [] as Array<{name: string, revenue: number}>,
-    ordersData: [] as Array<{name: string, completed: number, pending: number, total: number}>
+    revenueData: [] as Array<{ name: string; revenue: number }>,
+    ordersData: [] as Array<{
+      name: string;
+      completed: number;
+      pending: number;
+      total: number;
+    }>,
   });
   const [stats, setStats] = useState({
     totalOrders: 0,
@@ -110,35 +119,38 @@ const AdminDashboard = () => {
     totalRevenue: 0,
     dailyOrders: 0,
     monthlyOrders: 0,
-    monthlyRevenue: 0
+    monthlyRevenue: 0,
   });
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         // Fetch orders data
-        const ordersResponse = await axios.get('http://localhost:5000/api/orders');
-        const orders = Array.isArray(ordersResponse.data) ? ordersResponse.data : [];
-        
+        const ordersResponse = await axios.get("/orders");
+        const orders:Order[] = Array.isArray(ordersResponse.data.orders)
+          ? ordersResponse.data.orders
+          : [];
+
+          console.log("Fetched Orders:", orders);
         // Sort orders by date (newest first) and get recent orders
         const sortedOrders = [...orders].sort((a, b) => {
           const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
           const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
           return dateB - dateA;
         });
-        
+
         // Set recent orders (first 5)
         setRecentOrders(sortedOrders.slice(0, 5));
-        
+
         // Update chart data
         const currentYearData = getCurrentYearData(orders);
         setChartData(currentYearData);
-        
+
         // Get current date for filtering
         const today = new Date();
         const currentMonth = today.getMonth();
         const currentYear = today.getFullYear();
-        
+
         // Filter orders for today
         const todayOrders = orders.filter((order: any) => {
           if (!order.createdAt) return false;
@@ -149,7 +161,7 @@ const AdminDashboard = () => {
             orderDate.getFullYear() === currentYear
           );
         });
-        
+
         // Filter orders for current month
         const monthlyOrders = orders.filter((order: any) => {
           if (!order.createdAt) return false;
@@ -159,19 +171,27 @@ const AdminDashboard = () => {
             orderDate.getFullYear() === currentYear
           );
         });
-        
+
         // Calculate total revenue
         const totalRevenue = orders.reduce((total: number, order: any) => {
           const price = order.totalPrice || 0;
-          return total + (typeof price === 'number' ? price : parseFloat(price) || 0);
+          return (
+            total + (typeof price === "number" ? price : parseFloat(price) || 0)
+          );
         }, 0);
-        
+
         // Calculate monthly revenue
-        const monthlyRevenue = monthlyOrders.reduce((total: number, order: any) => {
-          const price = order.totalPrice || 0;
-          return total + (typeof price === 'number' ? price : parseFloat(price) || 0);
-        }, 0);
-        
+        const monthlyRevenue = monthlyOrders.reduce(
+          (total: number, order: any) => {
+            const price = order.totalPrice || 0;
+            return (
+              total +
+              (typeof price === "number" ? price : parseFloat(price) || 0)
+            );
+          },
+          0
+        );
+
         // Count orders by status (case-insensitive)
         const statusCounts = orders.reduce((acc: any, order: any) => {
           if (!order.status) return acc;
@@ -179,7 +199,7 @@ const AdminDashboard = () => {
           acc[status] = (acc[status] || 0) + 1;
           return acc;
         }, {});
-        
+
         // Update stats
         setStats({
           totalOrders: orders.length,
@@ -188,15 +208,14 @@ const AdminDashboard = () => {
           totalRevenue,
           dailyOrders: todayOrders.length,
           monthlyOrders: monthlyOrders.length,
-          monthlyRevenue
+          monthlyRevenue,
         });
-        
       } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+        console.error("Error fetching dashboard data:", error);
         // You might want to set some error state here
       }
     };
-    
+
     fetchDashboardData();
     const intervalId = setInterval(fetchDashboardData, 30000); // Update every 30 seconds
     return () => clearInterval(intervalId);
@@ -208,9 +227,11 @@ const AdminDashboard = () => {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
-          <p className="text-gray-600">Overview of print shop operations and metrics</p>
+          <p className="text-gray-600">
+            Overview of print shop operations and metrics
+          </p>
         </div>
-        
+
         {/* Statistics Overview */}
         <Card key="dashboard-overview">
           <CardHeader>
@@ -232,35 +253,34 @@ const AdminDashboard = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard 
+          <StatCard
             key="total-orders"
-            title="Total Orders" 
+            title="Total Orders"
             value={stats.totalOrders}
             icon={<FileText size={24} />}
             trend={{ value: 12, isPositive: true }}
           />
-          
-          <StatCard 
+
+          <StatCard
             key="pending-orders"
-            title="Pending Orders" 
+            title="Pending Orders"
             value={stats.pendingOrders}
             icon={<Clock size={24} />}
             trend={{ value: 5, isPositive: false }}
           />
-          
-          <StatCard 
+
+          <StatCard
             key="total-revenue"
-            title="Total Revenue" 
+            title="Total Revenue"
             value={`₹${stats.totalRevenue}`}
             icon={<CreditCard size={24} />}
             trend={{ value: 18, isPositive: true }}
           />
-          
         </div>
-        
+
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Revenue Chart */}
@@ -287,8 +307,13 @@ const AdminDashboard = () => {
                     <XAxis dataKey="name" />
                     <YAxis />
                     <Tooltip
-                      formatter={(value: number) => [`₹${value.toFixed(2)}`, 'Revenue']}
-                      labelFormatter={(label) => `${label} ${new Date().getFullYear()}`}
+                      formatter={(value: number) => [
+                        `₹${value.toFixed(2)}`,
+                        "Revenue",
+                      ]}
+                      labelFormatter={(label) =>
+                        `${label} ${new Date().getFullYear()}`
+                      }
                     />
                     <Legend />
                     <Line
@@ -331,7 +356,9 @@ const AdminDashboard = () => {
                     <YAxis />
                     <Tooltip
                       formatter={(value: number, name: string) => [value, name]}
-                      labelFormatter={(label) => `${label} ${new Date().getFullYear()}`}
+                      labelFormatter={(label) =>
+                        `${label} ${new Date().getFullYear()}`
+                      }
                     />
                     <Legend />
                     <Bar
@@ -350,7 +377,9 @@ const AdminDashboard = () => {
                     />
                     <Bar
                       key="other-bar"
-                      dataKey={data => data.total - data.completed - data.pending}
+                      dataKey={(data) =>
+                        data.total - data.completed - data.pending
+                      }
                       name="Other Status"
                       fill="#8884d8"
                       stackId="a"
@@ -363,7 +392,7 @@ const AdminDashboard = () => {
         </div>
 
         {/* ... */}
-        
+
         {/* Recent Orders */}
         <Card key="recent-orders">
           <CardHeader className="flex flex-row items-center justify-between">
@@ -372,7 +401,9 @@ const AdminDashboard = () => {
               Recent Orders
             </CardTitle>
             <Link to="/admin/orders">
-              <Button variant="outline" size="sm">View All</Button>
+              <Button variant="outline" size="sm">
+                View All
+              </Button>
             </Link>
           </CardHeader>
           <CardContent>
@@ -380,13 +411,27 @@ const AdminDashboard = () => {
               <table className="w-full caption-bottom text-sm">
                 <thead className="[&_tr]:border-b">
                   <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Order ID</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Customer</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Document</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Date</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Amount</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
-                    <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">Action</th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
+                      Order ID
+                    </th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
+                      Customer
+                    </th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
+                      Document
+                    </th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
+                      Date
+                    </th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
+                      Amount
+                    </th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
+                      Status
+                    </th>
+                    <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">
+                      Action
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="[&_tr:last-child]:border-0">
@@ -397,28 +442,53 @@ const AdminDashboard = () => {
                       // Provide default values to prevent undefined errors
                       const orderWithDefaults = {
                         id: order?.id || `order-${index}`,
-                        customerName: order?.customerName || order?.userName || 'Unknown User',
-                        documentName: order?.documentName || 'Untitled Document',
+                        customerName:
+                          order?.customerName ||
+                          order?.userName ||
+                          "Unknown User",
+                        documentName:
+                          order?.documentName || "Untitled Document",
                         createdAt: order?.createdAt || new Date().toISOString(),
                         totalPrice: order?.totalPrice || 0,
-                        status: order?.status || 'pending'
+                        status: order?.status || "pending",
                       };
-                      
+
                       return (
-                        <tr key={rowKey} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                          <td className="p-4 align-middle font-medium">#{orderWithDefaults.id}</td>
-                          <td className="p-4 align-middle">{orderWithDefaults.customerName}</td>
-                          <td className="p-4 align-middle truncate max-w-[200px]">{orderWithDefaults.documentName}</td>
-                          <td className="p-4 align-middle text-gray-600">
-                            {new Date(orderWithDefaults.createdAt).toLocaleDateString()}
+                        <tr
+                          key={rowKey}
+                          className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+                        >
+                          <td className="p-4 align-middle font-medium">
+                            #{orderWithDefaults.id}
                           </td>
-                          <td className="p-4 align-middle font-medium">₹{orderWithDefaults.totalPrice}</td>
                           <td className="p-4 align-middle">
-                            <OrderStatusBadge status={orderWithDefaults.status} />
+                            {orderWithDefaults.customerName}
+                          </td>
+                          <td className="p-4 align-middle truncate max-w-[200px]">
+                            {orderWithDefaults.documentName}
+                          </td>
+                          <td className="p-4 align-middle text-gray-600">
+                            {new Date(
+                              orderWithDefaults.createdAt
+                            ).toLocaleDateString()}
+                          </td>
+                          <td className="p-4 align-middle font-medium">
+                            ₹{orderWithDefaults.totalPrice}
+                          </td>
+                          <td className="p-4 align-middle">
+                            <OrderStatusBadge
+                              status={orderWithDefaults.status}
+                            />
                           </td>
                           <td className="p-4 align-middle text-right">
-                            <Link to={`/admin/orders?id=${orderWithDefaults.id}`}>
-                              <Button variant="ghost" size="sm" className="text-primary h-8">
+                            <Link
+                              to={`/admin/orders?id=${orderWithDefaults.id}`}
+                            >
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-primary h-8"
+                              >
                                 View
                               </Button>
                             </Link>
@@ -427,8 +497,14 @@ const AdminDashboard = () => {
                       );
                     })
                   ) : (
-                    <tr key="no-orders-row" className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                      <td colSpan={7} className="p-4 align-middle h-24 text-center">
+                    <tr
+                      key="no-orders-row"
+                      className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+                    >
+                      <td
+                        colSpan={7}
+                        className="p-4 align-middle h-24 text-center"
+                      >
                         <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                         <p className="text-gray-500">No orders found</p>
                       </td>
@@ -439,7 +515,7 @@ const AdminDashboard = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Activity Calendar section removed */}
       </div>
     </AdminLayout>

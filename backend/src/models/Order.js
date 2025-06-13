@@ -8,7 +8,9 @@ const bindingSchema = new mongoose.Schema({
 
 // Define a separate schema for file details
 const fileSchema = new mongoose.Schema({
-  fileName: String,
+  fileName: String, // Cloudinary URL
+  publicId: String, // Cloudinary public ID
+  originalName: String, // Original name of the file
   copies: Number,
   specialPaper: String,
   printType: String,
