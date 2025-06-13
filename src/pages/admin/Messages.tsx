@@ -7,13 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog'; // Removed DialogTrigger
 import { Bell, Send, Edit, Inbox, SendHorizontal } from 'lucide-react'; // Removed MessageSquare, Info; Corrected SendHorizIcon
 import ComposeMessageForm from '@/components/ComposeMessageForm';
-import { useAuth } from '@/contexts/AuthContext'; 
+import useAuthStore from '@/store/authStore'; 
 
 const Messages = () => {
   const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
   const [replyToRecipient, setReplyToRecipient] = useState<{ id?: string; name: string; role?: string } | null>(null);
-  const { user } = useAuth(); 
-  const adminId = user?.id; // Assuming user object has 'id'. Verify this from AuthContext. 
+  const { user } = useAuthStore(); 
+  const adminId = user?.id; 
 
   return (
     <AdminLayout>

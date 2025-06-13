@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,27 +10,30 @@ import { toast } from "@/components/ui/use-toast";
 const AdminLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuthStore();
+  const { login,isAuthenticated ,error,loading} = useAuthStore();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      await login(email, password, "admin");
-      navigate("/admin");
-    } catch (error: any) {
-      console.error("Admin login error:", error);
-      // Show a toast notification with the error message
+  useEffect(()=>{
+    if (isAuthenticated) {
+      // Redirect to admin dashboard if already authenticated
+      navigate("/admin/");
+    }
+  }, [isAuthenticated]);
+
+  useEffect(()=>{
+    if(error){
       toast({
-        title: "Admin Login Failed",
-        description: error.message || "Invalid admin credentials",
+        title: "Login failed",
+        description: error,
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
+  },[error]);
+
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+      await login(email, password, "admin");
   };
 
   return (
@@ -83,9 +86,9 @@ const AdminLogin = () => {
               <Button
                 type="submit"
                 className="w-full bg-primary hover:bg-primary-500"
-                disabled={isLoading}
+                disabled={loading}
               >
-                {isLoading ? (
+                {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing
                     in...

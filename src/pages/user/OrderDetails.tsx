@@ -15,7 +15,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import OrderStatusBadge from '@/components/OrderStatusBadge';
-import { useAuth } from '@/contexts/AuthContext';
+import useAuthStore from '@/store/authStore';
 import { fetchOrders, fetchOrderById } from '@/api';
 import { type Order } from '@/types/order';
 import { toast } from '@/components/ui/use-toast';
@@ -23,7 +23,7 @@ import { hasStatus } from '@/utils/orderUtils';
 
 const OrderDetails = () => {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const navigate = useNavigate();
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);

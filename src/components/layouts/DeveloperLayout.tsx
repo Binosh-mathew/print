@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { 
   LayoutDashboard,
@@ -14,13 +13,14 @@ import {
   UserPlus
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import useAuthStore from '@/store/authStore';
 
 interface DeveloperLayoutProps {
   children: React.ReactNode;
 }
 
 const DeveloperLayout: React.FC<DeveloperLayoutProps> = ({ children }) => {
-  const { logout } = useAuth();
+  const { logout } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);

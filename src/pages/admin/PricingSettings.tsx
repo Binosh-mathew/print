@@ -16,10 +16,10 @@ import { Separator } from '@/components/ui/separator';
 import { Loader2, Save, CreditCard, FileText, Printer, Info, BookOpen, Layers } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { fetchStores, updateStorePricing } from '@/api';
-import { useAuth } from '@/contexts/AuthContext';
+import useAuthStore from '@/store/authStore';
 
 const PricingSettings = () => {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [storeId, setStoreId] = useState('');

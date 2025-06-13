@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from 'sonner';
-import axios from 'axios';
+import axios from '../../config/axios';
 // import { createAdmin, createStore } from '@/services/mockData';
 
 interface AdminStoreFormData {
@@ -46,7 +46,7 @@ const AdminStoreCreator = () => {
     setLoading(true);
     try {
       // Create new admin
-      await axios.post('http://localhost:5000/api/admins', {
+      await axios.post('/admins', {
         name: formData.adminName,
         email: formData.adminEmail,
         password: formData.adminPassword,

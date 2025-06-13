@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Card,
@@ -10,7 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Activity } from 'lucide-react';
 import DeveloperLayout from '@/components/layouts/DeveloperLayout';
-import axios from 'axios';
+import axios from '../../config/axios';
+import type { Order } from '@/types/order';
 
 const DeveloperDashboard = () => {
   const [stats, setStats] = useState({
@@ -30,27 +31,39 @@ const DeveloperDashboard = () => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         
-        // Get all orders (since backend doesn't support date filtering)
-        const ordersRes = await axios.get('http://localhost:5000/api/orders');
+        // Get all orders
+        const ordersRes = await axios.get('/orders');
+        console.log('Orders API response:', ordersRes.data); // Debug log
+        
+        // Extract the orders array from the response
+        // Check for common response patterns
+        const orders = ordersRes.data.orders || // If orders are in a property called "orders"
+                      (Array.isArray(ordersRes.data) ? ordersRes.data : []); // Or if directly in data
+        
         const now = new Date();
         const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         
         // Filter for today's and this month's orders
-        const todaysOrders = [];
-        const monthlyOrders = [];
+        const todaysOrders: Order[] = [];
+        const monthlyOrders: Order[] = [];
         
-        ordersRes.data.forEach((order: any) => {
-          if (!order.createdAt) return;
-          const orderDate = new Date(order.createdAt);
-          
-          if (orderDate >= today) {
-            todaysOrders.push(order);
-          }
-          
-          if (orderDate >= firstDayOfMonth) {
-            monthlyOrders.push(order);
-          }
-        });
+        // Make sure we're iterating over an array
+        if (Array.isArray(orders)) {
+          orders.forEach((order: any) => {
+            if (!order.createdAt) return;
+            const orderDate = new Date(order.createdAt);
+            
+            if (orderDate >= today) {
+              todaysOrders.push(order);
+            }
+            
+            if (orderDate >= firstDayOfMonth) {
+              monthlyOrders.push(order);
+            }
+          });
+        } else {
+          console.error('Orders data is not an array:', orders);
+        }
         
         // Calculate today's and monthly revenue
         const todayRevenue = todaysOrders.reduce((sum: number, order: any) => {
@@ -62,7 +75,7 @@ const DeveloperDashboard = () => {
         }, 0);
         
         // Get active stores and admins
-        const platformRes = await axios.get('http://localhost:5000/api/platform-stats');
+        const platformRes = await axios.get('/platform-stats');
         
         setStats({
           dailyOrders: todaysOrders.length,
@@ -154,7 +167,6 @@ const DeveloperDashboard = () => {
             </div>
           </CardContent>
         </Card>
-
         {/* Login Activity Card with Link */}
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader>
@@ -179,4 +191,4 @@ const DeveloperDashboard = () => {
   );
 };
 
-export default DeveloperDashboard; 
+export default DeveloperDashboard;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
-import { useAuth } from '@/contexts/AuthContext';
+import useAuthStore from '@/store/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -33,7 +33,7 @@ import { toast } from '@/components/ui/use-toast';
 import axios from 'axios';
 
 const ManageUsers = () => {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
