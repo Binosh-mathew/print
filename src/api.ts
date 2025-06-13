@@ -1,4 +1,32 @@
 import axios from "./config/axios";
+
+// --- Global 401 handler ---
+import useAuthStore from "@/store/authStore";
+
+// Only attach once (guards against hot reload)
+if (!(window as any)._axios401InterceptorAttached) {
+  axios.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.response && error.response.status === 401) {
+        // Clear auth and redirect to login
+        try {
+          // Clear auth store if available
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("auth_data");
+          }
+        } catch {}
+        // Redirect to login
+        if (typeof window !== "undefined") {
+          window.location.href = "/login";
+        }
+      }
+      return Promise.reject(error);
+    }
+  );
+  (window as any)._axios401InterceptorAttached = true;
+}
+
 import { Order } from "@/types/order";
 import { Store } from "@/types/store";
 import { User } from "@/types/user";
