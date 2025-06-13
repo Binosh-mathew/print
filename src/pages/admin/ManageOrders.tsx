@@ -39,8 +39,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { updateOrder } from "@/api";
-import axios from "../../config/axios";
+import { fetchOrders, updateOrder } from "@/api";
 import type { Order } from "@/types/order";
 
 const ManageOrders = () => {
@@ -65,11 +64,9 @@ const ManageOrders = () => {
   const refreshOrders = async () => {
     try {
       setIsUpdating(true);
-
-      const response = await axios.get("/orders");
-
+      const response = await fetchOrders();
       // Process the orders to ensure customer names are properly set
-      const processedOrders = response.data.map((order: any) => {
+      const processedOrders = response.map((order: any) => {
         // Ensure customerName is set, falling back to userName if needed
         if (!order.customerName && order.userName) {
           order.customerName = order.userName;
@@ -82,8 +79,6 @@ const ManageOrders = () => {
       });
 
       setOrders(processedOrders);
-
-      console.log("Fetching orders from API:", processedOrders.length);
 
       const sortedOrders = [...processedOrders].sort(
         (a, b) =>
@@ -135,24 +130,7 @@ const ManageOrders = () => {
   useEffect(() => {
     let result = [...orders];
 
-    console.log(
-      "Filtering orders:",
-      orders.length,
-      "Status filter:",
-      statusFilter,
-      "Search query:",
-      searchQuery
-    );
-
-    // Log some sample orders to see their structure
-    if (orders.length > 0) {
-      console.log("Sample order data:", orders[0]);
-      console.log("Customer name field:", orders[0].customerName);
-      console.log("User name field:", orders[0].userName);
-    }
-
     if (statusFilter !== "all") {
-      // Convert status values to lowercase for case-insensitive comparison
       const filterValue = statusFilter.toLowerCase();
       result = result.filter((order) => {
         // Handle case where order.status might be undefined
@@ -163,9 +141,6 @@ const ManageOrders = () => {
         return orderStatus === filterValue;
       });
     }
-
-    // Log the filtered results count by status
-    console.log("Filtered orders count:", result.length);
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
