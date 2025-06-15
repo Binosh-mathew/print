@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import { authState, User } from "../types/auth";
-import { loginUser, logoutUser, registerUser, updateUserProfile } from "@/api";
+import {
+  loginUser,
+  logoutUser,
+  registerUser,
+  updateUserProfile,
+  verifyAuth,
+} from "@/api";
 
 const authStoreKey = "auth_data";
 const jwtExpirationDays = 14 * 24 * 60 * 60; // 14 days in seconds
@@ -16,16 +22,23 @@ const useAuthStore = create<authState>((set, get) => ({
     localStorage.setItem(authStoreKey, JSON.stringify(authData));
   },
 
-  _clearAuthData: () => {
+  _clearAuthData: async () => {
     localStorage.removeItem(authStoreKey);
   },
 
-  _validateAuthData: () => {
+  _validateAuthData:  () => {
+    let user = null;
+      verifyAuth().then((res)=>{user= res}).catch((error)=>{
+        console.log("Error verifying auth:", error);
+        get()._clearAuthData();
+      })
     const authData = localStorage.getItem(authStoreKey);
     const parsedData = JSON.parse(authData || "{}");
     return (
       typeof parsedData.expiresIn === "number" &&
-      parsedData.expiresIn > Date.now()
+      parsedData.expiresIn > Date.now() &&
+      user &&
+      (user as any).id
     );
   },
 
@@ -121,12 +134,12 @@ const useAuthStore = create<authState>((set, get) => ({
     }
   },
 
-  updateUserProfile:async(userData:Partial<User> )=>{
+  updateUserProfile: async (userData: Partial<User>) => {
     set({ loading: true, error: null });
-    
+
     if (!userData || !userData.id) {
       set({ error: "User data is required", loading: false });
-      return; 
+      return;
     }
     try {
       const response = await updateUserProfile(userData.id, userData);

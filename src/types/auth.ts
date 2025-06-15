@@ -10,7 +10,7 @@ export interface User {
 interface InternalMethods {
   _setAuthData: (user: User) => void;
   _clearAuthData: () => void;
-  _validateAuthData: () => boolean;
+  _validateAuthData: () => boolean | null;
   _getAuthData: () => { user: User; expiresIn: number } | null;
 }
 

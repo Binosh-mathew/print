@@ -58,6 +58,21 @@ export const logoutUser = async (): Promise<void> => {
   }
 };
 
+
+export const verifyAuth = async ():Promise<any> =>{
+  try{
+    const response = await axios.get("/auth/verify");
+    return response.data;
+  }catch(error:any){
+    console.error("Verification error:", error);
+    // Handle specific error messages
+    if (error?.response?.data) {
+      throw new Error(error.response.data.message || "Verification failed");
+    }
+    throw new Error("An unexpected error occurred during verification");
+  }
+}
+
 // Order APIs
 export const fetchOrders = async (): Promise<Order[]> => {
   try {
