@@ -132,6 +132,7 @@ router.post("/login", async (req, res) => {
   }
 });
 
+//Logout a user, admin, or developer
 router.post("/logout", auth, (req, res) => {
   // Clear the JWT cookie
   if (!req.cookies.jwt) {
@@ -150,6 +151,42 @@ router.post("/logout", auth, (req, res) => {
   res.status(200).json({
     success: true,
     message: "Logged out successfully",
+  });
+});
+
+router.get("/verify", async (req, res) => {
+  //check if the user is authorized
+  const token = req.cookies.jwt;
+
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized, no token provided",
+    });
+  }
+
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  if (!decoded) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized, invalid token",
+    });
+  }
+
+  const userId = decoded.id;
+
+  const user = await User.findById(userId).select("-password");
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: "User not found",
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "User verified successfully",
+    user,
   });
 });
 
