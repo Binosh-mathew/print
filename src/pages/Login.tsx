@@ -10,6 +10,7 @@ import useAuthStore from "@/store/authStore";
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const { login, isAuthenticated, error, loading } = useAuthStore();
   const navigate = useNavigate();
 
@@ -35,129 +36,114 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-gray-50">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <Link
-          to="/"
-          className="flex justify-center font-bold text-2xl text-primary"
-        >
-          PrintSpark Studio
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-purple-200 via-blue-100 to-white px-4 py-12">
+    <div className="backdrop-blur-lg bg-white/60 shadow-xl rounded-2xl w-full max-w-md p-8 border border-gray-200 animate-fade-in">
+      <Link to="/" className="text-center block text-3xl font-bold text-purple-700">
+        PrintSpark Studio
+      </Link>
+      <h2 className="mt-4 text-center text-xl font-semibold text-gray-800">
+        Sign in to your account
+      </h2>
+      <p className="mt-2 text-center text-sm text-gray-600">
+        Or{" "}
+        <Link to="/register" className="text-purple-600 hover:underline">
+          create a new account
         </Link>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Sign in to your account
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Or{" "}
-          <Link
-            to="/register"
-            className="font-medium text-primary hover:text-primary-500"
-          >
-            create a new account
-          </Link>
-        </p>
-      </div>
+      </p>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                required
-                className="mt-1"
-              />
-            </div>
+      <form onSubmit={handleSubmit} className="space-y-6 mt-6">
+        <div>
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter your email"
+            required
+            className="mt-1"
+          />
+        </div>
 
-            <div>
-              <div className="flex justify-between">
-                <Label htmlFor="password">Password</Label>
-                <Link
-                  to="#"
-                  className="text-sm font-medium text-primary hover:text-primary-500"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                required
-                className="mt-1"
-              />
-            </div>
-
-            <div>
-              <Button
-                type="submit"
-                className="w-full bg-primary hover:bg-primary-500"
-                disabled={loading}
+        <div>
+          <div className="flex justify-between items-center">
+            <Label htmlFor="password">Password</Label>
+            <Link to="#" className="text-sm text-purple-500 hover:underline">
+              Forgot password?
+            </Link>
+          </div>
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password" 
+              required
+              className="mt-1 pr-10"
+            />
+                      <button
+                type="button"
+                className="absolute inset-y-0 right-2 flex items-center text-gray-500 hover:text-primary"
+                onClick={() => setShowPassword(!showPassword)}
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing
-                    in...
-                  </>
+                {showPassword ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10a9.96 9.96 0 012.338-6.338M21 21L3 3" />
+                  </svg>
                 ) : (
-                  "Sign in"
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.522 5 12 5s8.268 2.943 9.542 7a9.959 9.959 0 01-1.664 3.043" />
+                  </svg>
                 )}
-              </Button>
-            </div>
-          </form>
-
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">
-                  Demo Credentials
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-6 grid grid-cols-1 gap-3">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setEmail("user@example.com");
-                  setPassword("user123");
-                  toast({
-                    title: "Demo credentials filled",
-                    description:
-                      "You can now sign in with the demo user account.",
-                  });
-                }}
-                className="w-full text-gray-700 hover:bg-gray-50"
-              >
-                Use demo user account
-              </Button>
-            </div>
+              </button>
           </div>
         </div>
+
+        <Button
+          type="submit"
+          className="w-full bg-purple-600 hover:bg-purple-700 text-white transition-all"
+          disabled={loading}
+        >
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...
+            </>
+          ) : (
+            "Sign in"
+          )}
+        </Button>
+      </form>
+
+      <div className="mt-6 text-center">
+        <div className="text-sm text-gray-500">Demo Credentials</div>
+        <Button
+          variant="outline"
+          className="w-full mt-2 hover:bg-purple-50 text-purple-700"
+          onClick={() => {
+            setEmail("user@example.com");
+            setPassword("user123");
+            toast({
+              title: "Demo credentials filled",
+              description: "You can now sign in with the demo user account.",
+            });
+          }}
+        >
+          Use demo user account
+        </Button>
       </div>
 
-      <div className="mt-8 text-center">
-        <p className="text-sm text-gray-600">
-          Are you an admin?{" "}
-          <Link
-            to="/admin/login"
-            className="font-medium text-primary hover:text-primary-500"
-          >
-            Admin Login
-          </Link>
-        </p>
-      </div>
+      <p className="mt-6 text-center text-sm text-gray-600">
+        Are you an admin?{" "}
+        <Link to="/admin/login" className="text-purple-600 hover:underline">
+          Admin Login
+        </Link>
+      </p>
     </div>
-  );
+  </div>
+);
+
 };
 
 export default Login;

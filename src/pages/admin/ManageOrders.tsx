@@ -545,7 +545,7 @@ const ManageOrders = () => {
         open={isDetailsOpen && !statusChangeCompleted}
         onOpenChange={handleDialogOpenChange}
       >
-        <DialogContent className="sm:max-w-3xl">
+       <DialogContent className="sm:max-w-3xl mt-6 sm:mt-12 max-h-screen overflow-y-auto">
           {selectedOrder && (
             <>
               <div className="print-only" style={{ display: "none" }}>
