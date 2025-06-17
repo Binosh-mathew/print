@@ -1,4 +1,5 @@
 import { Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import useAuthStore from "@/store/authStore";
 
 interface ProtectedRouteProps {
@@ -8,18 +9,30 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute = ({ children, allowedRole }: ProtectedRouteProps) => {
   const { isAuthenticated, user } = useAuthStore();
+  const [redirectPath, setRedirectPath] = useState<string | null>(null);
 
-  // If not authenticated or role doesn't match, redirect accordingly.
-  if (!isAuthenticated || user?.role !== allowedRole) {
-    // Redirect based on the allowed role
-    switch (user?.role) {
-      case "admin":
-        return <Navigate to="/admin/login" />;
-      case "developer":
-        return <Navigate to="/developer/login" />;
-      default:
-        return <Navigate to="/login" />;
+  useEffect(() => {
+    // Only compute redirectPath when auth state changes
+    if (!isAuthenticated || user?.role !== allowedRole) {
+      let path = "/login";
+      
+      if (user) {
+        if (user.role === "admin") {
+          path = "/admin/login";
+        } else if (user.role === "developer") {
+          path = "/developer/login";
+        }
+      }
+      
+      setRedirectPath(path);
+    } else {
+      setRedirectPath(null);
     }
+  }, [isAuthenticated, user?.role, allowedRole]);
+
+  // If we need to redirect, do so
+  if (redirectPath) {
+    return <Navigate to={redirectPath} replace />;
   }
 
   // Otherwise, render protected content

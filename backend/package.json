@@ -22,7 +22,9 @@
     "mongoose": "^8.14.2",
     "morgan": "^1.10.0",
     "multer": "^2.0.1",
-    "multer-storage-cloudinary": "^4.0.0"
+    "multer-storage-cloudinary": "^4.0.0",
+    "resend": "^4.6.0",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",

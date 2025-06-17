@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { useLocation } from 'react-router-dom';
 import MaintenanceMode from './MaintenanceMode';
@@ -13,21 +13,27 @@ const MaintenanceCheck: React.FC<MaintenanceCheckProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const location = useLocation();
   const { user } = useAuthStore();
+  
+  // Use the API URL from environment variables
+  const apiUrl = useMemo(() => {
+    return `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/system/maintenance`;
+  }, []);
+
+  const checkMaintenanceMode = useCallback(async () => {
+    try {
+      const response = await axios.get(apiUrl);
+      setMaintenanceMode(response.data.enabled);
+    } catch (error) {
+      console.error('Error checking maintenance mode:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [apiUrl]);
 
   useEffect(() => {
-    const checkMaintenanceMode = async () => {
-      try {
-        const response = await axios.get('http://localhost:5000/api/system/maintenance');
-        setMaintenanceMode(response.data.enabled);
-      } catch (error) {
-        console.error('Error checking maintenance mode:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     checkMaintenanceMode();
-  }, []);
+    // Only run once on component mount
+  }, [checkMaintenanceMode]);
 
   if (loading) {
     return (

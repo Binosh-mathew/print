@@ -22,9 +22,18 @@ const userSchema = new mongoose.Schema(
       enum: ["user", "admin", "developer"],
       default: "user",
     },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    verificationToken: {
+      type: String,
+    },
+    verificationTokenExpires: {
+      type: Date,
+    },
   },
   { timestamps: true, versionKey: false }
 );
-
 
 export const User = mongoose.model("User", userSchema);

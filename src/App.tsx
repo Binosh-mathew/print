@@ -26,6 +26,7 @@ import PricingSettings from "./pages/admin/PricingSettings";
 import Messages from "./pages/admin/Messages";
 import AdminProfile from "./pages/admin/Profile";
 import NotFound from "./pages/NotFound";
+import VerifyEmail from "./pages/VerifyEmail"; 
 
 // Protected Route Component
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -58,11 +59,11 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <MaintenanceCheck>
-            <Routes>
-              {/* Public Routes */}
+            <Routes>              {/* Public Routes */}
               <Route path="/" element={<Homepage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/verify-email/:token" element={<VerifyEmail />} />
 
               {/* User Protected Routes */}
               <Route

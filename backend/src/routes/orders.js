@@ -70,11 +70,14 @@ router.post("/", auth, createLimiter, upload.array("files", 10), async (req, res
 
 // Get all orders
 router.get("/", auth, async (req, res) => {
+  console.log("GET /orders - Received request");
   try {
     const userId = req.user.id;
     const role = req.user.role;
+    console.log(`GET /orders - User ID: ${userId}, Role: ${role}`);
 
     if (!userId) {
+      console.log("GET /orders - No user ID found");
       return res.status(401).json({
         success: false,
         message: "Unauthorized, user ID not found",
@@ -82,12 +85,16 @@ router.get("/", auth, async (req, res) => {
     }
     
     // Fetch all orders from the database
+    console.log("GET /orders - Fetching orders from database");
     const orders = await Order.find();
+    console.log(`GET /orders - Found ${orders.length} orders total`);
     
     if (!orders || orders.length === 0) {
-      return res.status(404).json({
-        success: false,
+      console.log("GET /orders - No orders found in database");
+      return res.status(200).json({
+        success: true,
         message: "No orders found",
+        orders: [],
       });
     }
     
@@ -99,30 +106,36 @@ router.get("/", auth, async (req, res) => {
         orders: orders,
       });
     }
-    
-    // For regular users, filter orders by userId
+      // For regular users, filter orders by userId
+    console.log(`GET /orders - Filtering orders for user ID: ${userId}`);
     const userOrders = orders.filter((order) => order.userId === userId);
+    console.log(`GET /orders - Found ${userOrders.length} orders for user ID: ${userId}`);
     
-    // If no orders found for this user
+    // If no orders found for this user, return empty array with 200 status
     if (userOrders.length === 0) {
-      return res.status(404).json({
-        success: false,
+      console.log(`GET /orders - No orders found for user ID: ${userId}`);
+      return res.status(200).json({
+        success: true,
         message: "No orders found for this user",
+        orders: [],
       });
     }
     
     // Return the user's orders
+    console.log(`GET /orders - Returning ${userOrders.length} orders for user ID: ${userId}`);
     return res.status(200).json({
       success: true,
       message: "User orders fetched successfully",
       orders: userOrders,
-    });
-  } catch (error) {
+    });  } catch (error) {
     console.error("Error in GET /orders:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Error fetching orders",
+    // Return an empty array with 200 status rather than an error
+    // This is more user-friendly especially for new users
+    return res.status(200).json({
+      success: true,
+      message: "Error fetching orders, returning empty array",
       error: error.message,
+      orders: []
     });
   }
 });

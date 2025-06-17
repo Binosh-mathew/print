@@ -9,7 +9,8 @@ import { Developer } from "../models/Developer.js";
 import { Store } from "../models/Store.js";
 import { LoginActivity } from "../models/LoginActivity.js";
 import { auth } from "../middleware/auth.js";
-import { request } from "http";
+import { v4 as uuidv4 } from "uuid";
+import { sendVerificationEmail } from "../utils/emailService.js";
 
 const router = Router();
 
@@ -37,19 +38,47 @@ router.post("/register", async (req, res) => {
         message: "Internal server error: unable to hash password",
       });
     }
-    const user = new User({ username, email, password: hashedPassword });
+    
+    // Generate verification token and expiry (24 hours from now)
+    const verificationToken = uuidv4();
+    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    
+    // Create user with verification data
+    const user = new User({ 
+      username, 
+      email, 
+      password: hashedPassword,
+      isVerified: false,
+      verificationToken,
+      verificationTokenExpires
+    });
     await user.save();
+    
+    // Send verification email
+    try {
+      await sendVerificationEmail(email, verificationToken, username);
+      console.log("Verification email sent to:", email);
+    } catch (emailError) {
+      console.error("Failed to send verification email:", emailError);
+      // We continue with user creation even if email fails
+      // A resend verification option will be available
+    }
 
     res.status(201).json({
       success: true,
-      message: "User registered successfully",
-      user,
+      message: "User registered successfully. Please check your email to verify your account.",
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        isVerified: user.isVerified
+      }
     });
   } catch (error) {
     console.error("Error registering user:", error);
     res.status(500).json({
       success: false,
-      message: "Internal server error:Error registering user",
+      message: "Internal server error: Error registering user",
       error,
     });
   }
@@ -84,6 +113,15 @@ router.post("/login", async (req, res) => {
       }
     } else {
       user = await User.findOne({ email });
+      
+      // Check if regular user is verified (only for regular users, not admin or developer)
+      if (user && role === "user" && !user.isVerified) {
+        return res.status(403).json({ 
+          success: false,
+          message: "Please verify your email before logging in",
+          needsVerification: true 
+        });
+      }
     }
 
     if (!user) {
@@ -264,6 +302,141 @@ router.get("/:email", auth, async (req, res) => {
     });
   } catch (error) {
     console.log(error);
+  }
+});
+
+// Verify Email Route
+router.get("/verify-email/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+    
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "Verification token is required"
+      });
+    }
+    
+    console.log(`Verifying email with token: ${token}`);
+    
+    // Find user with this token that hasn't expired yet
+    const user = await User.findOne({
+      verificationToken: token,
+      verificationTokenExpires: { $gt: Date.now() }
+    });
+    
+    if (!user) {
+      console.log(`No user found with token: ${token}`);
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired verification token"
+      });
+    }
+    
+    console.log(`Found user: ${user.email} with valid token`);
+    
+      // Mark the user as verified and clear the token
+    user.isVerified = true;
+    user.verificationToken = undefined;
+    user.verificationTokenExpires = undefined;
+    await user.save();
+    
+    console.log(`Successfully verified email for user: ${user.email}`);
+    
+    return res.status(200).json({
+      success: true,
+      message: "Email verified successfully. You can now log in."
+    });
+  } catch (error) {
+    console.error("Error verifying email:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error verifying email",
+      error: error.message
+    });
+  }
+});
+
+// Resend Verification Email
+router.post("/resend-verification", async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required"
+      });
+    }
+    
+    const user = await User.findOne({ email });
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+    
+    if (user.isVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is already verified"
+      });
+    }
+    
+    // Generate new verification token and expiry
+    const verificationToken = uuidv4();
+    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    
+    // Update user with new token
+    user.verificationToken = verificationToken;
+    user.verificationTokenExpires = verificationTokenExpires;
+    await user.save();
+    
+    // Send new verification email
+    await sendVerificationEmail(user.email, verificationToken, user.username);
+    
+    return res.status(200).json({
+      success: true,
+      message: "Verification email sent successfully"
+    });
+  } catch (error) {
+    console.error("Error resending verification email:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error resending verification email",
+      error: error.message
+    });
+  }
+});
+
+// Check if an email exists
+router.post("/check-email", async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required"
+      });
+    }
+    
+    // Check if the email exists in the User collection
+    const user = await User.findOne({ email });
+    
+    return res.status(200).json({
+      success: true,
+      exists: !!user
+    });
+  } catch (error) {
+    console.error("Error checking email existence:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error checking email",
+      error: error.message
+    });
   }
 });
 

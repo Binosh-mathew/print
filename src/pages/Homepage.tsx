@@ -34,10 +34,9 @@ const Homepage = () => {
               >
                 Login
               </Button>
-            </Link>
-            <Link to="/register">
+            </Link>            <Link to="/register">
               <Button className="bg-primary hover:bg-primary-500">
-                Register
+                Sign Up
               </Button>
             </Link>
           </div>
@@ -56,10 +55,9 @@ const Homepage = () => {
                 Upload your documents, customize your order, and get your prints
                 without waiting in line.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link to="/register">
+              <div className="flex flex-col sm:flex-row gap-4">                <Link to="/register">
                   <Button className="bg-primary hover:bg-primary-500 text-white px-8 py-6 rounded-lg text-lg">
-                    Get Started
+                    Sign Up
                   </Button>
                 </Link>
                 <Link to="/login">
@@ -174,12 +172,11 @@ const Homepage = () => {
       <section className="py-16 bg-primary-400 text-white">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-4">Ready to get started?</h2>
-          <p className="text-xl mb-8 max-w-2xl mx-auto">
-            Register now and get your first 10 black and white prints free!
+          <p className="text-xl mb-8 max-w-2xl mx-auto">            Sign up now and get your first 10 black and white prints free!
           </p>
           <Link to="/register">
             <Button className="bg-white text-primary hover:bg-gray-100 px-8 py-3 rounded-lg text-lg font-medium">
-              Create Account <ArrowRight className="ml-2" size={18} />
+              Sign Up <ArrowRight className="ml-2" size={18} />
             </Button>
           </Link>
         </div>
@@ -208,12 +205,11 @@ const Homepage = () => {
                     Login
                   </Link>
                 </li>
-                <li>
-                  <Link
+                <li>                  <Link
                     to="/register"
                     className="text-gray-400 hover:text-white"
                   >
-                    Register
+                    Sign Up
                   </Link>
                 </li>
               </ul>

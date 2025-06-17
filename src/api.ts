@@ -47,9 +47,18 @@ export const registerUser = async (
     return response.data;
   } catch (error: any) {
     console.error("Registration error:", error);
-    // Handle specific error messages
+    
+    // Check for existing user error
+    if (error?.response?.status === 400 && 
+        error?.response?.data?.message?.includes("User already exists")) {
+      console.log("User already exists error detected");
+      throw new Error("User already exists");
+    }
+    
+    // Handle other error messages
     if (error?.response?.data) {
-      throw new Error(error?.response?.data?.message || "Registration failed");
+      const errorMessage = error?.response?.data?.message || "Registration failed";
+      throw new Error(errorMessage);
     }
     throw new Error("An unexpected error occurred during registration");
   }
@@ -64,8 +73,15 @@ export const loginUser = async (
     const response = await axios.post("/auth/login", { email, password, role });
     return response.data.user;
   } catch (error: any) {
-    // Handle specific error messages
+    // Handle specific error messages including email verification errors
     if (error?.response?.data) {
+      // Check if this is a verification error
+      if (error.response.data.needsVerification) {
+        const verificationError = new Error(error.response.data.message || "Email verification required");
+        // Add a custom property to indicate verification is needed
+        (verificationError as any).needsVerification = true;
+        throw verificationError;
+      }
       throw new Error(error.response.data.message || "Login failed");
     }
     throw new Error("An unexpected error occurred during login");
@@ -103,20 +119,44 @@ export const verifyAuth = async ():Promise<any> =>{
 // Order APIs
 export const fetchOrders = async (): Promise<Order[]> => {
   try {
+    console.log("Fetching orders from API...");
+    console.log("API URL:", axios.defaults.baseURL);
     const response = await axios.get("/orders");
-    // Check both possible response structures
+    console.log("Orders response received:", response);
+    
+    // Check if we got orders in the response
     if (response.data.orders && Array.isArray(response.data.orders)) {
+      console.log(`Retrieved ${response.data.orders.length} orders`);
       return response.data.orders;
     } else if (Array.isArray(response.data)) {
+      console.log(`Retrieved ${response.data.length} orders`);
       return response.data;
     }
+    
+    // If we got a successful response but no orders property or it's not an array,
+    // return empty array as the proper way to represent "no orders"
+    console.log("No orders found for user - this is normal for new users");
     return [];
   } catch (error: any) {
-    // Handle specific error messages
-    if (error?.response?.data) {
-      throw new Error(error.response.data.message || "Failed to fetch orders");
+    console.error("Error fetching orders:", error);
+    console.log("Response data:", error?.response?.data);
+    console.log("Response status:", error?.response?.status);
+    
+    // For backward compatibility, still handle 404 "No orders found" as a non-error case
+    if (error?.response?.status === 404) {
+      console.log("Received 404 - No orders found");
+      return []; // Return empty array for 404 responses
     }
-    throw new Error("An unexpected error occurred while fetching orders");
+    
+    // Check for authentication issues
+    if (error?.response?.status === 401) {
+      console.log("Authentication error when fetching orders");
+      throw new Error("Authentication error - please log in again");
+    }
+    
+    // Return empty array for any error to prevent breaking the UI
+    console.log("Returning empty array due to error");
+    return [];
   }
 };
 
@@ -494,4 +534,15 @@ export const createAdmin = async (adminData: {
 }): Promise<any> => {
   const response = await axios.post(`/create-admin`, adminData);
   return response.data;
+};
+
+export const checkEmailExists = async (email: string): Promise<boolean> => {
+  try {
+    console.log("Checking if email exists:", email);
+    const response = await axios.post("/auth/check-email", { email });
+    return response.data.exists;
+  } catch (error) {
+    console.error("Error checking email existence:", error);
+    return false;
+  }
 };

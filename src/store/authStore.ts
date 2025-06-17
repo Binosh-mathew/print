@@ -5,7 +5,6 @@ import {
   logoutUser,
   registerUser,
   updateUserProfile,
-  verifyAuth,
 } from "@/api";
 
 const authStoreKey = "auth_data";
@@ -25,21 +24,23 @@ const useAuthStore = create<authState>((set, get) => ({
   _clearAuthData: async () => {
     localStorage.removeItem(authStoreKey);
   },
-
-  _validateAuthData:  () => {
-    let user = null;
-      verifyAuth().then((res)=>{user= res}).catch((error)=>{
-        console.log("Error verifying auth:", error);
-        get()._clearAuthData();
-      })
-    const authData = localStorage.getItem(authStoreKey);
-    const parsedData = JSON.parse(authData || "{}");
-    return (
-      typeof parsedData.expiresIn === "number" &&
-      parsedData.expiresIn > Date.now() &&
-      user &&
-      (user as any).id
-    );
+  _validateAuthData: () => {
+    try {
+      const authData = localStorage.getItem(authStoreKey);
+      const parsedData = JSON.parse(authData || "{}");
+      
+      // Only validate based on expiration time for now 
+      // to avoid async operations that can cause render loops
+      return (
+        typeof parsedData.expiresIn === "number" &&
+        parsedData.expiresIn > Date.now() &&
+        parsedData.user &&
+        parsedData.user.id
+      );
+    } catch (error) {
+      console.error("Error validating auth data:", error);
+      return false;
+    }
   },
 
   _getAuthData: () => {
@@ -87,50 +88,56 @@ const useAuthStore = create<authState>((set, get) => ({
         loading: false,
       });
     }
-  },
-  register: async (name, email, password, confirmPassword) => {
+  },  register: async (name, email, password, confirmPassword) => {
     set({ loading: true, error: null });
 
     if (!name || !email || !password || !confirmPassword) {
       set({ error: "All fields are required", loading: false });
-      return;
+      throw new Error("All fields are required");
     }
     if (password.length < 6) {
       set({
         error: "Password must be at least 6 characters long",
         loading: false,
       });
-      return;
+      throw new Error("Password must be at least 6 characters long");
     }
     if (password !== confirmPassword) {
       set({ error: "Passwords do not match", loading: false });
-      return;
-    }
+      throw new Error("Passwords do not match");
+    }    
+    
     try {
-      const response = await registerUser(name, email, password);
-      const userData: User = {
-        id: response?.id,
-        username: response?.username,
-        email: response?.email,
-        role: response?.role,
-      };
+      console.log("Auth Store: Calling registerUser API");
+      await registerUser(name, email, password);
+        console.log("Auth Store: Registration API call successful");
+      // Since we've implemented email verification, the user isn't authenticated yet
+      // Just return success and let the UI show the "check your email" message
       set({
-        user: userData,
-        isAuthenticated: true,
+        user: null,
+        isAuthenticated: false,
         loading: false,
-        isAdmin: userData.role === "admin",
-        role: userData.role,
-        error: null,
+        isAdmin: false,
+        role: null,
+        error: null
       });
-
-      get()._setAuthData(userData);
+      
+      // Don't store auth data since the user needs to verify email first
     } catch (error) {
+      console.log("Auth Store: Registration error caught:", error);
       get()._clearAuthData();
+      
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      
       set({
-        error:
-          error instanceof Error ? error.message : "Unknown error occurred",
+        user: null,
+        isAuthenticated: false,
         loading: false,
+        error: errorMessage
       });
+      
+      // Re-throw the error so the component can handle it
+      throw error;
     }
   },
 

@@ -19,20 +19,24 @@ const UserDashboard = () => {
     completedOrders: 0,
   });
   const [orders, setOrders] = useState<Order[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
+  const [isLoading, setIsLoading] = useState(true);  useEffect(() => {
     const getOrders = async () => {
       try {
+        console.log("Dashboard: Fetching orders");
         setIsLoading(true);
         const response = await apiGetOrders();
-        console.log("API Response:", response);
+        console.log("Dashboard: API Response:", response);
+        
+        // Always ensure we have an array, even if empty
         setOrders(Array.isArray(response) ? response : []);
+        
       } catch (error: any) {
-        console.error("Error fetching orders:", error);
-        if (error.response) {
-          console.error("Error details:", error.response.data);
-        }
+        console.error("Dashboard: Error fetching orders:", error);
+        
+        // Handle any errors by setting empty orders array
+        // This prevents the UI from breaking
+        setOrders([]);
+        
       } finally {
         setIsLoading(false);
       }
