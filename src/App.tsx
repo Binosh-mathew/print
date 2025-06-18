@@ -46,10 +46,63 @@ import useAuthStore from "./store/authStore";
 
 const queryClient = new QueryClient();
 const App = () => {
-  const { initialize ,user} = useAuthStore();
-
-  useEffect(() => {
+  const { initialize } = useAuthStore();  useEffect(() => {
+    console.log("App.tsx: Initializing auth store");
+    // Run initialization on app start
     initialize();
+    
+    // Add a listener for storage events to handle multi-tab scenarios
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === "auth_data") {
+        console.log("Auth data changed in another tab, re-initializing");
+        initialize();
+      }
+    };
+    
+    window.addEventListener("storage", handleStorageChange);
+    
+    // Set up Firebase auth state listener
+    const setupFirebaseAuthListener = async () => {
+      try {
+        const { auth } = await import("./config/firebase");
+        const { onAuthStateChanged } = await import("firebase/auth");
+        
+        // Listen for Firebase auth state changes
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+          if (user) {
+            console.log("Firebase auth state changed - user signed in");
+          } else {
+            console.log("Firebase auth state changed - user signed out");
+          }
+        });
+        
+        return unsubscribe;
+      } catch (error) {
+        console.error("Failed to set up Firebase auth listener:", error);
+        return null;
+      }
+    };
+    
+    // Start listening to Firebase auth events
+    let authUnsubscribe: (() => void) | null = null;
+    setupFirebaseAuthListener().then(unsubscribe => {
+      authUnsubscribe = unsubscribe;
+    });
+    
+    // Cleanup function
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      
+      // Clean up Firebase auth listener
+      if (authUnsubscribe) {
+        authUnsubscribe();
+      }
+      
+      // Clear any session refresh intervals
+      if ((window as any).__authRefreshInterval) {
+        clearInterval((window as any).__authRefreshInterval);
+      }
+    };
   }, [initialize]);
 
   return (
@@ -57,10 +110,10 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <BrowserRouter basename="/">
           <MaintenanceCheck>
             <Routes>              {/* Public Routes */}
-              <Route path="/" element={<Homepage />} />
+              <Route path="/" element={<Homepage />} index={true} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/verify-email/:token" element={<VerifyEmail />} />

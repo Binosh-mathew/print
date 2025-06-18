@@ -154,8 +154,7 @@ router.post("/login", async (req, res) => {
       timestamp: new Date(),
       ipAddress: req.ip,
       action: "login",
-    });
-    res.json({
+    });    res.json({
       success: true,
       message: "Login successful",
       user: {
@@ -164,6 +163,7 @@ router.post("/login", async (req, res) => {
         email: user.email,
         role: user.role,
       },
+      token: token, // Include the token in the response
     });
   } catch (error) {
     res.status(500).json({ message: "Error logging in", error });
@@ -171,21 +171,19 @@ router.post("/login", async (req, res) => {
 });
 
 //Logout a user, admin, or developer
-router.post("/logout", auth, (req, res) => {
-  // Clear the JWT cookie
-  if (!req.cookies.jwt) {
-    return res
-      .status(400)
-      .json({ success: false, message: "No user logged in" });
+router.post("/logout", (req, res) => {
+  // For backward compatibility, still try to clear the JWT cookie if it exists
+  if (req.cookies.jwt) {
+    res.clearCookie("jwt", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+    });
   }
-
-  res.clearCookie("jwt", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    path: "/",
-  });
-
+  
+  // Always return success, even if there's no cookie
+  // Since we're now using Authorization header, the client will handle token removal
   res.status(200).json({
     success: true,
     message: "Logged out successfully",
@@ -436,6 +434,105 @@ router.post("/check-email", async (req, res) => {
       success: false,
       message: "Error checking email",
       error: error.message
+    });
+  }
+});
+
+// Google Auth
+router.post("/google-auth", async (req, res) => {
+  try {
+    const { email, name, photoURL, uid, syncProfile } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    // Find if user exists already
+    let user = await User.findOne({ email });
+    let isNewUser = false;
+    
+    if (!user) {
+      // Create new user if doesn't exist
+      isNewUser = true;
+      
+      // Generate a secure random password for Google Auth users
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(uid + "-FIREBASE-AUTH", salt);
+      
+      user = new User({
+        username: name || email.split("@")[0],
+        email,
+        password: hashedPassword, // Use hashed password to meet the schema requirement
+        isVerified: true, // Auto-verified since it's coming from Google
+        photoURL,
+        authProvider: 'google',
+        lastLogin: new Date(),
+        googleUserId: uid
+      });
+      
+      await user.save();
+    } else {
+      // Existing user - update their profile if requested
+      if (syncProfile) {
+        // Update profile data from Google
+        user.username = name || user.username;
+        user.photoURL = photoURL || user.photoURL;
+        user.isVerified = true; // Always ensure Google users are verified
+        user.lastLogin = new Date();
+        user.authProvider = 'google'; // Mark as Google auth user
+        user.googleUserId = uid || user.googleUserId;
+        
+        await user.save();
+      } else {
+        // Just update login time
+        user.lastLogin = new Date();
+        await user.save();
+      }
+    }
+    
+    // Generate JWT token
+    const token = jwt.sign(
+      {
+        id: user._id,
+        role: user.role,
+        name: user.username,
+        email: user.email,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "14d" }
+    );
+    
+    // Record login activity
+    await LoginActivity.create({
+      userName: user.username,
+      userRole: user.role,
+      timestamp: new Date(),
+      ipAddress: req.ip,
+      action: "login-google",
+    });
+    
+    res.status(200).json({
+      success: true,
+      message: "Google authentication successful",
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        photoURL: user.photoURL || photoURL
+      },
+      token
+    });
+    
+  } catch (error) {
+    console.error("Google auth error:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Error with Google authentication", 
+      error: error.message 
     });
   }
 });

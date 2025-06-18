@@ -3,8 +3,11 @@ import { useToast } from "@/components/ui/use-toast";
 import {
   registerUser,
   loginUser,
+  googleAuthLogin,
   updateUserProfile as apiUpdateUserProfile,
 } from "@/api";
+import { auth, googleProvider } from "@/config/firebase";
+import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 
 // Define types
 interface User {
@@ -14,6 +17,7 @@ interface User {
   email: string;
   role: "user" | "admin" | "developer";
   token?: string;
+  photoURL?: string;
 }
 
 type AuthContextType = {
@@ -28,6 +32,7 @@ type AuthContextType = {
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   updateUserProfile: (userData: Partial<User>) => Promise<User>;
+  signInWithGoogle: () => Promise<boolean>;
 };
 
 // Create context with default values
@@ -42,6 +47,7 @@ const AuthContext = createContext<AuthContextType>({
     throw new Error("Not implemented");
     return {} as User; // This line is never reached due to the error above
   },
+  signInWithGoogle: async () => false,
 });
 
 // Hook to use auth context
@@ -208,6 +214,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsLoading(false);
     }
   };
+  // Google Sign-in method
+  const signInWithGoogle = async (): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const userData = result.user;
+
+      // Call your backend to create or get the user
+      const googleData = {
+        email: userData.email || "",
+        name: userData.displayName || userData.email?.split("@")[0] || "User",
+        photoURL: userData.photoURL || undefined,
+        uid: userData.uid
+      };
+      
+      const backendUserData = await googleAuthLogin(googleData);
+
+      // Prepare user data for context
+      const userToSave: User = {
+        id: backendUserData.user.id || userData.uid,
+        name: backendUserData.user.username || userData.displayName || "User",
+        email: userData.email || "",
+        role: backendUserData.user.role || "user",
+        token: backendUserData.token,
+        photoURL: userData.photoURL || undefined,
+      };
+
+      setUser(userToSave);
+      localStorage.setItem("printShopUser", JSON.stringify(userToSave));
+
+      toast({
+        title: "Login successful",
+        description: `Welcome, ${userToSave.name}!`,
+      });
+
+      return true;
+    } catch (error: any) {
+      console.error("Google sign-in error:", error);
+      toast({
+        title: "Login failed",
+        description: error.message || "Failed to sign in with Google",
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <AuthContext.Provider
@@ -219,6 +273,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         register,
         logout,
         updateUserProfile,
+        signInWithGoogle,
       }}
     >
       {children}
