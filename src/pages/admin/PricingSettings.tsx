@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import { Loader2, Save, CreditCard, FileText, Printer, Info, BookOpen, Layers } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { fetchStores, updateStorePricing } from '@/api';
@@ -37,6 +38,7 @@ const PricingSettings = () => {
       spiralBinding: 0,
       staplingBinding: 0,
       hardcoverBinding: 0,
+      isAvailable: true,
     },
     paperTypes: {
       normal: 0,
@@ -73,6 +75,11 @@ const PricingSettings = () => {
                 spiralBinding: store.pricing.binding?.spiralBinding || 0,
                 staplingBinding: store.pricing.binding?.staplingBinding || 0,
                 hardcoverBinding: store.pricing.binding?.hardcoverBinding || 0,
+                // @ts-ignore - isAvailable might not be in the backend type yet
+                isAvailable: store.pricing.binding?.isAvailable !== undefined 
+                  // @ts-ignore - isAvailable might not be in the backend type yet
+                  ? store.pricing.binding.isAvailable 
+                  : true, // Default to true if not present in backend
               },
               paperTypes: {
                 normal: store.pricing.paperTypes?.normal || 0,
@@ -122,6 +129,11 @@ const PricingSettings = () => {
     bindingType: keyof typeof prices.binding,
     value: string
   ) => {
+    // If binding is not available, prevent price changes
+    if (!prices.binding.isAvailable && bindingType !== 'isAvailable') {
+      return;
+    }
+    
     const numericValue = parseFloat(value) || 0;
     setPrices({
       ...prices,
@@ -156,7 +168,19 @@ const PricingSettings = () => {
       }
       
       // Update pricing in the backend
-      const response = await updateStorePricing(storeId, prices);
+      // Send all pricing data including isAvailable
+      const pricingData = {
+        ...prices,
+        // Make sure to include isAvailable in the binding object
+        binding: {
+          spiralBinding: prices.binding.spiralBinding,
+          staplingBinding: prices.binding.staplingBinding,
+          hardcoverBinding: prices.binding.hardcoverBinding,
+          isAvailable: prices.binding.isAvailable
+        }
+      };
+      
+      await updateStorePricing(storeId, pricingData);
       
       // Update the last updated date
       setLastUpdated(new Date().toLocaleDateString());
@@ -324,13 +348,35 @@ const PricingSettings = () => {
             <TabsContent value="binding" className="space-y-6 mt-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center text-xl">
-                    <BookOpen className="mr-2 h-5 w-5" />
-                    Binding Options
-                  </CardTitle>
-                  <CardDescription>
-                    Set pricing for different binding types
-                  </CardDescription>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="flex items-center text-xl">
+                        <BookOpen className="mr-2 h-5 w-5" />
+                        Binding Options
+                      </CardTitle>
+                      <CardDescription>
+                        Set pricing for different binding types
+                      </CardDescription>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor="binding-availability" className="text-sm font-medium">
+                        {prices.binding.isAvailable ? 'Available' : 'Unavailable'}
+                      </Label>
+                      <Switch 
+                        id="binding-availability" 
+                        checked={prices.binding.isAvailable}
+                        onCheckedChange={(checked) => 
+                          setPrices(prev => ({
+                            ...prev,
+                            binding: {
+                              ...prev.binding,
+                              isAvailable: checked
+                            }
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -346,6 +392,7 @@ const PricingSettings = () => {
                           className="pl-8"
                           min="0"
                           step="1"
+                          disabled={!prices.binding.isAvailable}
                         />
                       </div>
                     </div>
@@ -362,6 +409,7 @@ const PricingSettings = () => {
                           className="pl-8"
                           min="0"
                           step="1"
+                          disabled={!prices.binding.isAvailable}
                         />
                       </div>
                     </div>
@@ -378,6 +426,7 @@ const PricingSettings = () => {
                           className="pl-8"
                           min="0"
                           step="1"
+                          disabled={!prices.binding.isAvailable}
                         />
                       </div>
                     </div>

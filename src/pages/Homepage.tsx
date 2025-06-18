@@ -63,7 +63,7 @@ const Homepage = () => {
                 <Link to="/login">
                   <Button
                     variant="outline"
-                    className="border-primary text-primary hover:bg-primary-100 px-8 py-6 rounded-lg text-lg"
+                    className="border-primary text-primary hover:bg-primary px-8 py-6 rounded-lg text-lg"
                   >
                     Login
                   </Button>

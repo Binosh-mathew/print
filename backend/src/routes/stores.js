@@ -95,7 +95,7 @@ router.get("/:id", auth, async (req, res) => {
     if (!store) {
       return res.status(404).json({ message: "Store not found" });
     }
-    res.json(store);
+    res.status(200).json(store);
   } catch (error) {
     res.status(500).json({ message: "Error fetching store", error });
   }
@@ -108,7 +108,7 @@ router.put("/:id", async (req, res) => {
       new: true,
     });
     if (!store) return res.status(404).json({ message: "Store not found" });
-    res.json(store);
+    res.status(200).json(store);
   } catch (error) {
     res.status(500).json({ message: "Error updating store", error });
   }
