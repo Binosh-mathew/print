@@ -142,14 +142,11 @@ export const verifyAuth = async ():Promise<any> =>{
 // Order APIs
 export const fetchOrders = async (): Promise<Order[]> => {
   try {
-    console.log("Fetching orders from API...");
-    console.log("API URL:", axios.defaults.baseURL);
     const response = await axios.get("/orders");
     console.log("Orders response received:", response);
     
     // Check if we got orders in the response
     if (response.data.orders && Array.isArray(response.data.orders)) {
-      console.log(`Retrieved ${response.data.orders.length} orders`);
       return response.data.orders;
     } else if (Array.isArray(response.data)) {
       console.log(`Retrieved ${response.data.length} orders`);

@@ -66,6 +66,7 @@ const ManageOrders = () => {
     try {
       setIsUpdating(true);
       const response = await fetchOrders();
+      console.log(response)
       // Process the orders to ensure customer names are properly set
       const processedOrders = response.map((order: any) => {
         // Ensure customerName is set, falling back to userName if needed

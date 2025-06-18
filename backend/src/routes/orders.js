@@ -99,7 +99,7 @@ router.get("/", auth, async (req, res) => {
     }
     
     // If user is admin or developer, return all orders
-    if (role === "admin" || role === "developer") {
+    if (role === "developer") {
       return res.status(200).json({
         success: true,
         message: "All orders fetched successfully",

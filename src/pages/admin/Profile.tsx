@@ -22,7 +22,10 @@ const AdminProfile: React.FC = () => {
       try {
         setLoading(true);
         const data = await fetchAdminStoreProfile();
+        console.log(data)
         setStoreProfile(data);
+
+
         setError(null);
       } catch (err: any) {
         setError(err.message || 'Failed to load store profile');
