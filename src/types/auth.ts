@@ -5,13 +5,21 @@ export interface User {
   username: string;
   email: string;
   role: string;
+  photoURL?: string;
+}
+
+export interface GoogleAuthData {
+  email: string;
+  name: string;
+  photoURL?: string;
+  uid: string;
 }
 
 interface InternalMethods {
-  _setAuthData: (user: User) => void;
+  _setAuthData: (user: User, token?: string) => void;
   _clearAuthData: () => void;
   _validateAuthData: () => boolean | null;
-  _getAuthData: () => { user: User; expiresIn: number } | null;
+  _getAuthData: () => { user: User; expiresIn: number; token?: string } | null;
 }
 
 export interface authState extends InternalMethods {
@@ -21,6 +29,7 @@ export interface authState extends InternalMethods {
   error?: string | null;
   role: string | null;
   isAdmin: boolean;
+  loginWithGoogle: (googleData: GoogleAuthData) => Promise<boolean>;
   login: (email: string, password: string, role: string) => Promise<void>;
   register: (
     name: string,
@@ -31,5 +40,6 @@ export interface authState extends InternalMethods {
   updateUserProfile: (userData: Partial<User>) => Promise<void>;
   logout: () => void;
   checkauth: () => boolean | void;
+  refreshSession: () => Promise<boolean | void>;
   initialize: () => void;
 }

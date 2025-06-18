@@ -71,7 +71,11 @@ export const loginUser = async (
 ): Promise<any> => {
   try {
     const response = await axios.post("/auth/login", { email, password, role });
-    return response.data.user;
+    // Return both user and token
+    return {
+      ...response.data.user,
+      token: response.data.token
+    };
   } catch (error: any) {
     // Handle specific error messages including email verification errors
     if (error?.response?.data) {
@@ -85,6 +89,25 @@ export const loginUser = async (
       throw new Error(error.response.data.message || "Login failed");
     }
     throw new Error("An unexpected error occurred during login");
+  }
+};
+
+export const googleAuthLogin = async (
+  userData: { email: string; name: string; photoURL?: string; uid: string }
+): Promise<any> => {
+  try {
+    // Send refresh option to indicate if profile should be refreshed with latest Google data
+    const response = await axios.post("/auth/google-auth", {
+      ...userData,
+      syncProfile: true // Always sync profile data on login
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error("Google auth error:", error);
+    if (error?.response?.data) {
+      throw new Error(error.response.data.message || "Google authentication failed");
+    }
+    throw new Error("An unexpected error occurred during Google authentication");
   }
 };
 

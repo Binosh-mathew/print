@@ -26,11 +26,32 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    authProvider: {
+      type: String,
+      enum: ["local", "google", "facebook", "twitter"],
+      default: "local",
+    },
+    googleUserId: {
+      type: String,
+      sparse: true,
+      index: true,
+    },
+    lastLogin: {
+      type: Date,
+      default: Date.now,
+    },
+    loginCount: {
+      type: Number,
+      default: 0,
+    },
     verificationToken: {
       type: String,
     },
     verificationTokenExpires: {
       type: Date,
+    },
+    photoURL: {
+      type: String,
     },
   },
   { timestamps: true, versionKey: false }
