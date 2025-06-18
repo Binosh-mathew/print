@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import useAuthStore from "@/store/authStore";
@@ -242,23 +242,25 @@ const Login = () => {
     } finally {
       setGoogleLoading(false);
     }
-  };
+  };  
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-purple-200 via-blue-100 to-white px-4 py-12">
-      <div className="backdrop-blur-lg bg-white/60 shadow-xl rounded-2xl w-full max-w-md p-8 border border-gray-200 animate-fade-in">
-        <Link to="/" className="text-center block text-3xl font-bold text-purple-700">
-          PrintSpark Studio
-        </Link>
-        <h2 className="mt-4 text-center text-xl font-semibold text-gray-800">
-          Sign in to your account
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Or{" "}
-          <Link to="/register" className="text-purple-600 hover:underline">
-            create a new account
-          </Link>
-        </p>
+  return (    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-8">
+      <div className="bg-white shadow-2xl rounded-3xl w-full max-w-md p-6 transform animate-scale-in"><div className="flex flex-col items-center mb-5">          <Link to="/" className="text-center block transition-transform hover:scale-105 flex flex-col items-center">            <div className="h-14 w-14 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-full flex items-center justify-center mb-3 shadow-md mx-auto">
+              <span className="text-xl font-extrabold text-white flex items-center justify-center h-full w-full">PS</span>
+            </div>
+            <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-indigo-600">
+              PrintSpark
+            </span>
+          </Link>          <h2 className="mt-4 text-center text-2xl font-bold text-gray-900 animate-slide-in-bottom">
+            Welcome back
+          </h2>
+          <p className="mt-1 text-center text-sm text-gray-600">
+            New to PrintSpark?{" "}
+            <Link to="/register" className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
+              Create an account
+            </Link>
+          </p>
+        </div>
 
         {needsVerification ? (
           <div className="mt-6 space-y-4">
@@ -282,7 +284,7 @@ const Login = () => {
             <div className="flex gap-2">
               <Button
                 type="button"
-                className="flex-1"
+                className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white transition-all"
                 onClick={handleResendVerification}
                 disabled={loading}
               >
@@ -302,14 +304,14 @@ const Login = () => {
           </div>
         ) : verificationSuccess ? (
           <div className="mt-6 space-y-4">
-            <Alert className="bg-green-50 border-green-200">
+            <Alert className="bg-green-50 border-green-200 animate-pulse">
               <CheckCircle2 className="h-5 w-5 text-green-600" />
               <AlertDescription className="text-green-800">
                 Your email has been verified successfully! You can now log in to your account.
               </AlertDescription>
             </Alert>
             
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -326,7 +328,7 @@ const Login = () => {
               <div>
                 <div className="flex justify-between items-center">
                   <Label htmlFor="password">Password</Label>
-                  <Link to="#" className="text-sm text-purple-500 hover:underline">
+                  <Link to="#" className="text-sm text-indigo-600 hover:text-indigo-500 transition-colors">
                     Forgot password?
                   </Link>
                 </div>
@@ -342,26 +344,17 @@ const Login = () => {
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 right-2 flex items-center text-gray-500 hover:text-primary"
+                    className="absolute inset-y-0 right-2 flex items-center text-gray-500 hover:text-indigo-600 transition-colors"
                     onClick={() => setShowPassword(!showPassword)}
                   >
-                    {showPassword ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10a9.96 9.96 0 012.338-6.338M21 21L3 3" />
-                      </svg>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.522 5 12 5s8.268 2.943 9.542 7a9.959 9.959 0 01-1.664 3.043" />
-                      </svg>
-                    )}
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
               </div>
               
               <Button
                 type="submit"
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white transition-all"
+                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white transition-all"
                 disabled={loading}
               >
                 {loading ? (
@@ -385,7 +378,7 @@ const Login = () => {
               <Button
                 type="button"
                 variant="outline"
-                className="w-full flex items-center justify-center gap-2"
+                className="w-full flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors"
                 onClick={handleGoogleSignIn}
                 disabled={googleLoading}
               >
@@ -416,8 +409,15 @@ const Login = () => {
             </form>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-6 mt-6">
-            <div>
+          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+            {error && (
+              <Alert className="bg-red-50 border-red-200 animate-slide-in-bottom">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+                <AlertDescription className="text-red-700">{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="animate-slide-in-bottom" style={{ animationDelay: "50ms" }}>
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -426,14 +426,14 @@ const Login = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
                 required
-                className="mt-1"
+                className="mt-1 transition-all focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
-            <div>
+            <div className="animate-slide-in-bottom" style={{ animationDelay: "100ms" }}>
               <div className="flex justify-between items-center">
                 <Label htmlFor="password">Password</Label>
-                <Link to="#" className="text-sm text-purple-500 hover:underline">
+                <Link to="#" className="text-sm text-indigo-600 hover:text-indigo-500 transition-colors">
                   Forgot password?
                 </Link>
               </div>
@@ -445,40 +445,33 @@ const Login = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password" 
                   required
-                  className="mt-1 pr-10"
+                  className="mt-1 pr-10 transition-all focus:ring-2 focus:ring-indigo-500"
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-2 flex items-center text-gray-500 hover:text-primary"
+                  className="absolute inset-y-0 right-2 flex items-center text-gray-500 hover:text-indigo-600 transition-colors"
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10a9.96 9.96 0 012.338-6.338M21 21L3 3" />
-                    </svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.522 5 12 5s8.268 2.943 9.542 7a9.959 9.959 0 01-1.664 3.043" />
-                    </svg>
-                  )}
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
             </div>
 
-            <Button
-              type="submit"
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white transition-all"
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...
-                </>
-              ) : (
-                "Sign in"
-              )}
-            </Button>
+            <div className="animate-slide-in-bottom" style={{ animationDelay: "150ms" }}>
+              <Button
+                type="submit"
+                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white transition-all transform hover:translate-y-[-1px] active:translate-y-[1px]"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...
+                  </>
+                ) : (
+                  "Sign in"
+                )}
+              </Button>
+            </div>
             
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
@@ -492,7 +485,8 @@ const Login = () => {
             <Button
               type="button"
               variant="outline"
-              className="w-full flex items-center justify-center gap-2"
+              className="w-full flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors border border-gray-300 animate-slide-in-bottom"
+              style={{ animationDelay: "250ms" }}
               onClick={handleGoogleSignIn}
               disabled={googleLoading}
             >
@@ -520,31 +514,11 @@ const Login = () => {
               )}
               {googleLoading ? "Signing in..." : "Sign in with Google"}
             </Button>
-          </form>
-        )}
-
-        <div className="mt-6 text-center">
-          <div className="text-sm text-gray-500">Demo Credentials</div>
-          <Button
-            variant="outline"
-            className="w-full mt-2 hover:bg-purple-50 text-purple-700"
-            onClick={() => {
-              setEmail("user@example.com");
-              setPassword("user123");
-              toast({
-                title: "Demo credentials filled",
-                description: "You can now sign in with the demo user account.",
-              });
-            }}
-          >
-            Use demo user account
-          </Button>
-        </div>
-
-        <p className="mt-6 text-center text-sm text-gray-600">
+          </form>        )}
+          <p className="mt-6 text-center text-sm text-gray-600 animate-fade-in" style={{ animationDelay: "300ms" }}>
           Are you an admin?{" "}
-          <Link to="/admin/login" className="text-purple-600 hover:underline">
-            Admin Login
+          <Link to="/admin/login" className="text-indigo-600 hover:text-indigo-500 hover:underline transition-colors inline-flex items-center">
+            Admin Login <span className="ml-1 px-1.5 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-md font-medium">Store Owner</span>
           </Link>
         </p>
       </div>
