@@ -400,22 +400,9 @@ export const updateStorePricing = async (
   pricingData: any
 ): Promise<any> => {
   try {
-    // Get the user data from localStorage for authentication
-    const storedUser = localStorage.getItem("printShopUser");
-    let headers = {};
-
-    if (storedUser) {
-      const userData = JSON.parse(storedUser);
-      headers = {
-        "X-User-ID": userData.id,
-        "X-User-Role": userData.role,
-      };
-    }
-
     const response = await axios.put(
       `/stores/${id}/pricing`,
-      { pricing: pricingData },
-      { headers }
+      { pricing: pricingData }
     );
     return response.data;
   } catch (error: any) {

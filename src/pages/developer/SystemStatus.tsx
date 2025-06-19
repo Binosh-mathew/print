@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect } from 'react';
 import useAuthStore from '@/store/authStore';
 import DeveloperLayout from '@/components/layouts/DeveloperLayout';
 import {
@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
-import axios from 'axios';
+import axios from '../../config/axios';
 
 const SystemStatus = () => {
   const { user } = useAuthStore();
@@ -32,9 +32,9 @@ const SystemStatus = () => {
     const fetchStatus = async () => {
       setLoading(true);
       try {
-        const statsRes = await axios.get('http://localhost:5000/api/platform-stats');
+        const statsRes = await axios.get('/platform-stats');
         setStats(statsRes.data);
-        const maintRes = await axios.get('http://localhost:5000/api/system/maintenance');
+        const maintRes = await axios.get('/system/maintenance');
         setMaintenanceMode(maintRes.data.enabled);
       } catch (error) {
         // handle error
@@ -58,18 +58,13 @@ const SystemStatus = () => {
       const newMode = !maintenanceMode;
       setMaintenanceMode(newMode);
       
-      await axios.post('http://localhost:5000/api/system/maintenance', 
+      await axios.post('i/system/maintenance', 
         { 
           enabled: newMode,
           message: newMode ? "System is currently under maintenance. Please try again later." : "",
           reason: newMode ? "Scheduled maintenance" : "Maintenance completed"
         },
-        { 
-          headers: { 
-            'X-User-ID': user.id,
-            'X-User-Role': user.role
-          } 
-        }
+        
       );
       
       toast({

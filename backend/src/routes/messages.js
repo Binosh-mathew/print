@@ -8,7 +8,6 @@ const router = Router();
 router.get('/', auth, async (req, res) => {
   try {
     // Log the user info to help with debugging
-    console.log('Fetching messages for user:', req.user?.id, 'with role:', req.user?.role);
     
     // Get all messages, role-based filtering will be handled client-side
     const messages = await Message.find()

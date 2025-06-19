@@ -38,7 +38,6 @@ router.get("/", auth, async (req, res) => {
 // Get store profile for admin - IMPORTANT: specific routes must come before generic ones
 router.get("/admin/profile", auth, isAdmin, async (req, res) => {
   try {
-    console.log("Admin profile request received, user:", req.user);
 
     // Get the admin ID from the request
     const adminId = req.user.id;
