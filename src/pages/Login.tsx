@@ -208,7 +208,7 @@ const Login = () => {
         if (isNewUser) {
           // Show welcome message for new users
           toast({
-            title: "Welcome to PrintSpark Studio!",
+            title: "Welcome to PrintSpark!",
             description: "Your account has been created successfully with Google.",
           });
         } else {
