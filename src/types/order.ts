@@ -8,12 +8,12 @@ export interface FileMetadata {
 export interface FileDetails {
   file: File | FileMetadata;
   copies: number;
-  specialPaper: 'none' | 'glossy' | 'matte' | 'transparent';
-  printType: 'blackAndWhite' | 'color';
+  specialPaper: "none" | "glossy" | "matte" | "transparent";
+  printType: "blackAndWhite" | "color";
   doubleSided: boolean;
   binding: {
     needed: boolean;
-    type: 'spiralBinding' | 'staplingBinding' | 'hardcoverBinding' | 'none';
+    type: "spiralBinding" | "staplingBinding" | "hardcoverBinding" | "none";
   };
   specificRequirements: string;
   pageCount?: number; // Optional page count for more accurate pricing
@@ -31,7 +31,13 @@ export interface Order {
   id: string; // Keep both id and _id for compatibility
   orderId: string;
   customerName: string;
-  status: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled' | 'Completed';
+  status:
+    | "Pending"
+    | "Processing"
+    | "Shipped"
+    | "Delivered"
+    | "Cancelled"
+    | "Completed";
   details?: string;
   orderDate?: string;
   createdAt: string;
@@ -40,7 +46,7 @@ export interface Order {
   userId?: string;
   files?: FileDetails[];
   copies?: number;
-  colorType?: 'color' | 'blackAndWhite';
+  colorType?: "color" | "blackAndWhite";
   doubleSided?: boolean;
   totalPrice?: number;
   userName?: string;

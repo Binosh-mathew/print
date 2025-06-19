@@ -38,7 +38,7 @@ const PricingSettings = () => {
       spiralBinding: 0,
       staplingBinding: 0,
       hardcoverBinding: 0,
-      isAvailable: true,
+      isAvailable: false,
     },
     paperTypes: {
       normal: 0,
@@ -75,11 +75,7 @@ const PricingSettings = () => {
                 spiralBinding: store.pricing.binding?.spiralBinding || 0,
                 staplingBinding: store.pricing.binding?.staplingBinding || 0,
                 hardcoverBinding: store.pricing.binding?.hardcoverBinding || 0,
-                // @ts-ignore - isAvailable might not be in the backend type yet
-                isAvailable: store.pricing.binding?.isAvailable !== undefined 
-                  // @ts-ignore - isAvailable might not be in the backend type yet
-                  ? store.pricing.binding.isAvailable 
-                  : true, // Default to true if not present in backend
+                isAvailable: store.pricing.binding?.isAvailable || false,
               },
               paperTypes: {
                 normal: store.pricing.paperTypes?.normal || 0,

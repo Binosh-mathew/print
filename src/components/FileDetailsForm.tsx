@@ -1,6 +1,4 @@
-
-import React from 'react';
-import { FileText, X, Book, Paperclip } from 'lucide-react';
+import { FileText, X, Book } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -12,42 +10,55 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import type { FileDetails } from '@/types/order';
+import type { FileDetails } from "@/types/order";
+import { useEffect } from "react";
 
 interface FileDetailsFormProps {
   fileDetail: FileDetails;
   onUpdate: (updatedDetails: FileDetails) => void;
   onRemove: () => void;
+  bindingAvailable?: boolean;
 }
 
-const FileDetailsForm = ({ fileDetail, onUpdate, onRemove }: FileDetailsFormProps) => {
-  const handleChange = (field: keyof FileDetails | 'bindingNeeded' | 'bindingType' | 'specialPaper', value: any) => {
-    if (field === 'bindingNeeded') {
+const FileDetailsForm = ({
+  fileDetail,
+  onUpdate,
+  onRemove,
+  bindingAvailable,
+}: FileDetailsFormProps) => {
+  useEffect(()=>{
+    console.log(bindingAvailable)
+  },[]);
+  const handleChange = (
+    field: keyof FileDetails | "bindingNeeded" | "bindingType" | "specialPaper",
+    value: any
+  ) => {
+    if (field === "bindingNeeded") {
       onUpdate({
         ...fileDetail,
         binding: {
           ...fileDetail.binding,
           needed: value,
-          type: value ? fileDetail.binding.type : 'none'
-        }
+          type: value ? fileDetail.binding.type : "none",
+        },
       });
-    } else if (field === 'bindingType') {
+    } else if (field === "bindingType") {
       onUpdate({
         ...fileDetail,
         binding: {
           ...fileDetail.binding,
-          type: value
-        }
+          type: value,
+        },
       });
-    } else if (field === 'specialPaper') {
+    } else if (field === "specialPaper") {
       onUpdate({
         ...fileDetail,
-        specialPaper: value
+        specialPaper: value,
       });
     } else {
       onUpdate({
         ...fileDetail,
-        [field]: value
+        [field]: value,
       });
     }
   };
@@ -83,7 +94,9 @@ const FileDetailsForm = ({ fileDetail, onUpdate, onRemove }: FileDetailsFormProp
             type="number"
             min="1"
             value={fileDetail.copies}
-            onChange={(e) => handleChange('copies', parseInt(e.target.value) || 1)}
+            onChange={(e) =>
+              handleChange("copies", parseInt(e.target.value) || 1)
+            }
             className="w-24"
           />
         </div>
@@ -92,7 +105,7 @@ const FileDetailsForm = ({ fileDetail, onUpdate, onRemove }: FileDetailsFormProp
           <Label>Additional Special Paper</Label>
           <Select
             value={fileDetail.specialPaper}
-            onValueChange={(value) => handleChange('specialPaper', value)}
+            onValueChange={(value) => handleChange("specialPaper", value)}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select if you need special paper" />
@@ -101,11 +114,14 @@ const FileDetailsForm = ({ fileDetail, onUpdate, onRemove }: FileDetailsFormProp
               <SelectItem value="none">No additional paper</SelectItem>
               <SelectItem value="glossy">Glossy Paper (A4)</SelectItem>
               <SelectItem value="matte">Matte Paper (A4)</SelectItem>
-              <SelectItem value="transparent">Transparent Sheet (A4)</SelectItem>
+              <SelectItem value="transparent">
+                Transparent Sheet (A4)
+              </SelectItem>
             </SelectContent>
           </Select>
           <p className="text-xs text-gray-500 mt-1">
-            All printing is done on normal A4 white paper. This is an option to purchase additional special paper separate from your prints.
+            All printing is done on normal A4 white paper. This is an option to
+            purchase additional special paper separate from your prints.
           </p>
         </div>
 
@@ -113,7 +129,7 @@ const FileDetailsForm = ({ fileDetail, onUpdate, onRemove }: FileDetailsFormProp
           <Label>Print Type</Label>
           <Select
             value={fileDetail.printType}
-            onValueChange={(value) => handleChange('printType', value)}
+            onValueChange={(value) => handleChange("printType", value)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select print type" />
@@ -130,23 +146,31 @@ const FileDetailsForm = ({ fileDetail, onUpdate, onRemove }: FileDetailsFormProp
           <div className="flex items-center space-x-2">
             <Switch
               checked={fileDetail.doubleSided}
-              onCheckedChange={(checked) => handleChange('doubleSided', checked)}
+              onCheckedChange={(checked) =>
+                handleChange("doubleSided", checked)
+              }
             />
-            <Label>{fileDetail.doubleSided ? 'Yes' : 'No'}</Label>
+            <Label>{fileDetail.doubleSided ? "Yes" : "No"}</Label>
           </div>
         </div>
       </div>
 
       <div className="space-y-4">
-        <div className="space-y-2">
-          <div className="flex items-center space-x-2">
-            <Book className="h-4 w-4 text-primary" />
-            <Label>Binding Options</Label>
+        <div className="space-y-2 ">
+          <div className="flex items-center space-x-2 justify-between">
+            <div className="flex items-center space-x-2">
+              <Book className="h-4 w-4 text-primary" /> 
+              <Label>Binding Options</Label>
+            </div>
+            {!bindingAvailable ? <span className="text-red-500 font-semibold text-sm">Unavailable</span> : null}
           </div>
           <div className="flex items-center space-x-2">
             <Switch
+            disabled={!bindingAvailable}
               checked={fileDetail.binding.needed}
-              onCheckedChange={(checked) => handleChange('bindingNeeded', checked)}
+              onCheckedChange={(checked) =>
+                handleChange("bindingNeeded", checked)
+              }
             />
             <Label>Need binding?</Label>
           </div>
@@ -155,7 +179,7 @@ const FileDetailsForm = ({ fileDetail, onUpdate, onRemove }: FileDetailsFormProp
         {fileDetail.binding.needed && (
           <RadioGroup
             value={fileDetail.binding.type}
-            onValueChange={(value) => handleChange('bindingType', value)}
+            onValueChange={(value) => handleChange("bindingType", value)}
             className="grid grid-cols-2 gap-4"
           >
             <div className="flex items-center space-x-2">
@@ -178,7 +202,7 @@ const FileDetailsForm = ({ fileDetail, onUpdate, onRemove }: FileDetailsFormProp
         <Label>Specific Requirements</Label>
         <textarea
           value={fileDetail.specificRequirements}
-          onChange={(e) => handleChange('specificRequirements', e.target.value)}
+          onChange={(e) => handleChange("specificRequirements", e.target.value)}
           className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px]"
           placeholder="Add any specific requirements for this file..."
         />

@@ -378,7 +378,7 @@ export const fetchStoreById = async (id: string): Promise<Store> => {
 export const fetchStorePricing = async (id: string): Promise<any> => {
   try {
     const response = await axios.get(`/stores/${id}`);
-    return response.data.pricing || null;
+    return response.data.pricing ;
   } catch (error: any) {
     console.error("Error fetching store pricing:", error);
     // Handle specific error messages

@@ -23,7 +23,7 @@ import {
 import { Loader2 } from "lucide-react";
 import FileUploader from "@/components/FileUploader";
 import { toast } from "@/components/ui/use-toast";
-import { createOrder, fetchStorePricing, fetchStores } from "@/api";
+import { createOrder, fetchStoreById, fetchStorePricing, fetchStores } from "@/api";
 import type { OrderFormData, FileDetails, Order } from "@/types/order";
 import type { Store } from "@/types/store";
 import useAuthStore from "@/store/authStore";
@@ -36,7 +36,7 @@ const NewOrder = () => {
   const [totalPrice, setTotalPrice] = useState(0);
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStorePricing, setSelectedStorePricing] = useState<any>(null);
-  const [storeSelected, setStoreSelected] = useState(false);
+  const [storeSelected, setStoreSelected] = useState<Store | null>(null);
   const [loadingStores, setLoadingStores] = useState(false);
 
   const form = useForm<OrderFormData>({
@@ -184,11 +184,12 @@ const NewOrder = () => {
   const handleStoreSelection = async (storeId: string) => {
     try {
       setIsSubmitting(true); // Show loading state
+      const selectedStore = await fetchStoreById(storeId);
       const pricingData = await fetchStorePricing(storeId);
 
+      setStoreSelected(selectedStore);
       if (pricingData) {
         setSelectedStorePricing(pricingData);
-        setStoreSelected(true);
 
         // Update prices for any existing files
         if (files.length > 0) {
@@ -396,6 +397,7 @@ const NewOrder = () => {
                                 onFileSelected={handleFileSelected}
                                 onFileRemoved={handleFileRemoved}
                                 files={files}
+                                store = {storeSelected}
                               />
                             )}
                           </FormControl>

@@ -24,6 +24,7 @@ export interface Store {
       doubleSided: number;
     };
     binding?: {
+      isAvailable:boolean;
       spiralBinding: number;
       staplingBinding: number;
       hardcoverBinding: number;
