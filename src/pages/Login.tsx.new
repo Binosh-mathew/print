@@ -120,7 +120,7 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-purple-200 via-blue-100 to-white px-4 py-12">
       <div className="backdrop-blur-lg bg-white/60 shadow-xl rounded-2xl w-full max-w-md p-8 border border-gray-200 animate-fade-in">
         <Link to="/" className="text-center block text-3xl font-bold text-purple-700">
-          PrintSpark Studio
+          PrintSpark
         </Link>
         <h2 className="mt-4 text-center text-xl font-semibold text-gray-800">
           Sign in to your account
