@@ -81,7 +81,7 @@ export const uploadDocument = async (
  */
 export const printDocument = (
   documentUrl: string,
-  documentName: string = "Document"
+  documentName: string = "Document" // Keep parameter for API compatibility
 ) => {
   try {
     // Check if the document URL is valid
@@ -89,32 +89,43 @@ export const printDocument = (
       throw new Error("Document URL is not available");
     }
 
-    // Open the document in a new window
-    const printWindow = window.open(documentUrl, "_blank");
+    // Try using an iframe approach instead of window.open to avoid fullscreen permission issues
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.src = documentUrl;
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
 
-    if (printWindow) {
-      // Focus the window and trigger print after a short delay to ensure the document is loaded
-      printWindow.focus();
+        // Remove the iframe after printing is initiated
+        setTimeout(() => {
+          if (iframe.parentNode) {
+            iframe.parentNode.removeChild(iframe);
+          }
+        }, 1000);
 
-      // Add a small delay to allow the document to load before printing
-      setTimeout(() => {
-        printWindow.print();
-      }, 1500); // Increased delay to ensure document loads
+        toast({
+          title: "Print dialog opened",
+          description: "The print dialog should appear shortly.",
+        });
+      } catch (err) {
+        console.error("Error in iframe print:", err);
+        // Fallback to window.open if iframe approach fails
+        const printWindow = window.open(documentUrl, "_blank");
 
-      toast({
-        title: "Print dialog opened",
-        description:
-          "The document has been opened in a new window and the print dialog should appear shortly.",
-      });
-    } else {
-      // If the window didn't open, it might be blocked by a popup blocker
-      toast({
-        title: "Print failed",
-        description:
-          "Unable to open the print window. Please check your popup blocker settings.",
-        variant: "destructive",
-      });
-    }
+        if (printWindow) {
+          printWindow.focus();
+          setTimeout(() => {
+            printWindow.print();
+          }, 1500);
+        } else {
+          throw new Error("Unable to open print window");
+        }
+      }
+    };
+
+    document.body.appendChild(iframe);
   } catch (error) {
     console.error("Error printing document:", error);
     toast({

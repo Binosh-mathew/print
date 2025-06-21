@@ -234,13 +234,12 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       </div>
       
       <div className="p-0 bg-white min-h-[500px] flex items-center justify-center">
-        {isPdf ? (
-          <div className="w-full h-[500px] border border-gray-200 rounded overflow-hidden">
-            {/* Use iframe for PDF preview with fallback content */}
-            <embed 
+        {isPdf ? (          <div className="w-full h-[500px] border border-gray-200 rounded overflow-hidden">
+            {/* Use iframe for PDF preview with fallback content */}            <iframe 
               src={documentUrl}
-              type="application/pdf"
-              className="w-full h-full"
+              title={`${documentName} preview`}
+              className="w-full h-full border-0"
+              allowFullScreen={true}
               onError={() => {
                 setError("Failed to load document preview. You can still print or download the document.");
               }}

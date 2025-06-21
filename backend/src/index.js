@@ -43,6 +43,12 @@ app.use(cors({
 app.use(morgan("dev"));
 app.use(cookieParser());
 
+// Add permissions policy header to allow fullscreen
+app.use((req, res, next) => {
+  res.setHeader('Permissions-Policy', 'fullscreen=*');
+  next();
+});
+
 // Connect to MongoDB
 connectDB();
 
