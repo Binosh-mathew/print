@@ -12,20 +12,16 @@ const authStoreKey = "auth_data";
 const jwtExpirationDays = 14 * 24 * 60 * 60; // 14 days in seconds
 
 const useAuthStore = create<authState>((set, get) => ({
-  //Internal methods to manage authentication data in localStorage  
+  //Internal methods to manage authentication data in localStorage
   _setAuthData: (user: User, token?: string) => {
     const authData = {
       user: user,
       expiresIn: Date.now() + jwtExpirationDays * 1000, // Convert seconds to milliseconds
-      token: token // Store the token if provided
+      token: token, // Store the token if provided
     };
 
     try {
       localStorage.setItem(authStoreKey, JSON.stringify(authData));
-      console.log("Auth data saved to localStorage with expiry:", new Date(authData.expiresIn).toLocaleString());
-      if (token) {
-        console.log("Auth token was saved to localStorage");
-      }
     } catch (error) {
       console.error("Error saving auth data to localStorage:", error);
     }
@@ -33,34 +29,25 @@ const useAuthStore = create<authState>((set, get) => ({
 
   _clearAuthData: async () => {
     localStorage.removeItem(authStoreKey);
-  },  _validateAuthData: () => {
+  },
+  _validateAuthData: () => {
     try {
       const authData = localStorage.getItem(authStoreKey);
-      
+
       if (!authData) {
         console.log("No auth data found in localStorage");
         return false;
       }
-      
+
       const parsedData = JSON.parse(authData);
-      
+
       // Detailed validation with logging
       const hasExpiry = typeof parsedData.expiresIn === "number";
       const notExpired = parsedData.expiresIn > Date.now();
       const hasUser = !!parsedData.user;
       const hasUserId = hasUser && !!parsedData.user.id;
-      
-      console.log("Auth validation:", {
-        hasData: !!authData,
-        hasExpiry,
-        notExpired: hasExpiry ? notExpired : false,
-        hasUser,
-        hasUserId,
-        expiresIn: hasExpiry ? new Date(parsedData.expiresIn).toLocaleString() : 'none',
-        currentTime: new Date().toLocaleString()
-      });
-      
-      // Only validate based on expiration time for now 
+
+      // Only validate based on expiration time for now
       // to avoid async operations that can cause render loops
       return hasExpiry && notExpired && hasUser && hasUserId;
     } catch (error) {
@@ -83,25 +70,23 @@ const useAuthStore = create<authState>((set, get) => ({
   loading: false,
   error: null,
   isAdmin: false,
-  role: null,  loginWithGoogle: async (googleData) => {
+  role: null,
+  loginWithGoogle: async (googleData) => {
     set({ loading: true, error: null });
     try {
-      console.log("Starting Google authentication flow...");
       if (!googleData.email || !googleData.uid) {
-        throw new Error("Email and user ID are required for Google authentication");
+        throw new Error(
+          "Email and user ID are required for Google authentication"
+        );
       }
-      
-      console.log("Making backend request for Google auth...");
       const response = await googleAuthLogin(googleData);
-      console.log("Backend response for Google auth:", response);
-      
+
       if (!response?.user) {
         throw new Error("Invalid response from server");
       }
 
       // Make sure we have all required fields for the user
       if (!response.user.id || !response.user.email || !response.user.role) {
-        console.error("Invalid user data received:", response.user);
         throw new Error("Incomplete user data received from server");
       }
 
@@ -112,17 +97,13 @@ const useAuthStore = create<authState>((set, get) => ({
         role: response.user.role,
         photoURL: response.user.photoURL,
       };
-        console.log("Setting auth state with user data:", userData);
-      
+
+
       // Extract the token from the response
       const token = response.token;
-      console.log("Received token from server:", token ? "Yes" : "No");
-      
-      // Save user data to localStorage with expiration first
-      // to ensure the data is available immediately for any subsequent state checks
-      console.log("Storing auth data in localStorage...");
+
       get()._setAuthData(userData, token);
-      
+
       // Now update the state
       set({
         user: userData,
@@ -133,8 +114,6 @@ const useAuthStore = create<authState>((set, get) => ({
         error: null,
       });
 
-      console.log("Google authentication completed successfully!");
-      
       return true;
     } catch (error) {
       console.error("Google authentication error:", error);
@@ -143,7 +122,10 @@ const useAuthStore = create<authState>((set, get) => ({
         user: null,
         isAuthenticated: false,
         loading: false,
-        error: error instanceof Error ? error.message : "Failed to authenticate with Google",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to authenticate with Google",
         isAdmin: false,
         role: null,
       });
@@ -161,11 +143,10 @@ const useAuthStore = create<authState>((set, get) => ({
         email: response?.email,
         role: response?.role,
       };
-      
+
       // Extract the token
       const token = response?.token;
-      console.log("Regular login: Received token from server:", token ? "Yes" : "No");
-      
+
       set({
         user: userData,
         isAuthenticated: true,
@@ -184,7 +165,8 @@ const useAuthStore = create<authState>((set, get) => ({
         loading: false,
       });
     }
-  },register: async (name, email, password, confirmPassword) => {
+  },
+  register: async (name, email, password, confirmPassword) => {
     set({ loading: true, error: null });
 
     if (!name || !email || !password || !confirmPassword) {
@@ -201,12 +183,10 @@ const useAuthStore = create<authState>((set, get) => ({
     if (password !== confirmPassword) {
       set({ error: "Passwords do not match", loading: false });
       throw new Error("Passwords do not match");
-    }    
-    
+    }
+
     try {
-      console.log("Auth Store: Calling registerUser API");
       await registerUser(name, email, password);
-        console.log("Auth Store: Registration API call successful");
       // Since we've implemented email verification, the user isn't authenticated yet
       // Just return success and let the UI show the "check your email" message
       set({
@@ -215,23 +195,24 @@ const useAuthStore = create<authState>((set, get) => ({
         loading: false,
         isAdmin: false,
         role: null,
-        error: null
+        error: null,
       });
-      
+
       // Don't store auth data since the user needs to verify email first
     } catch (error) {
       console.log("Auth Store: Registration error caught:", error);
       get()._clearAuthData();
-      
-      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-      
+
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+
       set({
         user: null,
         isAuthenticated: false,
         loading: false,
-        error: errorMessage
+        error: errorMessage,
       });
-      
+
       // Re-throw the error so the component can handle it
       throw error;
     }
@@ -268,9 +249,10 @@ const useAuthStore = create<authState>((set, get) => ({
         loading: false,
       });
     }
-  },  logout: async () => {
+  },
+  logout: async () => {
     set({ loading: true, error: null });
-    
+
     // Clear local state first
     set({
       user: null,
@@ -280,51 +262,44 @@ const useAuthStore = create<authState>((set, get) => ({
       isAdmin: false,
       role: null,
     });
-    
+
     // Clear localStorage
     get()._clearAuthData();
-    
+
     // Also sign out from Firebase if it was used
     try {
       const { auth } = await import("@/config/firebase");
       await auth.signOut();
-      console.log("Firebase auth state cleared");
     } catch (firebaseError) {
       console.log("Firebase sign out error (non-critical):", firebaseError);
     }
-    
+
     // Then try to notify the server (but don't block on it)
     try {
       await logoutUser();
-      console.log("Logout successful on server");
     } catch (error) {
       console.log("Logout server notification failed:", error);
       // This is non-critical since we've already cleared local state
     }
   },
   checkauth: () => {
-    console.log("Running auth check...");
     set({ loading: true, error: null });
-    
+
     try {
       const data = get()._getAuthData();
-      console.log("Auth data retrieved:", data ? "Found" : "Not found");
-      
+
       if (data && get()._validateAuthData()) {
-        console.log("Auth data is valid, setting authenticated state");
-        console.log("User data:", data.user);
-        
+
         set({
           user: data.user,
           isAuthenticated: true,
           role: data?.user?.role,
           isAdmin: data?.user?.role === "admin",
           loading: false,
-          error: null
+          error: null,
         });
         return true;
       } else {
-        console.log("Auth data invalid or missing, clearing state");
         get()._clearAuthData();
         set({
           user: null,
@@ -349,34 +324,34 @@ const useAuthStore = create<authState>((set, get) => ({
       });
       return false;
     }
-  },  // Session monitoring and refresh mechanism
+  }, // Session monitoring and refresh mechanism
   refreshSession: async () => {
-    console.log("Refreshing session state...");
-    
+
     // Check if Firebase user is still valid
     try {
       const { auth } = await import("@/config/firebase");
       const currentUser = auth.currentUser;
-      
+
       if (currentUser) {
-        console.log("Active Firebase user detected during session refresh");
         // If we have an active Firebase user but no valid local auth,
         // this could indicate a state mismatch - refresh the auth
         if (!get()._validateAuthData()) {
-          console.log("State mismatch detected - refreshing auth data from Firebase user");
-          
+
           // Get fresh ID token
           const idToken = await currentUser.getIdToken(true);
-          
+
           // Prepare user data for backend
           const googleData = {
             email: currentUser.email || "",
-            name: currentUser.displayName || currentUser.email?.split('@')[0] || "User",
+            name:
+              currentUser.displayName ||
+              currentUser.email?.split("@")[0] ||
+              "User",
             photoURL: currentUser.photoURL || undefined,
             uid: currentUser.uid,
-            idToken
+            idToken,
           };
-          
+
           // Re-authenticate with the backend
           await get().loginWithGoogle(googleData);
         }
@@ -384,36 +359,19 @@ const useAuthStore = create<authState>((set, get) => ({
     } catch (error) {
       console.error("Error refreshing Firebase session:", error);
     }
-    
+
     // Return current auth state
     return get().checkauth();
   },
-  
+
   initialize: () => {
-    console.log("Initializing auth store...");
     set({ loading: true });
-    
-    // Check if there's a token in localStorage
-    try {
-      const authData = localStorage.getItem(authStoreKey);
-      if (authData) {
-        const parsed = JSON.parse(authData);
-        if (parsed.token) {
-          console.log("Found token in localStorage during initialization");
-        } else {
-          console.log("No token found in localStorage during initialization");
-        }
-      }
-    } catch (error) {
-      console.error("Error checking for token during initialization:", error);
-    }
-    
+
     // Use setTimeout to ensure this runs after all other synchronous operations
     setTimeout(() => {
       const authResult = get().checkauth();
-      console.log("Auth initialization complete, authenticated:", authResult);
       set({ loading: false });
-      
+
       // Set up periodic session refresh for long sessions
       // Only if user is authenticated, check every 30 minutes to ensure session is still valid
       if (authResult) {
@@ -423,7 +381,7 @@ const useAuthStore = create<authState>((set, get) => ({
             clearInterval(sessionRefreshInterval);
           }
         }, 30 * 60 * 1000); // 30 minutes
-        
+
         // Store interval ID for cleanup
         (window as any).__authRefreshInterval = sessionRefreshInterval;
       }

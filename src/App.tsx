@@ -47,14 +47,11 @@ import useAuthStore from "./store/authStore";
 const queryClient = new QueryClient();
 const App = () => {
   const { initialize } = useAuthStore();  useEffect(() => {
-    console.log("App.tsx: Initializing auth store");
-    // Run initialization on app start
     initialize();
     
     // Add a listener for storage events to handle multi-tab scenarios
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === "auth_data") {
-        console.log("Auth data changed in another tab, re-initializing");
         initialize();
       }
     };

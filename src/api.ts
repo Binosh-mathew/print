@@ -1,36 +1,10 @@
-import axios from "./config/axios";
-
-// --- Global 401 handler ---
-
-// Only attach once (guards against hot reload)
-if (!(window as any)._axios401InterceptorAttached) {
-  axios.interceptors.response.use(
-    (response) => response,
-    (error) => {
-      if (error.response && error.response.status === 401) {
-        // Clear auth and redirect to login
-        try {
-          // Clear auth store if available
-          if (typeof window !== "undefined") {
-            localStorage.removeItem("auth_data");
-          }
-        } catch {}
-        // Redirect to login
-        if (typeof window !== "undefined") {
-          window.location.href = "/login";
-        }
-      }
-      return Promise.reject(error);
-    }
-  );
-  (window as any)._axios401InterceptorAttached = true;
-}
-
 import { Order } from "@/types/order";
 import { Store } from "@/types/store";
 import { User } from "@/types/user";
 import { Message } from "@/types/message";
 import { LoginActivity } from "@/types/loginActivity";
+import axios from "./config/axios"
+
 
 // Auth APIs
 export const registerUser = async (
@@ -46,12 +20,10 @@ export const registerUser = async (
     });
     return response.data;
   } catch (error: any) {
-    console.error("Registration error:", error);
     
     // Check for existing user error
     if (error?.response?.status === 400 && 
         error?.response?.data?.message?.includes("User already exists")) {
-      console.log("User already exists error detected");
       throw new Error("User already exists");
     }
     
@@ -103,7 +75,6 @@ export const googleAuthLogin = async (
     });
     return response.data;
   } catch (error: any) {
-    console.error("Google auth error:", error);
     if (error?.response?.data) {
       throw new Error(error.response.data.message || "Google authentication failed");
     }
@@ -115,7 +86,6 @@ export const logoutUser = async (): Promise<void> => {
   try {
     await axios.post("/auth/logout");
   } catch (error: any) {
-    console.error("Logout error:", error);
     // Handle specific error messages
     if (error?.response?.data) {
       throw new Error(error.response.data.message || "Logout failed");
@@ -130,7 +100,6 @@ export const verifyAuth = async ():Promise<any> =>{
     const response = await axios.get("/auth/verify");
     return response.data;
   }catch(error:any){
-    console.error("Verification error:", error);
     // Handle specific error messages
     if (error?.response?.data) {
       throw new Error(error.response.data.message || "Verification failed");
@@ -143,39 +112,29 @@ export const verifyAuth = async ():Promise<any> =>{
 export const fetchOrders = async (): Promise<Order[]> => {
   try {
     const response = await axios.get("/orders");
-    console.log("Orders response received:", response);
     
     // Check if we got orders in the response
     if (response.data.orders && Array.isArray(response.data.orders)) {
       return response.data.orders;
     } else if (Array.isArray(response.data)) {
-      console.log(`Retrieved ${response.data.length} orders`);
       return response.data;
     }
     
     // If we got a successful response but no orders property or it's not an array,
     // return empty array as the proper way to represent "no orders"
-    console.log("No orders found for user - this is normal for new users");
     return [];
   } catch (error: any) {
-    console.error("Error fetching orders:", error);
-    console.log("Response data:", error?.response?.data);
-    console.log("Response status:", error?.response?.status);
-    
     // For backward compatibility, still handle 404 "No orders found" as a non-error case
     if (error?.response?.status === 404) {
-      console.log("Received 404 - No orders found");
       return []; // Return empty array for 404 responses
     }
     
     // Check for authentication issues
     if (error?.response?.status === 401) {
-      console.log("Authentication error when fetching orders");
       throw new Error("Authentication error - please log in again");
     }
     
     // Return empty array for any error to prevent breaking the UI
-    console.log("Returning empty array due to error");
     return [];
   }
 };
@@ -183,8 +142,6 @@ export const fetchOrders = async (): Promise<Order[]> => {
 export const createOrder = async (
   orderData: Partial<Order>
 ): Promise<Order> => {
-  console.log("Creating order with data:", orderData);
-
   const formData = new FormData();
 
   // Append files and their details
@@ -225,13 +182,8 @@ export const createOrder = async (
         "Content-Type": "multipart/form-data",
       },
     });
-    console.log("Order creation response:", response.data);
     return response.data.order;
   } catch (error: any) {
-    console.error(
-      "Error creating order:",
-      error.response ? error.response.data : error.message
-    );
     throw error.response?.data || new Error("Failed to create order");
   }
 };
@@ -244,7 +196,6 @@ export const updateOrder = async (
     const response = await axios.put(`/orders/${id}`, orderData);
     return response.data;
   } catch (error: any) {
-    console.error("Error updating order:", error);
     // Handle specific error messages
     if (error?.response?.data) {
       throw new Error(error.response.data.message || "Failed to update order");
@@ -257,7 +208,6 @@ export const deleteOrder = async (id: string): Promise<void> => {
   try {
     await axios.delete(`/orders/${id}`);
   } catch (error: any) {
-    console.error("Error deleting order:", error);
     // Handle specific error messages
     if (error?.response?.data) {
       throw new Error(error.response.data.message || "Failed to delete order");
@@ -271,7 +221,6 @@ export const fetchOrderById = async (id: string): Promise<Order> => {
     const response = await axios.get(`/orders/${id}`);
     return response.data;
   } catch (error: any) {
-    console.error("Error fetching order:", error);
     // Handle specific error messages
     if (error?.response?.data) {
       throw new Error(error.response.data.message || "Failed to fetch order");
@@ -287,7 +236,6 @@ export const fetchStores = async (): Promise<Store[]> => {
     // Extract the stores array from the response data
     return response.data.stores || [];
   } catch (error: any) {
-    console.error("Error fetching stores:", error);
     // Handle specific error messages
     if (error?.response?.data) {
       throw new Error(error.response.data.message || "Failed to fetch stores");
@@ -302,7 +250,6 @@ export const fetchAdminStoreProfile = async (): Promise<any> => {
     const response = await axios.get(`/stores/admin/profile`);
     return response.data;
   } catch (error: any) {
-    console.error("Error fetching admin store profile:", error);
     // Handle specific error messages
     if (error?.response?.data) {
       throw new Error(
@@ -322,7 +269,6 @@ export const createStore = async (
     const response = await axios.post(`/stores`, storeData);
     return response.data;
   } catch (error: any) {
-    console.error("Error creating store:", error);
     // Handle specific error messages
     if (error?.response?.data) {
       throw new Error(error.response.data.message || "Failed to create store");
@@ -339,7 +285,6 @@ export const updateStore = async (
     const response = await axios.put(`/stores/${id}`, storeData);
     return response.data;
   } catch (error: any) {
-    console.error("Error updating store:", error);
     // Handle specific error messages
     if (error?.response?.data) {
       throw new Error(error.response.data.message || "Failed to update store");
@@ -352,7 +297,6 @@ export const deleteStore = async (id: string): Promise<void> => {
   try {
     await axios.delete(`/stores/${id}`);
   } catch (error: any) {
-    console.error("Error deleting store:", error);
     // Handle specific error messages
     if (error?.response?.data) {
       throw new Error(error.response.data.message || "Failed to delete store");
@@ -366,7 +310,6 @@ export const fetchStoreById = async (id: string): Promise<Store> => {
     const response = await axios.get(`/stores/${id}`);
     return response.data;
   } catch (error: any) {
-    console.error("Error fetching store:", error);
     // Handle specific error messages
     if (error?.response?.data) {
       throw new Error(error.response.data.message || "Failed to fetch store");
@@ -380,7 +323,6 @@ export const fetchStorePricing = async (id: string): Promise<any> => {
     const response = await axios.get(`/stores/${id}`);
     return response.data.pricing ;
   } catch (error: any) {
-    console.error("Error fetching store pricing:", error);
     // Handle specific error messages
     if (error?.response?.data) {
       throw new Error(
@@ -406,7 +348,6 @@ export const updateStorePricing = async (
     );
     return response.data;
   } catch (error: any) {
-    console.error("Error updating store pricing:", error);
     // Handle specific error messages
     if (error?.response?.data) {
       throw new Error(
@@ -425,7 +366,6 @@ export const fetchUsers = async (): Promise<User[]> => {
     const response = await axios.get(`/users`);
     return response.data;
   } catch (error: any) {
-    console.error("Error fetching users:", error);
     // Handle specific error messages
     if (error?.response?.data) {
       throw new Error(error.response.data.message || "Failed to fetch users");
@@ -452,6 +392,7 @@ export const updateUserProfile = async (
     if (error.response && error.response.data) {
       throw new Error(error.response.data.message || "Profile update failed");
     }
+    throw new Error("An unexpected error occurred during profile update");
   }
 };
 
@@ -463,7 +404,6 @@ export const deleteUser = async (userId: string): Promise<void> => {
 export const fetchMessages = async (): Promise<Message[]> => {
   try {
     const response = await axios.get(`/messages`);
-    console.log('API fetchMessages response:', response.data);
     
     // Check different possible response structures
     if (Array.isArray(response.data)) {
@@ -474,10 +414,8 @@ export const fetchMessages = async (): Promise<Message[]> => {
       return response.data.data;
     }
     
-    console.warn('Unexpected message response format:', response.data);
     return [];
   } catch (error: any) {
-    console.error('Error fetching messages:', error);
     // Handle specific error messages
     if (error?.response?.data) {
       throw new Error(error.response.data.message || "Failed to fetch messages");
@@ -545,11 +483,9 @@ export const createAdmin = async (adminData: {
 
 export const checkEmailExists = async (email: string): Promise<boolean> => {
   try {
-    console.log("Checking if email exists:", email);
     const response = await axios.post("/auth/check-email", { email });
     return response.data.exists;
   } catch (error) {
-    console.error("Error checking email existence:", error);
     return false;
   }
 };
