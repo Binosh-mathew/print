@@ -22,7 +22,6 @@ const UserDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);  useEffect(() => {
     const getOrders = async () => {
       try {
-        console.log("Dashboard: Fetching orders");
         setIsLoading(true);
         const response = await apiGetOrders();
         console.log("Dashboard: API Response:", response);
