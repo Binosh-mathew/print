@@ -19,10 +19,9 @@ const Messages = () => {
     setReplyToRecipient(recipient); // For replies, recipient is set; for new, it's null.
     setIsComposeModalOpen(true);
   };
-
-  // Add an effect to log user information for debugging
+  // Effect to check if user is available
   useEffect(() => {
-    console.log('Messages page - Current user:', user);
+    // Check user authentication state
   }, [user]);
 
   return (

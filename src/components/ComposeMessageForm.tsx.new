@@ -129,7 +129,8 @@ const ComposeMessageForm: React.FC<ComposeMessageFormProps> = ({ initialRecipien
       if (!authData) {
         throw new Error('Authentication required to send messages');
       }
-        // Parse the stored user data and validate it
+      
+      // Parse the stored user data and validate it
       try {
         const userData = JSON.parse(authData);
         
@@ -169,10 +170,12 @@ const ComposeMessageForm: React.FC<ComposeMessageFormProps> = ({ initialRecipien
         title: "Failed to send message",
         description: errorMessage,
         variant: "destructive",
-      });    } finally {
+      });
+    } finally {
       setSending(false);
     }
   };
+
   return (
     <div className="space-y-4">
       <form onSubmit={handleSend} className="space-y-4">

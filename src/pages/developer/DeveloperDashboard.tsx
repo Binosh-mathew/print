@@ -29,11 +29,8 @@ const DeveloperDashboard = () => {
       setLoading(true);
       try {
         const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        // Get all orders
+        today.setHours(0, 0, 0, 0);        // Get all orders
         const ordersRes = await axios.get("/orders");
-        console.log("Orders API response:", ordersRes.data); // Debug log
 
         // Extract the orders array from the response
         // Check for common response patterns
@@ -61,9 +58,8 @@ const DeveloperDashboard = () => {
             if (orderDate >= firstDayOfMonth) {
               monthlyOrders.push(order);
             }
-          });
-        } else {
-          console.error("Orders data is not an array:", orders);
+          });        } else {
+          // If orders data is not an array, we'll just use an empty array
         }
 
         // Calculate today's and monthly revenue
@@ -85,9 +81,8 @@ const DeveloperDashboard = () => {
           monthlyRevenue: monthRevenue,
           activeStores: platformRes.data.activeStores || 0,
           activeAdmins: platformRes.data.activeAdmins || 0,
-        });
-      } catch (error) {
-        console.error("Error fetching platform stats:", error);
+        });      } catch (error) {
+        // Handle error by setting default values
         // Set default values on error
         setStats({
           dailyOrders: 0,
