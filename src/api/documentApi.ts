@@ -1,6 +1,11 @@
 import axios from "../config/axios";
 import { toast } from "@/components/ui/use-toast";
 
+// Cache for document URLs to prevent repeated requests
+const documentUrlCache: Record<string, { url: string; timestamp: number }> = {};
+// Cache expiration time: 5 minutes
+const CACHE_EXPIRATION = 5 * 60 * 1000;
+
 /**
  * Fetches the document URL for a specific order
  * @param orderId The ID of the order
@@ -12,19 +17,35 @@ export const getDocumentUrl = async (
   orderId: string,
   fileIndex: number = 0
 ): Promise<string> => {
+  // Generate a cache key based on orderId and fileIndex
+  const cacheKey = `${orderId}-${fileIndex}`;
+  
+  // Check if we have a valid cached URL
+  const cachedData = documentUrlCache[cacheKey];
+  const now = Date.now();
+  if (cachedData && now - cachedData.timestamp < CACHE_EXPIRATION) {
+    return cachedData.url;
+  }
+  
   try {
     // Fetch the order details to get the document URL
     const response = await axios.get(
-      `/orders/${orderId}?timestamp=${new Date().getTime()}`,
+      `/orders/${orderId}`,
       {}
-    );
-
-    if (
+    );    if (
       response.data &&
       response.data.files &&
-      response.data.files.length > fileIndex    ) {
+      response.data.files.length > fileIndex
+    ) {
       const file = response.data.files[fileIndex];
       if (file && file.fileName) {
+        // Cache the URL with current timestamp
+        const cacheKey = `${orderId}-${fileIndex}`;
+        documentUrlCache[cacheKey] = {
+          url: file.fileName,
+          timestamp: Date.now()
+        };
+        
         return file.fileName;
       }
     }

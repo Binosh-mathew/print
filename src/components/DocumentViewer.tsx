@@ -26,14 +26,31 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [fileSize, setFileSize] = useState<number | null>(null);
-
   useEffect(() => {
+    // Track if the component is still mounted
+    let isMounted = true;
+    
     if (initialDocumentUrl) {
       setDocumentUrl(initialDocumentUrl);
       if (onDocumentLoaded) onDocumentLoaded(initialDocumentUrl);
     } else if (orderId) {
-      checkAndFetchDocument();
+      // We'll use a small delay to prevent multiple rapid requests
+      const fetchTimer = setTimeout(() => {
+        if (isMounted) {
+          checkAndFetchDocument();
+        }
+      }, 300);
+      
+      // Clean up timeout if component unmounts
+      return () => {
+        clearTimeout(fetchTimer);
+        isMounted = false;
+      };
     }
+    
+    return () => {
+      isMounted = false;
+    };
   }, [initialDocumentUrl, orderId, onDocumentLoaded]);
 
   const checkAndFetchDocument = async () => {
@@ -50,11 +67,17 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       } else {
         setError("The document file is not available. Please contact the customer for the original file.");
         setIsLoading(false);
-      }
-    } catch (err) {
-      console.error('Error checking document existence:', err);
-      // If check fails, try to fetch anyway
-      await fetchDocument();
+      }    } catch (err) {
+      // If check fails, try to fetch anyway but with a small delay
+      // to prevent hitting rate limits
+      setTimeout(async () => {
+        try {
+          await fetchDocument();
+        } catch (fetchErr) {
+          setError("Could not load document. Please try again later.");
+          setIsLoading(false);
+        }
+      }, 1000);
     }
   };
 
