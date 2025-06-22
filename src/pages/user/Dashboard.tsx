@@ -21,10 +21,8 @@ const UserDashboard = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);  useEffect(() => {
     const getOrders = async () => {
-      try {
-        setIsLoading(true);
+      try {        setIsLoading(true);
         const response = await apiGetOrders();
-        console.log("Dashboard: API Response:", response);
         
         // Always ensure we have an array, even if empty
         setOrders(Array.isArray(response) ? response : []);
@@ -43,11 +41,8 @@ const UserDashboard = () => {
 
     getOrders();
   }, []);
-
   useEffect(() => {
     if (user) {
-      console.log("Processing orders, count:", orders.length);
-
       // Ensure userOrders is always an array
       const userOrders: Order[] = Array.isArray(orders) ? orders : [];
 

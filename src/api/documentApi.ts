@@ -22,11 +22,9 @@ export const getDocumentUrl = async (
     if (
       response.data &&
       response.data.files &&
-      response.data.files.length > fileIndex
-    ) {
+      response.data.files.length > fileIndex    ) {
       const file = response.data.files[fileIndex];
       if (file && file.fileName) {
-        console.log(`Getting document for: ${file.originalName}`);
         return file.fileName;
       }
     }

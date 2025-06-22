@@ -61,12 +61,10 @@ const ManageOrders = () => {
 
   const [statusChangeCompleted, setStatusChangeCompleted] = useState(false);
   const [selectedFileIdx, setSelectedFileIdx] = useState(0);
-
   const refreshOrders = async () => {
     try {
       setIsUpdating(true);
       const response = await fetchOrders();
-      console.log(response)
       // Process the orders to ensure customer names are properly set
       const processedOrders = response.map((order: any) => {
         // Ensure customerName is set, falling back to userName if needed
@@ -128,17 +126,14 @@ const ManageOrders = () => {
         // Normalize the status for comparison
         const orderStatus = order?.status.toLowerCase();
         return orderStatus === filterValue;
-      });
-    }
-
+      });    }
+    
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      console.log("Searching for:", query);
 
       result = result.filter((order) => {
         // Check if the order ID contains the query
         if (order.id && order.id.toLowerCase().includes(query)) {
-          console.log("Match by ID:", order.id);
           return true;
         }
 
@@ -147,12 +142,10 @@ const ManageOrders = () => {
           order.customerName &&
           order.customerName.toLowerCase().includes(query)
         ) {
-          console.log("Match by customerName:", order.customerName);
           return true;
         }
-
+        
         if (order.userName && order.userName.toLowerCase().includes(query)) {
-          console.log("Match by userName:", order.userName);
           return true;
         }
 
@@ -161,14 +154,9 @@ const ManageOrders = () => {
           order.documentName &&
           order.documentName.toLowerCase().includes(query)
         ) {
-          console.log("Match by documentName:", order.documentName);
           return true;
-        }
-
-        return false;
+        }        return false;
       });
-
-      console.log("Search results count:", result.length);
     }
 
     result.sort((a, b) => {
@@ -254,21 +242,14 @@ const ManageOrders = () => {
             | "Shipped"
             | "Delivered"
             | "Cancelled"
-            | "Completed")
-        : "Pending";
-
-      console.log(`Updating order ${orderId} status to:`, normalizedStatus);
+            | "Completed")        : "Pending";
 
       const updateData = { status: normalizedStatus };
-      console.log("Sending update data:", { orderId, updateData });
-
       const updatedOrder = await updateOrder(orderId, updateData);
 
       if (!updatedOrder) {
         throw new Error("No response from server after update");
       }
-
-      console.log("Server response:", updatedOrder);
 
       const updatedOrders = orders.map((order) => {
         // Use _id instead of id for MongoDB
@@ -862,11 +843,8 @@ const ManageOrders = () => {
                     <DocumentViewer
                       documentName={selectedOrder.files[selectedFileIdx].originalName}
                       orderId={selectedOrder._id}
-                      fileIndex={selectedFileIdx}
-                      fallbackMessage="The document file is not available for preview or printing. Please contact the customer for the original file."
-                      onDocumentLoaded={(url) => {
-                        console.log("Document loaded:", url);
-                      }}
+                      fileIndex={selectedFileIdx}                      fallbackMessage="The document file is not available for preview or printing. Please contact the customer for the original file."
+                      onDocumentLoaded={() => {}}
                     />
                   </div>
                 </div>

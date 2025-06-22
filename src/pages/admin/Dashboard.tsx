@@ -126,12 +126,10 @@ const AdminDashboard = () => {
     const fetchDashboardData = async () => {
       try {
         // Fetch orders data
-        const ordersResponse = await axios.get("/orders");
-        const orders:Order[] = Array.isArray(ordersResponse.data.orders)
+        const ordersResponse = await axios.get("/orders");        const orders:Order[] = Array.isArray(ordersResponse.data.orders)
           ? ordersResponse.data.orders
           : [];
 
-          console.log("Fetched Orders:", orders);
         // Sort orders by date (newest first) and get recent orders
         const sortedOrders = [...orders].sort((a, b) => {
           const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;

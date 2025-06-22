@@ -62,15 +62,9 @@ const App = () => {
     const setupFirebaseAuthListener = async () => {
       try {
         const { auth } = await import("./config/firebase");
-        const { onAuthStateChanged } = await import("firebase/auth");
-        
-        // Listen for Firebase auth state changes
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-          if (user) {
-            console.log("Firebase auth state changed - user signed in");
-          } else {
-            console.log("Firebase auth state changed - user signed out");
-          }
+        const { onAuthStateChanged } = await import("firebase/auth");        // Listen for Firebase auth state changes
+        const unsubscribe = onAuthStateChanged(auth, async (_user) => {
+          // Auth state changed, user signed in or out - handled by state
         });
         
         return unsubscribe;

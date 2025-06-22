@@ -30,29 +30,23 @@ const OrderDetails = () => {
 
   const loadOrderDetails = async () => {
     setIsLoading(true);
-    setError(null);
-    try {
+    setError(null);    try {
       if (user && id) {
-        console.log(`Fetching details for order ID: ${id}`);
-        
         // Try direct fetch by ID first
         try {
           const orderDetails = await fetchOrderById(id);
           if (orderDetails && orderDetails.userId === user.id) {
             setOrder(orderDetails);
-            return;
-          }
+            return;          }
         } catch (err) {
-          console.log('Failed to fetch order by ID, trying alternative method');
+          // Fall back to alternative method if direct fetch fails
         }
         
         // Fallback to fetching all orders if direct fetch failed
         const allOrders = await fetchOrders();
-        console.log('All orders:', allOrders);
         
         // Filter orders for current user and find the specific one
         const orderDetails = allOrders.find(o => (o._id === id || o.id === id) && o.userId === user.id);
-        console.log('Found order:', orderDetails);
         
         if (orderDetails) {
           setOrder(orderDetails);

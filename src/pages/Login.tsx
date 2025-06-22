@@ -36,10 +36,8 @@ const Login = () => {
   }, [verified]);
   useEffect(() => {
     // Don't redirect immediately to avoid race conditions
-    if (isAuthenticated) {
-      // Small delay to ensure state is stable before redirecting
+    if (isAuthenticated) {      // Small delay to ensure state is stable before redirecting
       const redirectTimer = setTimeout(() => {
-        console.log("User authenticated, redirecting to dashboard...");
         navigate("/dashboard");
       }, 300);
       
