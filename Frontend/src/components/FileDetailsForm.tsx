@@ -32,6 +32,14 @@ const FileDetailsForm = ({
   const [parsedColorPages, setParsedColorPages] = useState<number[]>([]);
   const [invalidPageWarning, setInvalidPageWarning] = useState<string | null>(null);
   
+  // State to track the input value for copies
+  const [copiesInput, setCopiesInput] = useState<string>(fileDetail.copies.toString());
+
+  // Update copies input state when fileDetail.copies changes from parent
+  useEffect(() => {
+    setCopiesInput(fileDetail.copies.toString());
+  }, [fileDetail.copies]);
+
   // Effect to parse color pages when they change
   useEffect(() => {
     if (fileDetail.printType === "mixed" && fileDetail.colorPages) {
@@ -148,6 +156,40 @@ const FileDetailsForm = ({
     return ranges.join(',');
   };
 
+  // Handle copies input change
+  const handleCopiesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    
+    // Allow empty field for better UX
+    if (value === '') {
+      setCopiesInput('');
+      // Don't update the parent state yet to allow user to type
+      return;
+    }
+    
+    setCopiesInput(value);
+    
+    // For number inputs, the value should be numeric or empty
+    const parsedValue = parseInt(value, 10);
+    if (!isNaN(parsedValue)) {
+      // Update parent state with the valid number
+      handleChange("copies", parsedValue);
+    }
+  };
+
+  // Handle blur event to ensure we don't leave an empty or invalid value
+  const handleCopiesBlur = () => {
+    if (copiesInput === '' || isNaN(parseInt(copiesInput, 10))) {
+      // Default to 1 only for empty or invalid inputs
+      setCopiesInput('1');
+      handleChange("copies", 1);
+    } else {
+      // Ensure we have a valid numeric representation (no leading zeros, etc.)
+      const numValue = parseInt(copiesInput, 10);
+      setCopiesInput(numValue.toString());
+    }
+  };
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4 animate-scale-in space-y-4">
       <div className="flex items-center justify-between">
@@ -178,10 +220,19 @@ const FileDetailsForm = ({
             id={`copies-${fileDetail.file.name}`}
             type="number"
             min="1"
-            value={fileDetail.copies}
-            onChange={(e) =>
-              handleChange("copies", parseInt(e.target.value) || 1)
-            }
+            value={copiesInput}
+            onChange={handleCopiesChange}
+            onBlur={handleCopiesBlur}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault(); // Prevent form submission
+                // Find and focus the specific requirements textarea using its ID
+                const specificReqsTextarea = document.getElementById(`specific-reqs-${fileDetail.file.name}`);
+                if (specificReqsTextarea) {
+                  (specificReqsTextarea as HTMLTextAreaElement).focus();
+                }
+              }
+            }}
             className="w-24"
           />
         </div>
@@ -360,6 +411,7 @@ const FileDetailsForm = ({
       <div className="space-y-2">
         <Label>Specific Requirements</Label>
         <textarea
+          id={`specific-reqs-${fileDetail.file.name}`}
           value={fileDetail.specificRequirements}
           onChange={(e) => handleChange("specificRequirements", e.target.value)}
           className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px]"
