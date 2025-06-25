@@ -9,7 +9,8 @@ export interface FileDetails {
   file: File | FileMetadata;
   copies: number;
   specialPaper: "none" | "glossy" | "matte" | "transparent";
-  printType: "blackAndWhite" | "color";
+  printType: "blackAndWhite" | "color"| "mixed";
+  colorPages: string; // Pages to be printed in color when printType is "mixed"
   doubleSided: boolean;
   binding: {
     needed: boolean;
