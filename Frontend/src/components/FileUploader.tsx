@@ -121,7 +121,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         copies: 1,
         specialPaper: "none",
         printType: "blackAndWhite",
-        doubleSided: false,
+        colorPages: "",
+        doubleSided: true, // Set to true by default
         binding: {
           needed: false,
           type: "none",
