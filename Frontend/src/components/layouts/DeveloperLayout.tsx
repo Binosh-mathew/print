@@ -10,7 +10,8 @@ import {
   LogOut,
   Menu,
   X,
-  UserPlus
+  UserPlus,
+  ShoppingBag
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import useAuthStore from '@/store/authStore';
@@ -58,6 +59,11 @@ const DeveloperLayout: React.FC<DeveloperLayoutProps> = ({ children }) => {
       path: '/developer/logs', 
       label: 'System Logs', 
       icon: <AlertCircle size={18} /> 
+    },
+    { 
+      path: '/developer/products', 
+      label: 'Manage Products', 
+      icon: <ShoppingBag size={18} /> 
     }
   ];
 
