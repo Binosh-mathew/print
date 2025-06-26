@@ -5,6 +5,7 @@ import cloudinary from "../utils/cloudinary.js";
 import upload from "../utils/upload.js";
 import rateLimit from "express-rate-limit";
 import { SIGNED_URL_TTL } from "../config.js";
+import { cleanupOldOrderFiles } from "../utils/cleanupClaudinary.js";
 
 const router = Router();
 
@@ -73,6 +74,37 @@ router.post(
     }
   }
 );
+
+//Manual cleanup endpoint for Cloudinary files
+router.post("/cleanup-files", auth, async (req, res) => {
+  try {
+    // Check if user is admin or developer
+    const { role } = req.user;
+    
+    if (role !== "developer") {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to perform this action"
+      });
+    }
+    
+    // Run the cleanup
+    const stats = await cleanupOldOrderFiles();
+    
+    return res.status(200).json({
+      success: true,
+      message: "Cloudinary cleanup completed",
+      stats
+    });
+  } catch (error) {
+    console.error("Error in cleanup endpoint:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to clean up Cloudinary files",
+      error: error.message
+    });
+  }
+});
 
 // Get all orders
 router.get("/", auth, async (req, res) => {

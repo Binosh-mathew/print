@@ -26,6 +26,7 @@ import productsRoutes from "./routes/products.js";
 import adsRoutes from "./routes/ads.js";
 import {maintenanceCheck} from "./middleware/maintenanceMode.js";
 import { corsOptions } from "./config/cors.js";
+import { initScheduledTasks } from "./utils/scheduler.js";
 
 
 const app = express();
@@ -36,6 +37,7 @@ app.use(express.json());
 app.use(cors(corsOptions));
 app.use(morgan("dev"));
 app.use(cookieParser());
+initScheduledTasks(); // Initialize scheduled tasks
 app.use(rateLimit()); // Apply rate limiting middleware
 
 // Add permissions policy header to allow fullscreen
