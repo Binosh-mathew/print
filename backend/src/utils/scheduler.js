@@ -1,5 +1,5 @@
 import schedule from 'node-schedule';
-import {cleanupOldOrderFiles} from './cleanupClaudinary'
+import {cleanupOldOrderFiles} from './cleanupClaudinary.js'
 
 export const initScheduledTasks = () => {
   // Run daily at 3:00 AM

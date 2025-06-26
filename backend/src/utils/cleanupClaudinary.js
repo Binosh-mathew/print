@@ -1,4 +1,4 @@
-import cloudinary from "./cloudinary";
+import cloudinary from "./cloudinary.js";
 
 function extractPublicIdFromUrl(url) {
   if (!url || typeof url !== 'string') return null;
