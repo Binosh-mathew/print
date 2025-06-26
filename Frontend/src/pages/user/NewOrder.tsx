@@ -4,7 +4,10 @@ import { useForm } from "react-hook-form";
 import UserLayout from "@/components/layouts/UserLayout";
 import { Button } from "@/components/ui/button";
 import { calculateTotalPrice } from "@/services/calculateTotalPrice";
+import { parseColorPages } from "@/utils/printUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -220,6 +223,50 @@ const NewOrder = () => {
     }
   };
 
+  // Helper function to calculate mixed print details
+  const getMixedPrintDetails = (colorPagesStr: string, pageCount: number) => {
+    const colorPages = parseColorPages(colorPagesStr || "", pageCount);
+    const colorPagesCount = colorPages.length;
+    const bwPagesCount = pageCount - colorPagesCount;
+    return {
+      colorPagesCount,
+      bwPagesCount,
+      summary: `${colorPagesCount} color, ${bwPagesCount} B&W`,
+    };
+  };
+
+  // Calculate price breakdown for mixed printing
+  const getMixedPrintPriceBreakdown = (file: FileDetails) => {
+    if (file.printType !== "mixed" || !file.pageCount) {
+      return null;
+    }
+
+    const pricing = selectedStorePricing || {
+      blackAndWhite: { singleSided: 2, doubleSided: 3 },
+      color: { singleSided: 5, doubleSided: 8 },
+    };
+
+    const { colorPagesCount, bwPagesCount } = getMixedPrintDetails(
+      file.colorPages || "",
+      file.pageCount
+    );
+
+    const sideType = file.doubleSided ? "doubleSided" : "singleSided";
+    const colorRate = pricing.color[sideType];
+    const bwRate = pricing.blackAndWhite[sideType];
+
+    const colorCost = colorPagesCount * colorRate * (file.copies || 1);
+    const bwCost = bwPagesCount * bwRate * (file.copies || 1);
+
+    return {
+      colorRate,
+      bwRate,
+      colorCost,
+      bwCost,
+      totalCost: colorCost + bwCost,
+    };
+  };
+
   // Filter only active stores
   // const activeStores = stores.filter((store) => store.status === "active");
 
@@ -433,9 +480,44 @@ const NewOrder = () => {
                           <span>
                             {file.printType === "blackAndWhite"
                               ? "Black & White"
-                              : "Color"}
+                              : file.printType === "mixed"
+                                ? "Mixed (B&W + Color)"
+                                : "Color"}
                           </span>
                         </div>
+                        {file.printType === "mixed" && file.pageCount && file.colorPages && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-500 flex items-center">
+                              Mixed Printing
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-block ml-1 cursor-help">
+                                      <Info className="h-3.5 w-3.5 text-gray-400" />
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="right" className="max-w-xs">
+                                    <p className="font-medium text-xs mb-1">Color Pages: {file.colorPages}</p>
+                                    <p className="text-xs">
+                                      {(() => {
+                                        const breakdown = getMixedPrintPriceBreakdown(file);
+                                        if (!breakdown) return null;
+                                        return `B&W: ${getMixedPrintDetails(file.colorPages, file.pageCount).bwPagesCount} pages at ₹${breakdown.bwRate}/page
+Color: ${getMixedPrintDetails(file.colorPages, file.pageCount).colorPagesCount} pages at ₹${breakdown.colorRate}/page`;
+                                      })()}
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </span>
+                            <span>
+                              {(() => {
+                                const details = getMixedPrintDetails(file.colorPages || "", file.pageCount);
+                                return `${details.colorPagesCount} color, ${details.bwPagesCount} B&W`;
+                              })()}
+                            </span>
+                          </div>
+                        )}
                         <div className="flex justify-between">
                           <span className="text-gray-500">
                             Special Paper (Additional)
@@ -458,6 +540,31 @@ const NewOrder = () => {
                               : "None"}
                           </span>
                         </div>
+                        {file.printType === "mixed" && (
+                          <div className="border-t border-gray-200 pt-4">
+                            <p className="text-sm text-gray-500 mb-2">
+                              Price Breakdown (Mixed Printing)
+                            </p>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Color Rate</span>
+                              <span className="text-gray-900">
+                                ₹{getMixedPrintPriceBreakdown(file)?.colorRate || 0}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">B&W Rate</span>
+                              <span className="text-gray-900">
+                                ₹{getMixedPrintPriceBreakdown(file)?.bwRate || 0}
+                              </span>
+                            </div>
+                            <div className="flex justify-between font-medium">
+                              <span>Total Cost</span>
+                              <span>
+                                ₹{getMixedPrintPriceBreakdown(file)?.totalCost || 0}
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

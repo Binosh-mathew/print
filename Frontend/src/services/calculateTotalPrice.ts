@@ -1,4 +1,5 @@
 import { FileDetails } from "@/types/order";
+import { parseColorPages } from "@/utils/printUtils";
 
 export const calculateTotalPrice = (
     fileDetails: FileDetails[],
@@ -19,18 +20,7 @@ export const calculateTotalPrice = (
     return fileDetails.reduce((total, file) => {
       // Get the appropriate price based on print type and whether it's double-sided
       let basePricePerPage;
-      if (file.printType === "color") {
-        basePricePerPage = file.doubleSided
-          ? storePricing.color?.doubleSided || defaultPricing.color.doubleSided
-          : storePricing.color?.singleSided || defaultPricing.color.singleSided;
-      } else {
-        // blackAndWhite
-        basePricePerPage = file.doubleSided
-          ? storePricing.blackAndWhite?.doubleSided ||
-            defaultPricing.blackAndWhite.doubleSided
-          : storePricing.blackAndWhite?.singleSided ||
-            defaultPricing.blackAndWhite.singleSided;
-      }
+      let basePrice = 0;
 
       // Use actual page count from file metadata or estimate based on file size
       // For PDF files, we can get a more accurate page count
@@ -47,7 +37,43 @@ export const calculateTotalPrice = (
 
       const copiesMultiplier = file.copies || 1;
 
-      const basePrice = basePricePerPage * pageCount * copiesMultiplier;
+      // Handle mixed printing differently
+      if (file.printType === "mixed") {
+        // Use the imported parseColorPages function
+        
+        // Get color pages
+        const colorPages = parseColorPages(file.colorPages || "", pageCount);
+        const colorPagesCount = colorPages.length;
+        const bwPagesCount = pageCount - colorPagesCount;
+
+        // Calculate price for color pages
+        const colorPricePerPage = file.doubleSided
+          ? storePricing.color?.doubleSided || defaultPricing.color.doubleSided
+          : storePricing.color?.singleSided || defaultPricing.color.singleSided;
+        
+        // Calculate price for B&W pages
+        const bwPricePerPage = file.doubleSided
+          ? storePricing.blackAndWhite?.doubleSided || defaultPricing.blackAndWhite.doubleSided
+          : storePricing.blackAndWhite?.singleSided || defaultPricing.blackAndWhite.singleSided;
+        
+        // Calculate combined price
+        basePrice = (colorPricePerPage * colorPagesCount + bwPricePerPage * bwPagesCount) * copiesMultiplier;
+      } else if (file.printType === "color") {
+        basePricePerPage = file.doubleSided
+          ? storePricing.color?.doubleSided || defaultPricing.color.doubleSided
+          : storePricing.color?.singleSided || defaultPricing.color.singleSided;
+        
+        basePrice = basePricePerPage * pageCount * copiesMultiplier;
+      } else {
+        // blackAndWhite
+        basePricePerPage = file.doubleSided
+          ? storePricing.blackAndWhite?.doubleSided ||
+            defaultPricing.blackAndWhite.doubleSided
+          : storePricing.blackAndWhite?.singleSided ||
+            defaultPricing.blackAndWhite.singleSided;
+        
+        basePrice = basePricePerPage * pageCount * copiesMultiplier;
+      }
 
       // Additional costs for special paper
       let specialPaperCost = 0;

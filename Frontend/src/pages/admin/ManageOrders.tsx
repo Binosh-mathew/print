@@ -31,6 +31,7 @@ import OrderStatusBadge from "@/components/OrderStatusBadge";
 import DocumentViewer from "@/components/DocumentViewer";
 import { toast } from "@/components/ui/use-toast";
 import { hasStatus } from "@/utils/orderUtils";
+import { parseColorPages } from "@/utils/printUtils";
 import {
   Table,
   TableBody,
@@ -312,6 +313,19 @@ const ManageOrders = () => {
         setStatusChangeCompleted(false);
       }, 300);
     }
+  };
+
+  // Helper function to calculate and display mixed printing page information
+  const getMixedPrintInfo = (colorPagesStr: string, totalPageCount: number) => {
+    const colorPages = parseColorPages(colorPagesStr || "", totalPageCount);
+    const colorPagesCount = colorPages.length;
+    const bwPagesCount = totalPageCount - colorPagesCount;
+    return {
+      colorPagesCount,
+      bwPagesCount,
+      totalPageCount,
+      summary: `${colorPagesCount} color, ${bwPagesCount} B&W of ${totalPageCount} total`
+    };
   };
 
   return (
@@ -658,8 +672,26 @@ const ManageOrders = () => {
                             <div className="print-detail">Copies: {copies}</div>
                             <div className="print-detail">
                               Print:{" "}
-                              {printType === "blackAndWhite" ? "B&W" : "Color"}
+                              {printType === "blackAndWhite" 
+                                ? "B&W" 
+                                : printType === "mixed" 
+                                  ? "Mixed (B&W + Color)" 
+                                  : "Color"}
                             </div>
+                            {printType === "mixed" && file.colorPages && (
+                              <div className="col-span-2 mt-1 text-xs text-gray-600 print-detail">
+                                <span className="font-medium">Color Pages:</span>{" "}
+                                {file.colorPages}
+                                {file.pageCount && (
+                                  <>
+                                    {" - "}
+                                    <span className="text-primary font-medium">
+                                      {getMixedPrintInfo(file.colorPages, file.pageCount).summary}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            )}
                             <div className="print-detail">
                               Paper:{" "}
                               {specialPaper === "none"
