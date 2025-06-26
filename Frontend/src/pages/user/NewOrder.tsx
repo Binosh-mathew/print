@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import UserLayout from "@/components/layouts/UserLayout";
 import { Button } from "@/components/ui/button";
+import { calculateTotalPrice } from "@/services/calculateTotalPrice";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
@@ -23,7 +24,12 @@ import {
 import { Loader2 } from "lucide-react";
 import FileUploader from "@/components/FileUploader";
 import { toast } from "@/components/ui/use-toast";
-import { createOrder, fetchStoreById, fetchStorePricing, fetchStores } from "@/api";
+import {
+  createOrder,
+  fetchStoreById,
+  fetchStorePricing,
+  fetchStores,
+} from "@/api";
 import type { OrderFormData, FileDetails, Order } from "@/types/order";
 import type { Store } from "@/types/store";
 import useAuthStore from "@/store/authStore";
@@ -82,88 +88,17 @@ const NewOrder = () => {
     setFiles((prev) => prev.filter((f) => f.file !== file));
   };
 
-  const calculateTotalPrice = (
-    fileDetails: FileDetails[],
-    pricing: any = null
-  ) => {
-    // If no pricing data is provided, use default pricing
-    const defaultPricing = {
-      blackAndWhite: { singleSided: 2, doubleSided: 3 },
-      color: { singleSided: 5, doubleSided: 8 },
-      binding: { spiralBinding: 25, staplingBinding: 10, hardcoverBinding: 50 },
-      paperTypes: { normal: 0, glossy: 5, matte: 7, transparent: 10 },
-    };
-
-    // Use store pricing if available, otherwise use default pricing
-    const storePricing = pricing || selectedStorePricing || defaultPricing;
-
-    return fileDetails.reduce((total, file) => {
-      // Get the appropriate price based on print type and whether it's double-sided
-      let basePricePerPage;
-      if (file.printType === "color") {
-        basePricePerPage = file.doubleSided
-          ? storePricing.color?.doubleSided || defaultPricing.color.doubleSided
-          : storePricing.color?.singleSided || defaultPricing.color.singleSided;
-      } else {
-        // blackAndWhite
-        basePricePerPage = file.doubleSided
-          ? storePricing.blackAndWhite?.doubleSided ||
-            defaultPricing.blackAndWhite.doubleSided
-          : storePricing.blackAndWhite?.singleSided ||
-            defaultPricing.blackAndWhite.singleSided;
-      }
-
-      // Use actual page count from file metadata or estimate based on file size
-      // For PDF files, we can get a more accurate page count
-      let pageCount = 0;
-
-      if (file.pageCount && file.pageCount > 0) {
-        // Use the page count if it's available in the file metadata
-        pageCount = file.pageCount;
-      } else {
-        // Estimate page count based on file size (rough estimate: 100KB per page for PDFs)
-        const fileSizeInKB = file.file.size / 1024;
-        pageCount = Math.max(1, Math.ceil(fileSizeInKB / 100));
-      }
-
-      const copiesMultiplier = file.copies || 1;
-
-      const basePrice = basePricePerPage * pageCount * copiesMultiplier;
-
-      // Additional costs for special paper
-      let specialPaperCost = 0;
-      if (file.specialPaper !== "none") {
-        specialPaperCost =
-          (storePricing.paperTypes?.[file.specialPaper] ||
-            defaultPricing.paperTypes[file.specialPaper]) *
-          pageCount *
-          copiesMultiplier;
-      }
-
-      // Binding costs
-      let bindingCost = 0;
-      if (file.binding.needed && file.binding.type !== "none") {
-        bindingCost =
-          storePricing.binding?.[file.binding.type] ||
-          defaultPricing.binding[file.binding.type];
-      }
-
-      return total + basePrice + specialPaperCost + bindingCost;
-    }, 0);
-  };
-
   // Calculate total price whenever files change
   useEffect(() => {
-    const newTotalPrice = calculateTotalPrice(files);
+    const newTotalPrice = calculateTotalPrice(files, selectedStorePricing);
     setTotalPrice(newTotalPrice);
-  }, [files]);
+  }, [files, selectedStorePricing]);
 
   useEffect(() => {
     const loadStores = async () => {
       try {
         setLoadingStores(true);
         const storesData = await fetchStores();
-        console.log("Fetched stores:", storesData);
         setStores(storesData);
       } catch (error) {
         console.error("Error fetching stores:", error);
@@ -184,10 +119,10 @@ const NewOrder = () => {
   const handleStoreSelection = async (storeId: string) => {
     try {
       setIsSubmitting(true); // Show loading state
-      const selectedStore = await fetchStoreById(storeId);
+      const Store: Store = await fetchStoreById(storeId);
       const pricingData = await fetchStorePricing(storeId);
 
-      setStoreSelected(selectedStore);
+      setStoreSelected(Store);
       if (pricingData) {
         setSelectedStorePricing(pricingData);
 
@@ -244,14 +179,9 @@ const NewOrder = () => {
     setIsSubmitting(true);
 
     try {
-      console.log("Submitting order with files:", files);
-
       // Calculate if we have any color files
       const hasColorFile = files.some((file) => file.printType === "color");
       const colorType = hasColorFile ? "color" : "blackAndWhite";
-
-      // Get store information
-      const selectedStore = stores.find((store) => store.id === data.storeId);
 
       // Create the order in the backend
       const orderData: Partial<Order> = {
@@ -266,16 +196,15 @@ const NewOrder = () => {
         doubleSided: files.some((file) => file.doubleSided),
         totalPrice: totalPrice,
         storeId: data.storeId,
-        storeName: selectedStore?.name,
+        storeName: storeSelected?.name,
       };
 
-      console.log("Sending order data:", orderData);
       const result = await createOrder(orderData);
-      console.log("Order created:", result);
+      console.log("Order created successfully:", result);
 
       toast({
         title: "Order submitted successfully",
-        description: `Your print order has been sent to ${selectedStore?.name} and is being processed`,
+        description: `Your print order has been sent to ${storeSelected?.name} and is being processed`,
       });
       navigate("/orders");
     } catch (error) {
@@ -397,7 +326,7 @@ const NewOrder = () => {
                                 onFileSelected={handleFileSelected}
                                 onFileRemoved={handleFileRemoved}
                                 files={files}
-                                store = {storeSelected}
+                                store={storeSelected}
                               />
                             )}
                           </FormControl>
