@@ -17,6 +17,7 @@ import OrderHistory from "./pages/user/OrderHistory";
 import OrderDetails from "./pages/user/OrderDetails";
 import UserProfile from "./pages/user/Profile";
 import OffersShops from "./pages/user/OffersShops";
+import AdsPage from "./pages/user/AdsPage";
 
 // Admin Pages
 import AdminLogin from "./pages/admin/AdminLogin";
@@ -43,6 +44,7 @@ import Logs from "@/pages/developer/Logs";
 import CreateAdmin from "@/pages/developer/CreateAdmin";
 import LoginActivity from "@/pages/developer/LoginActivity";
 import ProductManagement from "@/pages/developer/ProductManagement";
+import AdManagement from "./pages/developer/AdManagement";
 import { useEffect } from "react";
 import useAuthStore from "./store/authStore";
 
@@ -157,6 +159,14 @@ const App = () => {
                 element={
                   <ProtectedRoute allowedRole="user">
                     <OffersShops />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/ads"
+                element={
+                  <ProtectedRoute allowedRole="user">
+                    <AdsPage />
                   </ProtectedRoute>
                 }
               />
@@ -275,6 +285,14 @@ const App = () => {
                 element={
                   <ProtectedRoute allowedRole="developer">
                     <ProductManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/developer/ads"
+                element={
+                  <ProtectedRoute allowedRole="developer">
+                    <AdManagement />
                   </ProtectedRoute>
                 }
               />

@@ -11,7 +11,8 @@ import {
   Menu,
   X,
   UserPlus,
-  ShoppingBag
+  ShoppingBag,
+  PlayCircle
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import useAuthStore from '@/store/authStore';
@@ -64,6 +65,11 @@ const DeveloperLayout: React.FC<DeveloperLayoutProps> = ({ children }) => {
       path: '/developer/products', 
       label: 'Manage Products', 
       icon: <ShoppingBag size={18} /> 
+    },
+    { 
+      path: '/developer/ads', 
+      label: 'Manage Ads', 
+      icon: <PlayCircle size={18} /> 
     }
   ];
 
@@ -204,4 +210,4 @@ const DeveloperLayout: React.FC<DeveloperLayoutProps> = ({ children }) => {
   );
 };
 
-export default DeveloperLayout; 
+export default DeveloperLayout;
