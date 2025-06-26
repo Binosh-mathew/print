@@ -59,7 +59,6 @@ const ManageOrders = () => {
     key: "createdAt",
     direction: "descending",
   });
-
   const [statusChangeCompleted, setStatusChangeCompleted] = useState(false);
   const [selectedFileIdx, setSelectedFileIdx] = useState(0);
   const refreshOrders = async () => {
@@ -386,7 +385,6 @@ const ManageOrders = () => {
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
-            {/* Refresh and auto-refresh buttons removed */}
           </div>
         </div>
 
@@ -564,7 +562,7 @@ const ManageOrders = () => {
         open={isDetailsOpen && !statusChangeCompleted}
         onOpenChange={handleDialogOpenChange}
       >
-       <DialogContent className="sm:max-w-3xl mt-6 sm:mt-12 max-h-screen overflow-y-auto">
+        <DialogContent className="sm:max-w-[90%] lg:max-w-5xl xl:max-w-6xl md:h-[85vh] mt-6 sm:mt-0 overflow-hidden">
           {selectedOrder && (
             <>
               <div className="print-only" style={{ display: "none" }}>
@@ -579,400 +577,444 @@ const ManageOrders = () => {
                   `}
                 </style>
               </div>
-              <DialogHeader className="order-header">
-                <DialogTitle className="flex items-center justify-between">
-                  <span>Order #{selectedOrder.id}</span>
-                  <OrderStatusBadge status={selectedOrder.status} />
-                </DialogTitle>
-                <DialogDescription>
-                  Placed on{" "}
-                  {new Date(selectedOrder.createdAt).toLocaleDateString()} by{" "}
-                  {selectedOrder.customerName ||
-                    selectedOrder.userName ||
-                    "Unknown User"}
-                </DialogDescription>
-              </DialogHeader>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4 order-section dialog-content-print">
-                <div>
-                  <h4 className="text-sm font-medium mb-2 print-heading">
-                    Document Details
-                  </h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center text-sm">
-                      <FileText className="h-4 w-4 mr-2 text-gray-500 no-print" />
-                      <span className="truncate print-text">
-                        {selectedOrder.documentName}
-                      </span>
-                    </div>
-                    <div
-                      className="flex items-start gap-x-6 text-sm print-grid"
-                      style={{ display: "flex" }}
-                    >
-                      <div className="print-item">
-                        <p className="text-gray-500 print-label">Copies</p>
-                        <p className="font-medium print-value">
-                          {selectedOrder.copies}
-                        </p>
-                      </div>
-                      <div className="print-item">
-                        <p className="text-gray-500 print-label">Print Type</p>
-                        <p className="font-medium print-value">
-                          {(() => {
-                            // Check if any file has mixed print type
-                            const hasMixedFile = selectedOrder.files?.some(file => file.printType === "mixed");
-                            if (hasMixedFile) {
-                              return "Mixed (B&W + Color)";
-                            } else {
-                              return selectedOrder.colorType === "color" ? "Color" : "Black & White";
-                            }
-                          })()}
-                        </p>
-                      </div>
-                      <div className="print-item">
-                        <p className="text-gray-500 print-label">
-                          Double-sided
-                        </p>
-                        <p className="font-medium print-value">
-                          {selectedOrder.doubleSided ? "Yes" : "No"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              {/* Dialog Content Container - Scrollable */}
+              <div className="flex flex-col h-full overflow-hidden">
+                {/* Header - Fixed */}
+                <DialogHeader className="order-header flex-shrink-0 pb-4 border-b border-gray-100">
+                  <DialogTitle className="flex items-center justify-between">
+                    <span className="text-xl">Order #{selectedOrder.id}</span>
+                    <OrderStatusBadge status={selectedOrder.status} />
+                  </DialogTitle>
+                  <DialogDescription className="mt-2">
+                    Placed on{" "}
+                    <span className="font-medium">{new Date(selectedOrder.createdAt).toLocaleDateString()}</span> by{" "}
+                    <span className="font-medium">{selectedOrder.customerName || selectedOrder.userName || "Unknown User"}</span>
+                  </DialogDescription>
+                </DialogHeader>
 
-                <div>
-                  <h4 className="text-sm font-medium mb-2 print-heading">
-                    Payment Details
-                  </h4>
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-sm print-row">
-                      <span className="text-gray-500 print-label">
-                        Total Amount
-                      </span>
-                      <span className="font-bold print-value">
-                        ₹{selectedOrder.totalPrice}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm print-row">
-                      <span className="text-gray-500 print-label">
-                        Payment Status
-                      </span>
-                      <span className="font-medium text-green-600 print-value">
-                        Paid
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {selectedOrder.files && selectedOrder.files.length > 0 && (
-                <div className="border-t border-gray-200 pt-4 pb-4 order-section dialog-content-print">
-                  <h4 className="text-sm font-medium mb-2 print-heading">
-                    File Details
-                  </h4>
-                  <div
-                    className="space-y-3 max-h-40 overflow-y-auto pr-2 print-files"
-                    style={{ maxHeight: "none" }}
-                  >                      {selectedOrder.files.map((file: any, index: number) => {
-                      // Skip if file data is invalid
-                      if (!file) return null;
-
-                      const fileName = file.originalName || "Unknown file";
-                      const copies = file.copies || 1;
-                      const printType = file.printType || "blackAndWhite";
-                      const specialPaper = file.specialPaper || "none";
-                      const binding = file.binding || { needed: false };
-
-                      return (
-                        <div
-                          key={index}
-                          className="bg-gray-50 p-3 rounded-md print-file-item"
-                          style={{
-                            border: "1px solid #ddd",
-                            marginBottom: "10px",
-                          }}
-                        >
-                          <p className="font-medium text-sm mb-1 print-filename">
-                            {fileName}
-                          </p>
-                          <div className="grid grid-cols-2 text-xs text-gray-600 print-file-details">
-                            <div className="print-detail">Copies: {copies}</div>
-                            <div className="print-detail">
-                              Print:{" "}
-                              {printType === "blackAndWhite" 
-                                ? "B&W" 
-                                : printType === "mixed" 
-                                  ? "Mixed (B&W + Color)" 
-                                  : "Color"}
+                {/* Main Content - Scrollable */}
+                <div className="flex-1 overflow-y-auto py-4 pr-2 -mr-2">
+                  {/* Order Summary Section */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 order-section dialog-content-print">
+                    <Card className="border shadow-sm">
+                      <CardHeader className="py-4 px-5">
+                        <CardTitle className="text-sm font-semibold flex items-center">
+                          <FileText className="h-4 w-4 mr-2 text-primary" />
+                          Document Details
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="py-3 px-5">
+                        <div className="space-y-3">
+                          <div className="flex items-center text-sm">
+                            <span className="truncate print-text font-medium">
+                              {selectedOrder.documentName}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-4 text-sm print-grid">
+                            <div className="print-item">
+                              <p className="text-gray-500 print-label">Copies</p>
+                              <p className="font-medium print-value">
+                                {selectedOrder.copies}
+                              </p>
                             </div>
-                            {printType === "mixed" && (
-                              <div className="col-span-2 mt-1 text-xs text-gray-600 print-detail">
-                                <span className="text-primary font-medium">
-                                  Mixed printing (B&W + Color)
-                                </span>
-                                <div className="mt-1">
-                                  <span className="font-medium">Color Pages:</span>{" "}
-                                  {file.colorPages || (file.specificRequirements && file.specificRequirements.includes("Just the page")) 
-                                    ? (file.colorPages || "Page 1")
-                                    : "Not specified - print entire document in color"}
-                                  {file.pageCount && file.colorPages && (
-                                    <>
-                                      {" - "}
-                                      <span className="text-primary font-medium">
-                                        {getMixedPrintInfo(file.colorPages, file.pageCount).summary}
-                                      </span>
-                                    </>
+                            <div className="print-item">
+                              <p className="text-gray-500 print-label">Print Type</p>
+                              <p className="font-medium print-value">
+                                {(() => {
+                                  // Check if any file has mixed print type
+                                  const hasMixedFile = selectedOrder.files?.some((file: any) => file.printType === "mixed");
+                                  if (hasMixedFile) {
+                                    return "Mixed (B&W + Color)";
+                                  } else {
+                                    return selectedOrder.colorType === "color" ? "Color" : "Black & White";
+                                  }
+                                })()}
+                              </p>
+                            </div>
+                            <div className="print-item">
+                              <p className="text-gray-500 print-label">
+                                Double-sided
+                              </p>
+                              <p className="font-medium print-value">
+                                {selectedOrder.doubleSided ? "Yes" : "No"}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border shadow-sm">
+                      <CardHeader className="py-4 px-5">
+                        <CardTitle className="text-sm font-semibold flex items-center">
+                          <span className="inline-flex items-center justify-center w-4 h-4 mr-2 rounded-full bg-primary/10 text-primary">₹</span>
+                          Payment Details
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="py-3 px-5">
+                        <div className="space-y-3">
+                          <div className="flex justify-between text-sm print-row">
+                            <span className="text-gray-500 print-label">
+                              Total Amount
+                            </span>
+                            <span className="font-bold print-value">
+                              ₹{selectedOrder.totalPrice}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm print-row">
+                            <span className="text-gray-500 print-label">
+                              Payment Status
+                            </span>
+                            <span className="font-medium text-green-600 print-value">
+                              Paid
+                            </span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* File Details Section */}
+                  {selectedOrder.files && selectedOrder.files.length > 0 && (
+                    <Card className="border shadow-sm mb-6 order-section dialog-content-print">
+                      <CardHeader className="py-4 px-5">
+                        <CardTitle className="text-sm font-semibold">
+                          File Details
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="py-3 px-5">
+                        <div className="space-y-4 print-files">
+                          {selectedOrder.files.map((file: any, index: number) => {
+                            // Skip if file data is invalid
+                            if (!file) return null;
+
+                            const fileName = file.originalName || "Unknown file";
+                            const copies = file.copies || 1;
+                            const printType = file.printType || "blackAndWhite";
+                            const specialPaper = file.specialPaper || "none";
+                            const binding = file.binding || { needed: false };
+
+                            return (
+                              <div
+                                key={index}
+                                className="bg-gray-50 p-4 rounded-md print-file-item border border-gray-200"
+                              >
+                                <div className="flex items-center justify-between mb-2">
+                                  <p className="font-medium text-sm print-filename">
+                                    {fileName}
+                                  </p>
+                                  {printType === "mixed" && (
+                                    <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full font-medium">
+                                      Mixed Print
+                                    </span>
                                   )}
                                 </div>
-                                {file.specificRequirements && file.specificRequirements !== "Just the page" && (
-                                  <div className="mt-1 text-gray-700">
-                                    <span className="font-medium">Additional instructions:</span>{" "}
+                                
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-3 gap-x-4 text-xs text-gray-600 print-file-details">
+                                  <div className="print-detail">
+                                    <span className="text-gray-500 block mb-1">Copies</span>
+                                    <span className="font-medium">{copies}</span>
+                                  </div>
+                                  <div className="print-detail">
+                                    <span className="text-gray-500 block mb-1">Print Type</span>
+                                    <span className="font-medium">
+                                      {printType === "blackAndWhite" 
+                                        ? "B&W" 
+                                        : printType === "mixed" 
+                                          ? "Mixed (B&W + Color)" 
+                                          : "Color"}
+                                    </span>
+                                  </div>
+                                  <div className="print-detail">
+                                    <span className="text-gray-500 block mb-1">Paper</span>
+                                    <span className="font-medium">
+                                      {specialPaper === "none"
+                                        ? "Normal A4"
+                                        : specialPaper}
+                                    </span>
+                                  </div>
+                                  <div className="print-detail">
+                                    <span className="text-gray-500 block mb-1">Binding</span>
+                                    <span className="font-medium">
+                                      {binding?.needed
+                                        ? (binding.type || "").replace("Binding", "")
+                                        : "None"}
+                                    </span>
+                                  </div>
+                                </div>
+                                
+                                {printType === "mixed" && (
+                                  <div className="mt-3 text-xs border-t border-gray-200 pt-3">
+                                    <div className="mb-2">
+                                      <span className="font-medium">Color Pages:</span>{" "}
+                                      {file.colorPages || (file.specificRequirements && file.specificRequirements.includes("Just the page")) 
+                                        ? (file.colorPages || "Page 1")
+                                        : "Not specified - print entire document in color"}
+                                      {file.pageCount && file.colorPages && (
+                                        <>
+                                          {" - "}
+                                          <span className="text-primary font-medium">
+                                            {getMixedPrintInfo(file.colorPages, file.pageCount).summary}
+                                          </span>
+                                        </>
+                                      )}
+                                    </div>
+                                    {file.specificRequirements && file.specificRequirements !== "Just the page" && (
+                                      <div className="text-gray-700">
+                                        <span className="font-medium">Additional instructions:</span>{" "}
+                                        {file.specificRequirements}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                
+                                {file.specificRequirements && printType !== "mixed" && (
+                                  <div className="mt-3 text-xs border-t border-gray-200 pt-3">
+                                    <span className="font-medium">
+                                      Instructions:
+                                    </span>{" "}
                                     {file.specificRequirements}
                                   </div>
                                 )}
                               </div>
-                            )}
-                            <div className="print-detail">
-                              Paper:{" "}
-                              {specialPaper === "none"
-                                ? "Normal A4"
-                                : specialPaper}
-                            </div>
-                            <div className="print-detail">
-                              Binding:{" "}
-                              {binding?.needed
-                                ? (binding.type || "").replace("Binding", "")
-                                : "None"}
-                            </div>
-                            {file.specificRequirements && printType !== "mixed" && (
-                              <div className="col-span-2 mt-2 print-requirements">
-                                <span className="font-medium">
-                                  Instructions:
-                                </span>{" "}
-                                {file.specificRequirements}
-                              </div>
-                            )}
-                          </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {selectedOrder.details && (
-                <div className="border-t border-gray-200 pt-4 pb-4">
-                  <h4 className="text-sm font-medium mb-2">
-                    Additional Details
-                  </h4>
-                  <p className="text-sm text-gray-700">
-                    {selectedOrder.details}
-                  </p>
-                </div>
-              )}
-
-              <div className="border-t border-gray-200 pt-4 no-print">
-                <h4 className="text-sm font-medium mb-3">
-                  Update Order Status
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant={
-                      isStatus(selectedOrder.status, "Pending")
-                        ? "default"
-                        : "outline"
-                    }
-                    size="sm"
-                    disabled={
-                      isUpdating || isStatus(selectedOrder.status, "Pending")
-                    }
-                    onClick={() =>
-                      handleStatusChange(
-                        selectedOrder._id || selectedOrder.id,
-                        "Pending"
-                      )
-                    }
-                    className={
-                      isStatus(selectedOrder.status, "Pending")
-                        ? "bg-yellow-500 hover:bg-yellow-600"
-                        : ""
-                    }
-                  >
-                    Pending
-                  </Button>
-                  <Button
-                    variant={
-                      isStatus(selectedOrder.status, "Processing")
-                        ? "default"
-                        : "outline"
-                    }
-                    size="sm"
-                    disabled={
-                      isUpdating || isStatus(selectedOrder.status, "Processing")
-                    }
-                    onClick={() =>
-                      handleStatusChange(
-                        selectedOrder._id || selectedOrder.id,
-                        "Processing"
-                      )
-                    }
-                    className={
-                      isStatus(selectedOrder.status, "Processing")
-                        ? "bg-blue-500 hover:bg-blue-600"
-                        : ""
-                    }
-                  >
-                    Processing
-                  </Button>
-                  <Button
-                    variant={
-                      isStatus(selectedOrder.status, "Completed")
-                        ? "default"
-                        : "outline"
-                    }
-                    size="sm"
-                    disabled={
-                      isUpdating || isStatus(selectedOrder.status, "Completed")
-                    }
-                    onClick={() =>
-                      handleStatusChange(
-                        selectedOrder._id || selectedOrder.id,
-                        "Completed"
-                      )
-                    }
-                    className={
-                      isStatus(selectedOrder.status, "Completed")
-                        ? "bg-green-500 hover:bg-green-600"
-                        : ""
-                    }
-                  >
-                    Completed
-                  </Button>
-                  <Button
-                    variant={
-                      isStatus(selectedOrder.status, "Cancelled")
-                        ? "default"
-                        : "outline"
-                    }
-                    size="sm"
-                    disabled={
-                      isUpdating || isStatus(selectedOrder.status, "Cancelled")
-                    }
-                    onClick={() =>
-                      handleStatusChange(
-                        selectedOrder._id || selectedOrder.id,
-                        "Cancelled"
-                      )
-                    }
-                    className={
-                      isStatus(selectedOrder.status, "Cancelled")
-                        ? "bg-red-500 hover:bg-red-600"
-                        : ""
-                    }
-                  >
-                    Cancelled
-                  </Button>
-                </div>
-              </div>
-
-              <div
-                className="print-only order-status-section"
-                style={{
-                  display: "none",
-                  marginTop: "20px",
-                  borderTop: "1px solid #ddd",
-                  paddingTop: "15px",
-                }}
-              >
-                <h4 className="text-sm font-medium mb-2">
-                  Current Status:{" "}
-                  <span className="font-bold">{selectedOrder.status}</span>
-                </h4>
-              </div>
-
-              {/* Document Viewer Section */}
-              <div className="border-t border-gray-200 pt-4 mt-4">
-                <h4 className="text-sm font-medium mb-3">
-                  Document Preview & Actions
-                </h4>
-                <div className="flex gap-4">
-                  {selectedOrder.files.length > 1 && (
-                    <div className="w-40 border-r pr-2 space-y-2 overflow-y-auto max-h-[520px]">
-                      {selectedOrder.files.map((file: any, idx: number) => (
-                        <Button
-                          key={idx}
-                          variant={idx === selectedFileIdx ? "default" : "outline"}
-                          size="sm"
-                          className="w-full text-xs truncate"
-                          onClick={() => setSelectedFileIdx(idx)}
-                        >
-                          {file.originalName}
-                        </Button>
-                      ))}
-                    </div>
+                      </CardContent>
+                    </Card>
                   )}
-                  <div className="flex-1">
-                    <DocumentViewer
-                      documentName={selectedOrder.files[selectedFileIdx].originalName}
-                      orderId={selectedOrder._id}
-                      fileIndex={selectedFileIdx}                      fallbackMessage="The document file is not available for preview or printing. Please contact the customer for the original file."
-                      onDocumentLoaded={() => {}}
-                    />
+
+                  {/* Additional Details Section */}
+                  {selectedOrder.details && (
+                    <Card className="border shadow-sm mb-6">
+                      <CardHeader className="py-4 px-5">
+                        <CardTitle className="text-sm font-semibold">
+                          Additional Details
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="py-3 px-5">
+                        <p className="text-sm text-gray-700">
+                          {selectedOrder.details}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Order Status Section */}
+                  <Card className="border shadow-sm mb-6 no-print">
+                    <CardHeader className="py-4 px-5">
+                      <CardTitle className="text-sm font-semibold">
+                        Update Order Status
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="py-3 px-5">
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant={
+                            isStatus(selectedOrder.status, "Pending")
+                              ? "default"
+                              : "outline"
+                          }
+                          size="sm"
+                          disabled={
+                            isUpdating || isStatus(selectedOrder.status, "Pending")
+                          }
+                          onClick={() =>
+                            handleStatusChange(
+                              selectedOrder._id || selectedOrder.id,
+                              "Pending"
+                            )
+                          }
+                          className={
+                            isStatus(selectedOrder.status, "Pending")
+                              ? "bg-yellow-500 hover:bg-yellow-600"
+                              : ""
+                          }
+                        >
+                          Pending
+                        </Button>
+                        <Button
+                          variant={
+                            isStatus(selectedOrder.status, "Processing")
+                              ? "default"
+                              : "outline"
+                          }
+                          size="sm"
+                          disabled={
+                            isUpdating || isStatus(selectedOrder.status, "Processing")
+                          }
+                          onClick={() =>
+                            handleStatusChange(
+                              selectedOrder._id || selectedOrder.id,
+                              "Processing"
+                            )
+                          }
+                          className={
+                            isStatus(selectedOrder.status, "Processing")
+                              ? "bg-blue-500 hover:bg-blue-600"
+                              : ""
+                          }
+                        >
+                          Processing
+                        </Button>
+                        <Button
+                          variant={
+                            isStatus(selectedOrder.status, "Completed")
+                              ? "default"
+                              : "outline"
+                          }
+                          size="sm"
+                          disabled={
+                            isUpdating || isStatus(selectedOrder.status, "Completed")
+                          }
+                          onClick={() =>
+                            handleStatusChange(
+                              selectedOrder._id || selectedOrder.id,
+                              "Completed"
+                            )
+                          }
+                          className={
+                            isStatus(selectedOrder.status, "Completed")
+                              ? "bg-green-500 hover:bg-green-600"
+                              : ""
+                          }
+                        >
+                          Completed
+                        </Button>
+                        <Button
+                          variant={
+                            isStatus(selectedOrder.status, "Cancelled")
+                              ? "default"
+                              : "outline"
+                          }
+                          size="sm"
+                          disabled={
+                            isUpdating || isStatus(selectedOrder.status, "Cancelled")
+                          }
+                          onClick={() =>
+                            handleStatusChange(
+                              selectedOrder._id || selectedOrder.id,
+                              "Cancelled"
+                            )
+                          }
+                          className={
+                            isStatus(selectedOrder.status, "Cancelled")
+                              ? "bg-red-500 hover:bg-red-600"
+                              : ""
+                          }
+                        >
+                          Cancelled
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Print-only Status Section */}
+                  <div
+                    className="print-only order-status-section"
+                    style={{
+                      display: "none",
+                      marginTop: "20px",
+                      borderTop: "1px solid #ddd",
+                      paddingTop: "15px",
+                    }}
+                  >
+                    <h4 className="text-sm font-medium mb-2">
+                      Current Status:{" "}
+                      <span className="font-bold">{selectedOrder.status}</span>
+                    </h4>
                   </div>
+
+                  {/* Document Viewer Section */}
+                  <Card className="border shadow-sm mb-6">
+                    <CardHeader className="py-4 px-5">
+                      <CardTitle className="text-sm font-semibold">
+                        Document Preview & Actions
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0 overflow-hidden">
+                      <div className="flex flex-col md:flex-row">
+                        {selectedOrder.files.length > 1 && (
+                          <div className="w-full md:w-48 border-b md:border-b-0 md:border-r border-gray-200 p-3 md:p-4 space-y-2 overflow-y-auto max-h-[200px] md:max-h-[420px]">
+                            {selectedOrder.files.map((file: any, idx: number) => (
+                              <Button
+                                key={idx}
+                                variant={idx === selectedFileIdx ? "default" : "outline"}
+                                size="sm"
+                                className="w-full text-xs truncate"
+                                onClick={() => setSelectedFileIdx(idx)}
+                              >
+                                {file.originalName}
+                              </Button>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex-1 h-[420px]">
+                          <DocumentViewer
+                            documentName={selectedOrder.files[selectedFileIdx].originalName}
+                            orderId={selectedOrder._id}
+                            fileIndex={selectedFileIdx}
+                            fallbackMessage="The document file is not available for preview or printing. Please contact the customer for the original file."
+                            onDocumentLoaded={() => {}}
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
+                
+                {/* Footer Actions - Fixed */}
+                <DialogFooter className="flex justify-between mt-auto pt-4 border-t border-gray-200">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      // Create a dedicated print stylesheet for this specific order
+                      const style = document.createElement("style");
+                      style.type = "text/css";
+                      style.id = "temp-print-style";
+                      style.media = "print";
+                      style.innerHTML = `
+                        @page { size: auto; margin: 15mm; }
+                        body * { visibility: hidden; }
+                        .dialog-content-print, .dialog-content-print * { visibility: visible; }
+                        .dialog-content-print { position: absolute; left: 0; top: 0; width: 100%; }
+                        .no-print { display: none !important; }
+                        .print-only { display: block !important; }
+                      `;
+                      document.head.appendChild(style);
+
+                      // Trigger print dialog
+                      window.print();
+
+                      // Remove the temporary style after printing
+                      setTimeout(() => {
+                        const tempStyle = document.getElementById("temp-print-style");
+                        if (tempStyle) tempStyle.remove();
+                      }, 2000);
+
+                      toast({
+                        title: "Print dialog opened",
+                        description: `Printing order #${selectedOrder.id} details.`,
+                      });
+                    }}
+                    disabled={isUpdating}
+                    className="bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-300"
+                  >
+                    <Printer className="mr-2 h-4 w-4" />
+                    Print Order
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setIsDetailsOpen(false);
+                      setTimeout(() => setStatusChangeCompleted(false), 300);
+                    }}
+                    disabled={isUpdating}
+                  >
+                    Close
+                  </Button>
+                </DialogFooter>
               </div>
-
-              <DialogFooter className="flex flex-wrap gap-2 justify-end mt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    // Create a dedicated print stylesheet for this specific order
-                    const style = document.createElement("style");
-                    style.type = "text/css";
-                    style.id = "temp-print-style";
-                    style.media = "print";
-                    style.innerHTML = `
-                      @page { size: auto; margin: 15mm; }
-                      body * { visibility: hidden; }
-                      .dialog-content-print, .dialog-content-print * { visibility: visible; }
-                      .dialog-content-print { position: absolute; left: 0; top: 0; width: 100%; }
-                      .no-print { display: none !important; }
-                      .print-only { display: block !important; }
-                    `;
-                    document.head.appendChild(style);
-
-                    // Trigger print dialog
-                    window.print();
-
-                    // Remove the temporary style after printing
-                    setTimeout(() => {
-                      const tempStyle =
-                        document.getElementById("temp-print-style");
-                      if (tempStyle) tempStyle.remove();
-                    }, 2000);
-
-                    toast({
-                      title: "Print dialog opened",
-                      description: `Printing order #${selectedOrder.id} details.`,
-                    });
-                  }}
-                  disabled={isUpdating}
-                  className="bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-300"
-                >
-                  <Printer className="mr-2 h-4 w-4" />
-                  Print Order
-                </Button>
-                <Button
-                  onClick={() => {
-                    setIsDetailsOpen(false);
-                    setTimeout(() => setStatusChangeCompleted(false), 300);
-                  }}
-                  disabled={isUpdating}
-                >
-                  Close
-                </Button>
-              </DialogFooter>
             </>
           )}
         </DialogContent>
