@@ -53,6 +53,20 @@ const userSchema = new mongoose.Schema(
     photoURL: {
       type: String,
     },
+    supercoins: {
+      type: Number,
+      default: 0
+    },
+    watchedAds: [{
+      adId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Ad"
+      },
+      watchedAt: {
+        type: Date,
+        default: Date.now
+      }
+    }]
   },
   { timestamps: true, versionKey: false }
 );

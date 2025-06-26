@@ -4,6 +4,7 @@ import { User } from "@/types/user";
 import { Message } from "@/types/message";
 import { LoginActivity } from "@/types/loginActivity";
 import { Product } from "@/types/product";
+import { Ad } from "@/types/ad";
 import axios from "./config/axios"
 
 
@@ -604,5 +605,147 @@ export const fetchProductCategories = async () => {
       { value: "beauty", label: "Beauty" },
       { value: "other", label: "Other" }
     ];
+  }
+};
+
+// Ads API functions
+export const fetchAds = async () => {
+  try {
+    const response = await axios.get("/ads");
+    
+    // Map MongoDB _id to id for frontend use
+    const ads = response.data.ads || [];
+    return ads.map((ad: any) => ({
+      ...ad,
+      id: ad._id, // Map MongoDB _id to id for consistent frontend usage
+    }));
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const fetchAdById = async (id: string) => {
+  try {
+    const response = await axios.get(`/ads/${id}`);
+    const ad = response.data.ad;
+    return {
+      ...ad,
+      id: ad._id
+    };
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const createAd = async (adData: Partial<Ad>) => {
+  try {
+    const response = await axios.post("/ads", adData);
+    return response.data.ad;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const updateAd = async (id: string, adData: Partial<Ad>) => {
+  try {
+    const response = await axios.put(`/ads/${id}`, adData);
+    return response.data.ad;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const deleteAd = async (id: string) => {
+  if (!id) {
+    throw new Error("No ad ID provided for deletion");
+  }
+  
+  try {
+    await axios.delete(`/ads/${id}`);
+    return true;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const watchAd = async (id: string) => {
+  try {
+    const response = await axios.post(`/ads/${id}/watch`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getUserSupercoins = async () => {
+  try {
+    const response = await axios.get("/ads/user/supercoins");
+    return response.data.supercoins;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Upload video file for ad
+export const uploadAdVideo = async (videoFile: File) => {
+  try {
+    console.log("Uploading video file:", videoFile.name, videoFile.type, videoFile.size);
+    
+    const formData = new FormData();
+    formData.append("video", videoFile);
+    
+    // Log the base URL being used
+    console.log("API Base URL:", import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api");
+    
+    // Simple approach: use the default axios instance with the right path
+    const response = await axios.post("/ads/upload/video", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      }
+    });
+    
+    console.log("Upload response:", response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error("Error uploading video:", error);
+    console.error("Response data:", error.response?.data);
+    console.error("Request URL:", error.config?.url);
+    throw new Error(
+      error.response?.data?.message || 
+      error.message || 
+      "Failed to upload video file"
+    );
+  }
+};
+
+// Upload thumbnail image for ad
+export const uploadAdThumbnail = async (thumbnailFile: File) => {
+  try {
+    console.log("Uploading thumbnail file:", thumbnailFile.name, thumbnailFile.type, thumbnailFile.size);
+    
+    const formData = new FormData();
+    formData.append("thumbnail", thumbnailFile);
+    
+    // Log the base URL being used
+    console.log("API Base URL:", import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api");
+    
+    // Simple approach: use the default axios instance with the right path
+    const response = await axios.post("/ads/upload/thumbnail", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      }
+    });
+    
+    console.log("Upload response:", response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error("Error uploading thumbnail:", error);
+    console.error("Response data:", error.response?.data);
+    console.error("Request URL:", error.config?.url);
+    throw new Error(
+      error.response?.data?.message || 
+      error.message || 
+      "Failed to upload thumbnail file"
+    );
   }
 };

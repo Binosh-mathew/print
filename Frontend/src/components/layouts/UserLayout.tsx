@@ -1,7 +1,7 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Home, FilePlus, FileText, User, LogOut, Menu, X, ShoppingBag } from "lucide-react";
+import { Home, FilePlus, FileText, User, LogOut, Menu, X, ShoppingBag, PlayCircle } from "lucide-react";
 import useAuthStore from "@/store/authStore";
 
 interface UserLayoutProps {
@@ -24,6 +24,7 @@ const UserLayout: React.FC<UserLayoutProps> = ({ children }) => {
     { path: "/new-order", label: "New Order", icon: <FilePlus size={18} /> },
     { path: "/orders", label: "Order History", icon: <FileText size={18} /> },
     { path: "/offers-shops", label: "Offers & Shops", icon: <ShoppingBag size={18} /> },
+    { path: "/ads", label: "Watch Ads & Earn", icon: <PlayCircle size={18} /> },
     { path: "/profile", label: "Profile", icon: <User size={18} /> },
   ];
 

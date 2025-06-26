@@ -23,6 +23,7 @@ import messagesRoutes from "./routes/messages.js";
 import usersRoutes from "./routes/users.js";
 import systemRoutes from "./routes/system.js";
 import productsRoutes from "./routes/products.js";
+import adsRoutes from "./routes/ads.js";
 import {maintenanceCheck} from "./middleware/maintenanceMode.js";
 import { corsOptions } from "./config/cors.js";
 
@@ -72,6 +73,7 @@ app.use("/api/admins", adminsRoutes);
 app.use("/api/messages", messagesRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/products", productsRoutes);
+app.use("/api/ads", adsRoutes);
 
 
 // Error handling middleware
