@@ -317,15 +317,38 @@ const ManageOrders = () => {
 
   // Helper function to calculate and display mixed printing page information
   const getMixedPrintInfo = (colorPagesStr: string, totalPageCount: number) => {
-    const colorPages = parseColorPages(colorPagesStr || "", totalPageCount);
-    const colorPagesCount = colorPages.length;
-    const bwPagesCount = totalPageCount - colorPagesCount;
-    return {
-      colorPagesCount,
-      bwPagesCount,
-      totalPageCount,
-      summary: `${colorPagesCount} color, ${bwPagesCount} B&W of ${totalPageCount} total`
-    };
+    if (!colorPagesStr || typeof colorPagesStr !== 'string') {
+      return { colorPagesCount: 0, bwPagesCount: 0, totalPageCount: totalPageCount || 0, summary: "No color pages specified" };
+    }
+    
+    if (!totalPageCount || typeof totalPageCount !== 'number') {
+      return { 
+        colorPagesCount: 0, 
+        bwPagesCount: 0, 
+        totalPageCount: 0, 
+        summary: "Page count unknown" 
+      };
+    }
+    
+    try {
+      const colorPages = parseColorPages(colorPagesStr, totalPageCount);
+      const colorPagesCount = colorPages.length;
+      const bwPagesCount = totalPageCount - colorPagesCount;
+      return {
+        colorPagesCount,
+        bwPagesCount,
+        totalPageCount,
+        summary: `${colorPagesCount} color, ${bwPagesCount} B&W of ${totalPageCount} total`
+      };
+    } catch (error) {
+      console.error("Error parsing color pages:", error);
+      return { 
+        colorPagesCount: 0, 
+        bwPagesCount: 0, 
+        totalPageCount, 
+        summary: "Error parsing color pages" 
+      };
+    }
   };
 
   return (
@@ -595,9 +618,15 @@ const ManageOrders = () => {
                       <div className="print-item">
                         <p className="text-gray-500 print-label">Print Type</p>
                         <p className="font-medium print-value">
-                          {selectedOrder.colorType === "color"
-                            ? "Color"
-                            : "Black & White"}
+                          {(() => {
+                            // Check if any file has mixed print type
+                            const hasMixedFile = selectedOrder.files?.some(file => file.printType === "mixed");
+                            if (hasMixedFile) {
+                              return "Mixed (B&W + Color)";
+                            } else {
+                              return selectedOrder.colorType === "color" ? "Color" : "Black & White";
+                            }
+                          })()}
                         </p>
                       </div>
                       <div className="print-item">
@@ -645,8 +674,7 @@ const ManageOrders = () => {
                   <div
                     className="space-y-3 max-h-40 overflow-y-auto pr-2 print-files"
                     style={{ maxHeight: "none" }}
-                  >
-                    {selectedOrder.files.map((file: any, index: number) => {
+                  >                      {selectedOrder.files.map((file: any, index: number) => {
                       // Skip if file data is invalid
                       if (!file) return null;
 
@@ -678,17 +706,30 @@ const ManageOrders = () => {
                                   ? "Mixed (B&W + Color)" 
                                   : "Color"}
                             </div>
-                            {printType === "mixed" && file.colorPages && (
+                            {printType === "mixed" && (
                               <div className="col-span-2 mt-1 text-xs text-gray-600 print-detail">
-                                <span className="font-medium">Color Pages:</span>{" "}
-                                {file.colorPages}
-                                {file.pageCount && (
-                                  <>
-                                    {" - "}
-                                    <span className="text-primary font-medium">
-                                      {getMixedPrintInfo(file.colorPages, file.pageCount).summary}
-                                    </span>
-                                  </>
+                                <span className="text-primary font-medium">
+                                  Mixed printing (B&W + Color)
+                                </span>
+                                <div className="mt-1">
+                                  <span className="font-medium">Color Pages:</span>{" "}
+                                  {file.colorPages || (file.specificRequirements && file.specificRequirements.includes("Just the page")) 
+                                    ? (file.colorPages || "Page 1")
+                                    : "Not specified - print entire document in color"}
+                                  {file.pageCount && file.colorPages && (
+                                    <>
+                                      {" - "}
+                                      <span className="text-primary font-medium">
+                                        {getMixedPrintInfo(file.colorPages, file.pageCount).summary}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                                {file.specificRequirements && file.specificRequirements !== "Just the page" && (
+                                  <div className="mt-1 text-gray-700">
+                                    <span className="font-medium">Additional instructions:</span>{" "}
+                                    {file.specificRequirements}
+                                  </div>
                                 )}
                               </div>
                             )}
@@ -704,10 +745,10 @@ const ManageOrders = () => {
                                 ? (binding.type || "").replace("Binding", "")
                                 : "None"}
                             </div>
-                            {file.specificRequirements && (
+                            {file.specificRequirements && printType !== "mixed" && (
                               <div className="col-span-2 mt-2 print-requirements">
                                 <span className="font-medium">
-                                  Requirements:
+                                  Instructions:
                                 </span>{" "}
                                 {file.specificRequirements}
                               </div>
