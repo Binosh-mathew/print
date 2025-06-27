@@ -8,10 +8,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Activity } from "lucide-react";
+import { AlertTriangle, ArrowRight } from "lucide-react";
 import DeveloperLayout from "@/components/layouts/DeveloperLayout";
 import axios from "../../config/axios";
 import type { Order } from "@/types/order";
+import { fetchLoginAlerts } from "@/api";
+import type { LoginAlert } from "@/types/loginAlert";
 
 const DeveloperDashboard = () => {
   const [stats, setStats] = useState({
@@ -23,11 +25,21 @@ const DeveloperDashboard = () => {
     activeAdmins: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [loginAlerts, setLoginAlerts] = useState<LoginAlert[]>([]);
 
   useEffect(() => {
     const fetchStats = async () => {
       setLoading(true);
       try {
+        // Fetch login alerts
+        try {
+          const alertsData = await fetchLoginAlerts();
+          setLoginAlerts(alertsData);
+        } catch (error) {
+          console.error('Error fetching login alerts:', error);
+          // Non-critical, continue with other data
+        }
+        
         const today = new Date();
         today.setHours(0, 0, 0, 0);        // Get all orders
         const ordersRes = await axios.get("/orders");
@@ -185,27 +197,54 @@ const DeveloperDashboard = () => {
             </div>
           </CardContent>
         </Card>
-        {/* Login Activity Card with Link */}
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center">
-                  <Activity className="h-5 w-5 mr-2 text-primary" />
-                  Login Activity
-                </CardTitle>
-                <CardDescription>
-                  View recent login attempts and user sessions
-                </CardDescription>
+
+        {/* Login Security Alerts Card */}
+        {loginAlerts.length > 0 && (
+          <Card className="border-amber-200 shadow-amber-100 hover:shadow-md transition-shadow">
+            <CardHeader className="bg-amber-50 border-b border-amber-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <AlertTriangle className="h-5 w-5 mr-2 text-amber-500" />
+                  <div>
+                    <CardTitle>Security Alert</CardTitle>
+                    <CardDescription className="text-amber-700">
+                      {loginAlerts.length === 1 
+                        ? '1 suspicious admin login attempt detected' 
+                        : `${loginAlerts.length} suspicious admin login attempts detected`}
+                    </CardDescription>
+                  </div>
+                </div>
+                <Button asChild variant="outline" className="border-amber-400 bg-amber-50 hover:bg-amber-100">
+                  <Link to="/developer/login-alerts">
+                    View Alerts <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
               </div>
-              <Button asChild variant="outline">
-                <Link to="/developer/login-activity">
-                  View All Activity <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-          </CardHeader>
-        </Card>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <ul className="space-y-2">
+                {loginAlerts.slice(0, 3).map(alert => (
+                  <li key={alert._id} className="flex items-center text-sm">
+                    <span className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mr-3 font-medium">
+                      {alert.attemptCount}
+                    </span>
+                    <div>
+                      <span className="font-medium">{alert.email}</span>
+                      <span className="text-gray-500 ml-2">
+                        from {alert.ipAddress} at {new Date(alert.lastAttempt).toLocaleTimeString()}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+                {loginAlerts.length > 3 && (
+                  <li className="text-sm text-gray-500 pl-11">
+                    and {loginAlerts.length - 3} more...
+                  </li>
+                )}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </DeveloperLayout>
   );

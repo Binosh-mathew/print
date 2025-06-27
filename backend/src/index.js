@@ -17,13 +17,13 @@ import authRoutes from "./routes/auth.js";
 import orderRoutes from "./routes/orders.js";
 import storeRoutes from "./routes/stores.js";
 import platformStatsRoutes from "./routes/platformStats.js";
-import loginActivityRoutes from "./routes/loginActivity.js";
 import adminsRoutes from "./routes/admins.js";
 import messagesRoutes from "./routes/messages.js";
 import usersRoutes from "./routes/users.js";
 import systemRoutes from "./routes/system.js";
 import productsRoutes from "./routes/products.js";
 import adsRoutes from "./routes/ads.js";
+import loginAlertsRoutes from "./routes/loginAlerts.js";
 import {maintenanceCheck} from "./middleware/maintenanceMode.js";
 import { corsOptions } from "./config/cors.js";
 
@@ -53,7 +53,6 @@ connectDB();
 app.use("/api/auth", authRoutes);
 app.use("/api/system", systemRoutes);
 app.use("/api/platform-stats", platformStatsRoutes);
-app.use("/api/login-activity", loginActivityRoutes);
 
 // Apply maintenance mode check without requiring authentication
 app.use(maintenanceCheck);
@@ -74,6 +73,7 @@ app.use("/api/messages", messagesRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/products", productsRoutes);
 app.use("/api/ads", adsRoutes);
+app.use("/api/login-alerts", loginAlertsRoutes);
 
 
 // Error handling middleware

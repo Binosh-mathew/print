@@ -42,8 +42,8 @@ import SystemStatus from "@/pages/developer/SystemStatus";
 import Database from "@/pages/developer/Database";
 import Logs from "@/pages/developer/Logs";
 import CreateAdmin from "@/pages/developer/CreateAdmin";
-import LoginActivity from "@/pages/developer/LoginActivity";
 import ProductManagement from "@/pages/developer/ProductManagement";
+import LoginAlerts from "@/pages/developer/LoginAlerts";
 import AdManagement from "./pages/developer/AdManagement";
 import { useEffect } from "react";
 import useAuthStore from "./store/authStore";
@@ -272,14 +272,16 @@ const App = () => {
                   </ProtectedRoute>
                 }
               />
+              
               <Route
-                path="/developer/login-activity"
+                path="/developer/login-alerts"
                 element={
                   <ProtectedRoute allowedRole="developer">
-                    <LoginActivity />
+                    <LoginAlerts />
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/developer/products"
                 element={
