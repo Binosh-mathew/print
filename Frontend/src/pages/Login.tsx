@@ -243,7 +243,7 @@ const Login = () => {
   };  
 
   return (    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-8">
-      <div className="bg-white shadow-2xl rounded-3xl w-full max-w-md p-6 transform animate-scale-in"><div className="flex flex-col items-center mb-5">          <Link to="/" className="text-center block transition-transform hover:scale-105 flex flex-col items-center">            <div className="h-14 w-14 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-full flex items-center justify-center mb-3 shadow-md mx-auto">
+      <div className="bg-white shadow-2xl rounded-3xl w-full max-w-md p-6 transform animate-scale-in"><div className="flex flex-col items-center mb-5">          <Link to="/" className="text-center  transition-transform hover:scale-105 flex flex-col items-center">            <div className="h-14 w-14 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-full flex items-center justify-center mb-3 shadow-md mx-auto">
               <span className="text-xl font-extrabold text-white flex items-center justify-center h-full w-full">PS</span>
             </div>
             <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-indigo-600">

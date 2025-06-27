@@ -53,8 +53,10 @@ const ManageOrders = () => {
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [showAllOrders, setShowAllOrders] = useState(false);
   const [sortConfig, setSortConfig] = useState({
     key: "createdAt",
     direction: "descending",
@@ -64,6 +66,9 @@ const ManageOrders = () => {
   const refreshOrders = async () => {
     try {
       setIsUpdating(true);
+      if (orders.length === 0) {
+        setIsLoading(true);
+      }
       const response = await fetchOrders();
       // Process the orders to ensure customer names are properly set
       const processedOrders = response.map((order: any) => {
@@ -79,16 +84,14 @@ const ManageOrders = () => {
       });
 
       setOrders(processedOrders);
-
-      const sortedOrders = [...processedOrders].sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-
-      setFilteredOrders(sortedOrders);
       setIsUpdating(false);
+      setIsLoading(false);
 
       if (orderId) {
+        const sortedOrders = [...processedOrders].sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
         const order = sortedOrders.find(
           (o) => o.id === orderId || o._id === orderId
         );
@@ -106,7 +109,21 @@ const ManageOrders = () => {
         variant: "destructive",
       });
       setIsUpdating(false);
+      setIsLoading(false);
     }
+  };
+
+  // Helper function to check if an order is from today
+  const isOrderFromToday = (order: any) => {
+    if (!order.createdAt) return false;
+    const orderDate = new Date(order.createdAt);
+    const today = new Date();
+    
+    return (
+      orderDate.getDate() === today.getDate() &&
+      orderDate.getMonth() === today.getMonth() &&
+      orderDate.getFullYear() === today.getFullYear()
+    );
   };
 
   useEffect(() => {
@@ -116,6 +133,11 @@ const ManageOrders = () => {
 
   useEffect(() => {
     let result = [...orders];
+
+    // Filter by today's orders if showAllOrders is false
+    if (!showAllOrders) {
+      result = result.filter(isOrderFromToday);
+    }
 
     if (statusFilter !== "all") {
       const filterValue = statusFilter.toLowerCase();
@@ -184,7 +206,7 @@ const ManageOrders = () => {
     });
 
     setFilteredOrders(result);
-  }, [orders, statusFilter, searchQuery, sortConfig]);
+  }, [orders, statusFilter, searchQuery, sortConfig, showAllOrders]);
 
   const handleSort = (key: keyof Order) => {
     setSortConfig({
@@ -357,7 +379,7 @@ const ManageOrders = () => {
           <div>
             <h1 className="text-3xl font-bold">Manage Orders</h1>
             <p className="text-gray-600 mt-1">
-              View and manage all print orders
+              {showAllOrders ? "View and manage all print orders" : "View and manage today's print orders"}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
@@ -390,9 +412,18 @@ const ManageOrders = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl">
-              All Orders ({filteredOrders.length})
-            </CardTitle>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <CardTitle className="text-xl">
+                {showAllOrders ? "All Orders" : "Orders from Today"} ({filteredOrders.length})
+              </CardTitle>
+              <Button
+                variant={showAllOrders ? "outline" : "default"}
+                onClick={() => setShowAllOrders(!showAllOrders)}
+                className={`w-full sm:w-auto ${!showAllOrders ? "bg-primary hover:bg-primary/90" : ""}`}
+              >
+                {showAllOrders ? "Show Today's Orders" : "View All Orders"}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -475,7 +506,16 @@ const ManageOrders = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredOrders.length > 0 ? (
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="h-24 text-center">
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                          <span className="ml-2 text-gray-500">Loading orders...</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredOrders.length > 0 ? (
                     filteredOrders.map((order, index) => {
                       const { paper } = getPaperAndBindingInfo(order);
                       const uniqueKey = order.id || `order-${index}`; // Fallback to index if id is missing
@@ -542,10 +582,17 @@ const ManageOrders = () => {
                     <TableRow>
                       <TableCell colSpan={8} className="h-24 text-center">
                         <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                        <p className="text-gray-500">No orders found</p>
+                        <p className="text-gray-500">
+                          {showAllOrders ? "No orders found" : "No orders found for today"}
+                        </p>
                         {searchQuery && (
                           <p className="text-sm text-gray-400 mt-1">
                             Try a different search term
+                          </p>
+                        )}
+                        {!showAllOrders && !searchQuery && (
+                          <p className="text-sm text-gray-400 mt-1">
+                            Click "View All Orders" to see orders from previous days
                           </p>
                         )}
                       </TableCell>
