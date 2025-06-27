@@ -7,7 +7,7 @@ import jwt from "jsonwebtoken";
 import { User } from "../models/User.js";
 import { Developer } from "../models/Developer.js";
 import { Store } from "../models/Store.js";
-import { LoginActivity } from "../models/LoginActivity.js";
+import { FailedLogin } from "../models/FailedLogin.js";
 import { auth } from "../middleware/auth.js";
 import { v4 as uuidv4 } from "uuid";
 import { sendVerificationEmail } from "../utils/emailService.js";
@@ -129,6 +129,41 @@ router.post("/login", async (req, res) => {
     }
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+      // Track failed login attempts for admins only
+      if (role === "admin") {
+        try {
+          // Check if there's already a record for this email/IP
+          const existingRecord = await FailedLogin.findOne({ 
+            email, 
+            ipAddress: req.ip,
+            isResolved: false 
+          });
+
+          if (existingRecord) {
+            // Update existing record
+            await FailedLogin.findByIdAndUpdate(
+              existingRecord._id,
+              { 
+                $inc: { attemptCount: 1 },
+                lastAttempt: new Date(),
+                userRole: role
+              }
+            );
+          } else {
+            // Create new record
+            await FailedLogin.create({
+              email,
+              ipAddress: req.ip,
+              attemptCount: 1,
+              lastAttempt: new Date(),
+              userRole: role
+            });
+          }
+        } catch (error) {
+          console.error("Error tracking failed login:", error);
+          // Continue with response even if tracking fails
+        }
+      }
       return res.status(400).json({ message: "Invalid Password" });
     }
     const token = jwt.sign(
@@ -148,13 +183,7 @@ router.post("/login", async (req, res) => {
       sameSite: "strict",
     });
 
-    await LoginActivity.create({
-      userName: user.username,
-      userRole: user.role,
-      timestamp: new Date(),
-      ipAddress: req.ip,
-      action: "login",
-    });    res.json({
+    res.json({
       success: true,
       message: "Login successful",
       user: {
@@ -504,15 +533,6 @@ router.post("/google-auth", async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "14d" }
     );
-    
-    // Record login activity
-    await LoginActivity.create({
-      userName: user.username,
-      userRole: user.role,
-      timestamp: new Date(),
-      ipAddress: req.ip,
-      action: "login-google",
-    });
     
     res.status(200).json({
       success: true,

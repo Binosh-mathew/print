@@ -2,9 +2,9 @@ import { Order } from "@/types/order";
 import { Store } from "@/types/store";
 import { User } from "@/types/user";
 import { Message } from "@/types/message";
-import { LoginActivity } from "@/types/loginActivity";
 import { Product } from "@/types/product";
 import { Ad } from "@/types/ad";
+import { LoginAlert } from "@/types/loginAlert";
 import axios from "./config/axios"
 
 
@@ -451,11 +451,6 @@ export const fetchPlatformStats = async (): Promise<any> => {
   return response.data;
 };
 
-export const fetchLoginActivity = async (): Promise<LoginActivity[]> => {
-  const response = await axios.get(`/login-activity`);
-  return response.data;
-};
-
 // Developer APIs
 export const fetchSystemStatus = async (): Promise<any> => {
   const response = await axios.get(`/system-status`);
@@ -469,6 +464,21 @@ export const fetchDatabaseStats = async (): Promise<any> => {
 
 export const fetchLogs = async (): Promise<any> => {
   const response = await axios.get(`/logs`);
+  return response.data;
+};
+
+export const fetchLoginAlerts = async (): Promise<LoginAlert[]> => {
+  const response = await axios.get(`/login-alerts`);
+  return response.data;
+};
+
+export const resolveLoginAlert = async (alertId: string): Promise<any> => {
+  const response = await axios.put(`/login-alerts/${alertId}/resolve`);
+  return response.data;
+};
+
+export const clearResolvedAlerts = async (): Promise<any> => {
+  const response = await axios.delete(`/login-alerts/clear-resolved`);
   return response.data;
 };
 
