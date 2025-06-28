@@ -107,27 +107,46 @@ export const fetchStorePricing = async (id: string): Promise<any> => {
   }
 };
 
-// This function has been moved to the User APIs section
-
-export const updateStorePricing = async (
-  id: string,
-  pricingData: any
-): Promise<any> => {
+export const fetchStoreFeatures = async (id: string): Promise<any> => {
   try {
-    const response = await axios.put(
-      `/stores/${id}/pricing`,
-      { pricing: pricingData }
-    );
-    return response.data;
+    const response = await axios.get(`/stores/${id}`);
+    return response.data.features;
   } catch (error: any) {
-    // Handle specific error messages
     if (error?.response?.data) {
       throw new Error(
-        error.response.data.message || "Failed to update store pricing"
+        error.response.data.message || "Failed to fetch store features"
       );
     }
     throw new Error(
-      "An unexpected error occurred while updating store pricing"
+      "An unexpected error occurred while fetching store features"
+    );
+  }
+};
+
+export const updateStoreFeatures = async (
+  id: string,
+  featuresData: any,
+  status?: string
+): Promise<any> => {
+  try {
+    const updateData: any = { features: featuresData };
+    if (status !== undefined) {
+      updateData.status = status;
+    }
+    
+    const response = await axios.put(
+      `/stores/${id}/features`,
+      updateData
+    );
+    return response.data;
+  } catch (error: any) {
+    if (error?.response?.data) {
+      throw new Error(
+        error.response.data.message || "Failed to update store features"
+      );
+    }
+    throw new Error(
+      "An unexpected error occurred while updating store features"
     );
   }
 };

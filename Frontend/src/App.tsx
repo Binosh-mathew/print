@@ -25,6 +25,7 @@ import Dashboard from "./pages/admin/Dashboard";
 import ManageOrders from "./pages/admin/ManageOrders";
 import ManageUsers from "./pages/admin/ManageUsers";
 import PricingSettings from "./pages/admin/PricingSettings";
+import StoreSettings from "./pages/admin/StoreSettings";
 import Messages from "./pages/admin/Messages";
 import AdminProfile from "./pages/admin/Profile";
 import NotFound from "./pages/NotFound";
@@ -202,6 +203,14 @@ const App = () => {
                 element={
                   <ProtectedRoute allowedRole="admin">
                     <PricingSettings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/settings"
+                element={
+                  <ProtectedRoute allowedRole="admin">
+                    <StoreSettings />
                   </ProtectedRoute>
                 }
               />

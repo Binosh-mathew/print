@@ -11,6 +11,22 @@ const storeSchema = new mongoose.Schema(
       password: String, // store the bcrypt hash here
       createdAt: { type: Date, default: Date.now },
     },
+    features: {
+      binding: {
+        isAvailable: { type: Boolean, default: true },
+        spiralBinding: { type: Boolean, default: true },
+        staplingBinding: { type: Boolean, default: true },
+        hardcoverBinding: { type: Boolean, default: true },
+      },
+      availablePaperTypes: {
+        normal: { type: Boolean, default: true },
+        glossy: { type: Boolean, default: true },
+        matte: { type: Boolean, default: true },
+        transparent: { type: Boolean, default: true },
+      },
+      colorPrinting: { type: Boolean, default: true },
+      blackAndWhitePrinting: { type: Boolean, default: true },
+    },
     pricing: {
       blackAndWhite: {
         singleSided: { type: Number, default: 2 },
@@ -21,7 +37,6 @@ const storeSchema = new mongoose.Schema(
         doubleSided: { type: Number, default: 8 },
       },
       binding: {
-        isAvailable: { type: Boolean, default: false },
         spiralBinding: { type: Number, default: 30 },
         staplingBinding: { type: Number, default: 10 },
         hardcoverBinding: { type: Number, default: 100 },

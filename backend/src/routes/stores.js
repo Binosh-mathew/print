@@ -166,4 +166,51 @@ router.put("/:id/pricing", auth, isAdmin, async (req, res) => {
   }
 });
 
+// Update store features/settings
+router.put("/:id/features", auth, isAdmin, async (req, res) => {
+  try {
+    const { features, status } = req.body;
+
+    const updateData = {};
+    
+    if (features) {
+      updateData.features = features;
+    }
+    
+    if (status) {
+      updateData.status = status;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: "No valid update data provided" });
+    }
+
+    const store = await Store.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    );
+
+    if (!store) {
+      return res.status(404).json({ message: "Store not found" });
+    }
+
+    res.json({
+      message: "Store features updated successfully",
+      store: {
+        id: store._id,
+        name: store.name,
+        status: store.status,
+        features: store.features,
+      },
+    });
+  } catch (error) {
+    console.error("Error updating store features:", error);
+    res.status(500).json({
+      message: "Error updating store features",
+      error: error.message,
+    });
+  }
+});
+
 export default router;

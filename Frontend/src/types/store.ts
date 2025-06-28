@@ -14,6 +14,22 @@ export interface Store {
     status?: 'active' | 'inactive';
     createdAt?: Date;
   };
+  features?: {
+    binding?: {
+      isAvailable: boolean;
+      spiralBinding: boolean;
+      staplingBinding: boolean;
+      hardcoverBinding: boolean;
+    };
+    availablePaperTypes?: {
+      normal: boolean;
+      glossy: boolean;
+      matte: boolean;
+      transparent: boolean;
+    };
+    colorPrinting?: boolean;
+    blackAndWhitePrinting?: boolean;
+  };
   pricing?: {
     blackAndWhite?: {
       singleSided: number;
@@ -24,7 +40,6 @@ export interface Store {
       doubleSided: number;
     };
     binding?: {
-      isAvailable:boolean;
       spiralBinding: number;
       staplingBinding: number;
       hardcoverBinding: number;

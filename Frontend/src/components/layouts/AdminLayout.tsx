@@ -9,7 +9,9 @@ import {
   Menu,
   X,
   MessageSquare,
-  User
+  User,
+  Receipt,
+  Store
 } from 'lucide-react';
 import useAuthStore from '@/store/authStore';
 
@@ -31,7 +33,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const navItems = [
     { path: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
     { path: '/admin/orders', label: 'Manage Orders', icon: <FileText size={18} /> },
-    { path: '/admin/pricing', label: 'Pricing', icon: <Settings size={18} /> },
+    { path: '/admin/pricing', label: 'Pricing', icon: <Receipt size={18} /> },
+    { path: '/admin/settings', label: 'Store Settings', icon: <Store size={18} /> },
     { path: '/admin/messages', label: 'Messages', icon: <MessageSquare size={18} /> },
     { path: '/admin/profile', label: 'Store Profile', icon: <User size={18} /> },
   ];

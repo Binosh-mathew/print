@@ -8,23 +8,34 @@ import {
   CardContent, 
   CardHeader, 
   CardTitle, 
-  CardDescription,
-  CardFooter
+  CardDescription
 } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { Switch } from '@/components/ui/switch';
 import { Loader2, Save, CreditCard, FileText, Printer, Info, BookOpen, Layers } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { fetchStores, updateStorePricing } from '@/api';
-import useAuthStore from '@/store/authStore';
 
 const PricingSettings = () => {
-  const { user } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [storeId, setStoreId] = useState('');
-  const [lastUpdated, setLastUpdated] = useState('');
+  const [storeFeatures, setStoreFeatures] = useState({
+    binding: {
+      isAvailable: true,
+      spiralBinding: true,
+      staplingBinding: true,
+      hardcoverBinding: true,
+    },
+    availablePaperTypes: {
+      normal: true,
+      glossy: true,
+      matte: true,
+      transparent: true,
+    },
+    colorPrinting: true,
+    blackAndWhitePrinting: true,
+  });
   const [prices, setPrices] = useState({
     blackAndWhite: {
       singleSided: 0,
@@ -38,7 +49,6 @@ const PricingSettings = () => {
       spiralBinding: 0,
       staplingBinding: 0,
       hardcoverBinding: 0,
-      isAvailable: false,
     },
     paperTypes: {
       normal: 0,
@@ -75,7 +85,6 @@ const PricingSettings = () => {
                 spiralBinding: store.pricing.binding?.spiralBinding || 0,
                 staplingBinding: store.pricing.binding?.staplingBinding || 0,
                 hardcoverBinding: store.pricing.binding?.hardcoverBinding || 0,
-                isAvailable: store.pricing.binding?.isAvailable || false,
               },
               paperTypes: {
                 normal: store.pricing.paperTypes?.normal || 0,
@@ -84,11 +93,26 @@ const PricingSettings = () => {
                 transparent: store.pricing.paperTypes?.transparent || 0,
               },
             });
-            
-            // Set last updated date if available
-            if (store.pricing.lastUpdated) {
-              setLastUpdated(new Date(store.pricing.lastUpdated).toLocaleDateString());
-            }
+          }
+          
+          // If store has features data, use it
+          if (store.features) {
+            setStoreFeatures({
+              binding: {
+                isAvailable: store.features.binding?.isAvailable ?? true,
+                spiralBinding: store.features.binding?.spiralBinding ?? true,
+                staplingBinding: store.features.binding?.staplingBinding ?? true,
+                hardcoverBinding: store.features.binding?.hardcoverBinding ?? true,
+              },
+              availablePaperTypes: {
+                normal: store.features.availablePaperTypes?.normal ?? true,
+                glossy: store.features.availablePaperTypes?.glossy ?? true,
+                matte: store.features.availablePaperTypes?.matte ?? true,
+                transparent: store.features.availablePaperTypes?.transparent ?? true,
+              },
+              colorPrinting: store.features.colorPrinting ?? true,
+              blackAndWhitePrinting: store.features.blackAndWhitePrinting ?? true,
+            });
           }
         }
       } catch (error) {
@@ -125,11 +149,6 @@ const PricingSettings = () => {
     bindingType: keyof typeof prices.binding,
     value: string
   ) => {
-    // If binding is not available, prevent price changes
-    if (!prices.binding.isAvailable && bindingType !== 'isAvailable') {
-      return;
-    }
-    
     const numericValue = parseFloat(value) || 0;
     setPrices({
       ...prices,
@@ -164,22 +183,17 @@ const PricingSettings = () => {
       }
       
       // Update pricing in the backend
-      // Send all pricing data including isAvailable
+      // Send pricing data without isAvailable (managed in Store Settings)
       const pricingData = {
         ...prices,
-        // Make sure to include isAvailable in the binding object
         binding: {
           spiralBinding: prices.binding.spiralBinding,
           staplingBinding: prices.binding.staplingBinding,
           hardcoverBinding: prices.binding.hardcoverBinding,
-          isAvailable: prices.binding.isAvailable
         }
       };
       
       await updateStorePricing(storeId, pricingData);
-      
-      // Update the last updated date
-      setLastUpdated(new Date().toLocaleDateString());
       
       toast({
         title: "Pricing updated",
@@ -203,12 +217,6 @@ const PricingSettings = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Pricing Settings</h1>
-            <p className="text-gray-600 mt-1">Manage pricing for print services</p>
-            {lastUpdated && (
-              <p className="text-sm text-muted-foreground mt-1">
-                Last updated: {lastUpdated}
-              </p>
-            )}
           </div>
           <Button disabled={isSubmitting} type="submit" form="pricing-form">
             {isSubmitting ? (
@@ -239,196 +247,249 @@ const PricingSettings = () => {
             </TabsList>
             
             <TabsContent value="standard" className="space-y-6 mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center text-xl">
-                    <FileText className="mr-2 h-5 w-5" />
-                    Black & White Printing
-                  </CardTitle>
-                  <CardDescription>
-                    Set pricing for black and white prints per page
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="bw-single">Single-sided (₹ per page)</Label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
-                        <Input
-                          id="bw-single"
-                          type="number"
-                          value={prices.blackAndWhite.singleSided}
-                          onChange={(e) => handlePriceChange('blackAndWhite', 'singleSided', e.target.value)}
-                          className="pl-8"
-                          min="0"
-                          step="0.5"
-                        />
+              {storeFeatures.blackAndWhitePrinting && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-xl">
+                      <FileText className="mr-2 h-5 w-5" />
+                      Black & White Printing
+                    </CardTitle>
+                    <CardDescription>
+                      Set pricing for black and white prints per page
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="bw-single">Single-sided (₹ per page)</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
+                          <Input
+                            id="bw-single"
+                            type="number"
+                            value={prices.blackAndWhite.singleSided}
+                            onChange={(e) => handlePriceChange('blackAndWhite', 'singleSided', e.target.value)}
+                            className="pl-8"
+                            min="0"
+                            step="0.5"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="bw-double">Double-sided (₹ per page)</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
+                          <Input
+                            id="bw-double"
+                            type="number"
+                            value={prices.blackAndWhite.doubleSided}
+                            onChange={(e) => handlePriceChange('blackAndWhite', 'doubleSided', e.target.value)}
+                            className="pl-8"
+                            min="0"
+                            step="0.5"
+                          />
+                        </div>
                       </div>
                     </div>
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="bw-double">Double-sided (₹ per page)</Label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
-                        <Input
-                          id="bw-double"
-                          type="number"
-                          value={prices.blackAndWhite.doubleSided}
-                          onChange={(e) => handlePriceChange('blackAndWhite', 'doubleSided', e.target.value)}
-                          className="pl-8"
-                          min="0"
-                          step="0.5"
-                        />
-                      </div>
+                    <div className="rounded-md bg-gray-50 p-4 text-sm flex">
+                      <Info className="h-5 w-5 text-blue-500 mr-3 flex-shrink-0" />
+                      <p className="text-gray-600">
+                        For double-sided prints, the price is per physical sheet (1 sheet = 2 pages when printed double-sided).
+                      </p>
                     </div>
-                  </div>
-                  
-                  <div className="rounded-md bg-gray-50 p-4 text-sm flex">
-                    <Info className="h-5 w-5 text-blue-500 mr-3 flex-shrink-0" />
-                    <p className="text-gray-600">
-                      For double-sided prints, the price is per physical sheet (1 sheet = 2 pages when printed double-sided).
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
               
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center text-xl">
-                    <Printer className="mr-2 h-5 w-5" />
-                    Color Printing
-                  </CardTitle>
-                  <CardDescription>
-                    Set pricing for color prints per page
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="color-single">Single-sided (₹ per page)</Label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
-                        <Input
-                          id="color-single"
-                          type="number"
-                          value={prices.color.singleSided}
-                          onChange={(e) => handlePriceChange('color', 'singleSided', e.target.value)}
-                          className="pl-8"
-                          min="0"
-                          step="0.5"
-                        />
+              {!storeFeatures.blackAndWhitePrinting && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-xl text-muted-foreground">
+                      <FileText className="mr-2 h-5 w-5" />
+                      Black & White Printing
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="rounded-md bg-yellow-50 p-4 text-sm flex">
+                      <Info className="h-5 w-5 text-yellow-500 mr-3 flex-shrink-0" />
+                      <p className="text-yellow-700">
+                        Black & White printing is currently disabled. Enable it in Store Settings to set pricing.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              
+              {storeFeatures.colorPrinting && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-xl">
+                      <Printer className="mr-2 h-5 w-5" />
+                      Color Printing
+                    </CardTitle>
+                    <CardDescription>
+                      Set pricing for color prints per page
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="color-single">Single-sided (₹ per page)</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
+                          <Input
+                            id="color-single"
+                            type="number"
+                            value={prices.color.singleSided}
+                            onChange={(e) => handlePriceChange('color', 'singleSided', e.target.value)}
+                            className="pl-8"
+                            min="0"
+                            step="0.5"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="color-double">Double-sided (₹ per page)</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
+                          <Input
+                            id="color-double"
+                            type="number"
+                            value={prices.color.doubleSided}
+                            onChange={(e) => handlePriceChange('color', 'doubleSided', e.target.value)}
+                            className="pl-8"
+                            min="0"
+                            step="0.5"
+                          />
+                        </div>
                       </div>
                     </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="color-double">Double-sided (₹ per page)</Label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
-                        <Input
-                          id="color-double"
-                          type="number"
-                          value={prices.color.doubleSided}
-                          onChange={(e) => handlePriceChange('color', 'doubleSided', e.target.value)}
-                          className="pl-8"
-                          min="0"
-                          step="0.5"
-                        />
-                      </div>
+                  </CardContent>
+                </Card>
+              )}
+              
+              {!storeFeatures.colorPrinting && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-xl text-muted-foreground">
+                      <Printer className="mr-2 h-5 w-5" />
+                      Color Printing
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="rounded-md bg-yellow-50 p-4 text-sm flex">
+                      <Info className="h-5 w-5 text-yellow-500 mr-3 flex-shrink-0" />
+                      <p className="text-yellow-700">
+                        Color printing is currently disabled. Enable it in Store Settings to set pricing.
+                      </p>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
             
             <TabsContent value="binding" className="space-y-6 mt-6">
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
+              {storeFeatures.binding.isAvailable ? (
+                <Card>
+                  <CardHeader>
                     <div>
                       <CardTitle className="flex items-center text-xl">
                         <BookOpen className="mr-2 h-5 w-5" />
                         Binding Options
                       </CardTitle>
                       <CardDescription>
-                        Set pricing for different binding types
+                        Set pricing for different binding types. Manage availability in Store Settings.
                       </CardDescription>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Label htmlFor="binding-availability" className="text-sm font-medium">
-                        {prices.binding.isAvailable ? 'Available' : 'Unavailable'}
-                      </Label>
-                      <Switch 
-                        id="binding-availability" 
-                        checked={prices.binding.isAvailable}
-                        onCheckedChange={(checked) => 
-                          setPrices(prev => ({
-                            ...prev,
-                            binding: {
-                              ...prev.binding,
-                              isAvailable: checked
-                            }
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="spiral-binding">Spiral Binding (₹)</Label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
-                        <Input
-                          id="spiral-binding"
-                          type="number"
-                          value={prices.binding.spiralBinding}
-                          onChange={(e) => handleBindingPriceChange('spiralBinding', e.target.value)}
-                          className="pl-8"
-                          min="0"
-                          step="1"
-                          disabled={!prices.binding.isAvailable}
-                        />
-                      </div>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {storeFeatures.binding.spiralBinding && (
+                        <div className="space-y-2">
+                          <Label htmlFor="spiral-binding">Spiral Binding (₹)</Label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
+                            <Input
+                              id="spiral-binding"
+                              type="number"
+                              value={prices.binding.spiralBinding}
+                              onChange={(e) => handleBindingPriceChange('spiralBinding', e.target.value)}
+                              className="pl-8"
+                              min="0"
+                              step="1"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      
+                      {storeFeatures.binding.staplingBinding && (
+                        <div className="space-y-2">
+                          <Label htmlFor="stapling-binding">Stapling (₹)</Label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
+                            <Input
+                              id="stapling-binding"
+                              type="number"
+                              value={prices.binding.staplingBinding}
+                              onChange={(e) => handleBindingPriceChange('staplingBinding', e.target.value)}
+                              className="pl-8"
+                              min="0"
+                              step="1"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      
+                      {storeFeatures.binding.hardcoverBinding && (
+                        <div className="space-y-2">
+                          <Label htmlFor="hardcover-binding">Hardcover (₹)</Label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
+                            <Input
+                              id="hardcover-binding"
+                              type="number"
+                              value={prices.binding.hardcoverBinding}
+                              onChange={(e) => handleBindingPriceChange('hardcoverBinding', e.target.value)}
+                              className="pl-8"
+                              min="0"
+                              step="1"
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="stapling-binding">Stapling (₹)</Label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
-                        <Input
-                          id="stapling-binding"
-                          type="number"
-                          value={prices.binding.staplingBinding}
-                          onChange={(e) => handleBindingPriceChange('staplingBinding', e.target.value)}
-                          className="pl-8"
-                          min="0"
-                          step="1"
-                          disabled={!prices.binding.isAvailable}
-                        />
+                    {!storeFeatures.binding.spiralBinding && !storeFeatures.binding.staplingBinding && !storeFeatures.binding.hardcoverBinding && (
+                      <div className="rounded-md bg-yellow-50 p-4 text-sm flex">
+                        <Info className="h-5 w-5 text-yellow-500 mr-3 flex-shrink-0" />
+                        <p className="text-yellow-700">
+                          No specific binding types are enabled. Enable specific binding types in Store Settings.
+                        </p>
                       </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-xl text-muted-foreground">
+                      <BookOpen className="mr-2 h-5 w-5" />
+                      Binding Options
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="rounded-md bg-yellow-50 p-4 text-sm flex">
+                      <Info className="h-5 w-5 text-yellow-500 mr-3 flex-shrink-0" />
+                      <p className="text-yellow-700">
+                        Binding services are currently disabled. Enable binding in Store Settings to set pricing.
+                      </p>
                     </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="hardcover-binding">Hardcover (₹)</Label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
-                        <Input
-                          id="hardcover-binding"
-                          type="number"
-                          value={prices.binding.hardcoverBinding}
-                          onChange={(e) => handleBindingPriceChange('hardcoverBinding', e.target.value)}
-                          className="pl-8"
-                          min="0"
-                          step="1"
-                          disabled={!prices.binding.isAvailable}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
             
             <TabsContent value="paper" className="space-y-6 mt-6">
@@ -444,77 +505,102 @@ const PricingSettings = () => {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="normal-paper">Normal Paper (₹ per page)</Label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
-                        <Input
-                          id="normal-paper"
-                          type="number"
-                          value={prices.paperTypes.normal}
-                          onChange={(e) => handlePaperTypePriceChange('normal', e.target.value)}
-                          className="pl-8"
-                          min="0"
-                          step="0.5"
-                        />
+                    {storeFeatures.availablePaperTypes.normal && (
+                      <div className="space-y-2">
+                        <Label htmlFor="normal-paper">Normal Paper (₹ per page)</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
+                          <Input
+                            id="normal-paper"
+                            type="number"
+                            value={prices.paperTypes.normal}
+                            onChange={(e) => handlePaperTypePriceChange('normal', e.target.value)}
+                            className="pl-8"
+                            min="0"
+                            step="0.5"
+                          />
+                        </div>
                       </div>
-                    </div>
+                    )}
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="glossy-paper">Glossy Paper (₹ per page)</Label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
-                        <Input
-                          id="glossy-paper"
-                          type="number"
-                          value={prices.paperTypes.glossy}
-                          onChange={(e) => handlePaperTypePriceChange('glossy', e.target.value)}
-                          className="pl-8"
-                          min="0"
-                          step="0.5"
-                        />
+                    {storeFeatures.availablePaperTypes.glossy && (
+                      <div className="space-y-2">
+                        <Label htmlFor="glossy-paper">Glossy Paper (₹ per page)</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
+                          <Input
+                            id="glossy-paper"
+                            type="number"
+                            value={prices.paperTypes.glossy}
+                            onChange={(e) => handlePaperTypePriceChange('glossy', e.target.value)}
+                            className="pl-8"
+                            min="0"
+                            step="0.5"
+                          />
+                        </div>
                       </div>
-                    </div>
+                    )}
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="matte-paper">Matte Paper (₹ per page)</Label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
-                        <Input
-                          id="matte-paper"
-                          type="number"
-                          value={prices.paperTypes.matte}
-                          onChange={(e) => handlePaperTypePriceChange('matte', e.target.value)}
-                          className="pl-8"
-                          min="0"
-                          step="0.5"
-                        />
+                    {storeFeatures.availablePaperTypes.matte && (
+                      <div className="space-y-2">
+                        <Label htmlFor="matte-paper">Matte Paper (₹ per page)</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
+                          <Input
+                            id="matte-paper"
+                            type="number"
+                            value={prices.paperTypes.matte}
+                            onChange={(e) => handlePaperTypePriceChange('matte', e.target.value)}
+                            className="pl-8"
+                            min="0"
+                            step="0.5"
+                          />
+                        </div>
                       </div>
-                    </div>
+                    )}
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="transparent-paper">Transparent Sheet (₹ per page)</Label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
-                        <Input
-                          id="transparent-paper"
-                          type="number"
-                          value={prices.paperTypes.transparent}
-                          onChange={(e) => handlePaperTypePriceChange('transparent', e.target.value)}
-                          className="pl-8"
-                          min="0"
-                          step="0.5"
-                        />
+                    {storeFeatures.availablePaperTypes.transparent && (
+                      <div className="space-y-2">
+                        <Label htmlFor="transparent-paper">Transparent Sheet (₹ per page)</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
+                          <Input
+                            id="transparent-paper"
+                            type="number"
+                            value={prices.paperTypes.transparent}
+                            onChange={(e) => handlePaperTypePriceChange('transparent', e.target.value)}
+                            className="pl-8"
+                            min="0"
+                            step="0.5"
+                          />
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                   
-                  <div className="rounded-md bg-gray-50 p-4 text-sm flex">
-                    <Info className="h-5 w-5 text-blue-500 mr-3 flex-shrink-0" />
-                    <p className="text-gray-600">
-                      Paper type prices are additional costs per page on top of the standard printing costs.
-                    </p>
-                  </div>
+                  {!storeFeatures.availablePaperTypes.normal && 
+                   !storeFeatures.availablePaperTypes.glossy && 
+                   !storeFeatures.availablePaperTypes.matte && 
+                   !storeFeatures.availablePaperTypes.transparent && (
+                    <div className="rounded-md bg-yellow-50 p-4 text-sm flex">
+                      <Info className="h-5 w-5 text-yellow-500 mr-3 flex-shrink-0" />
+                      <p className="text-yellow-700">
+                        No paper types are enabled. Enable paper types in Store Settings.
+                      </p>
+                    </div>
+                  )}
+                  
+                  {(storeFeatures.availablePaperTypes.normal || 
+                    storeFeatures.availablePaperTypes.glossy || 
+                    storeFeatures.availablePaperTypes.matte || 
+                    storeFeatures.availablePaperTypes.transparent) && (
+                    <div className="rounded-md bg-gray-50 p-4 text-sm flex">
+                      <Info className="h-5 w-5 text-blue-500 mr-3 flex-shrink-0" />
+                      <p className="text-gray-600">
+                        Paper type prices are additional costs per page on top of the standard printing costs.
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -554,13 +640,6 @@ const PricingSettings = () => {
               </div>
             </div>
           </CardContent>
-          <CardFooter className="bg-gray-50 border-t border-gray-100 text-sm text-gray-500">
-            {lastUpdated ? (
-              <p>Last updated: {lastUpdated}</p>
-            ) : (
-              <p>Not updated yet</p>
-            )}
-          </CardFooter>
         </Card>
       </div>
     </AdminLayout>
