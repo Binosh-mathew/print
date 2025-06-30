@@ -33,6 +33,7 @@ import {
   fetchStorePricing,
   fetchStores,
 } from "@/api";
+import { fetchPendingOrdersCounts } from "@/api/ordersCountApi";
 import type { OrderFormData, FileDetails, Order } from "@/types/order";
 import type { Store } from "@/types/store";
 import useAuthStore from "@/store/authStore";
@@ -44,6 +45,7 @@ const NewOrder = () => {
   const [files, setFiles] = useState<FileDetails[]>([]);
   const [totalPrice, setTotalPrice] = useState(0);
   const [stores, setStores] = useState<Store[]>([]);
+  // We'll use this state directly in the store objects rather than separately
   const [selectedStorePricing, setSelectedStorePricing] = useState<any>(null);
   const [storeSelected, setStoreSelected] = useState<Store | null>(null);
   const [loadingStores, setLoadingStores] = useState(false);
@@ -118,14 +120,75 @@ const NewOrder = () => {
     loadStores();
   }, []);
 
+  // We'll now use the fetchPendingOrdersCounts function from ordersCountApi.ts
+
+  // Update stores with actual pending orders data
+  useEffect(() => {
+    if (stores.length === 0) return;
+    
+    const updatePendingOrderCounts = async () => {
+      try {
+        // Show loading indicator
+        setLoadingStores(true);
+        
+        // Fetch actual pending orders data using the API function
+        const pendingOrdersData = await fetchPendingOrdersCounts();
+        
+        // Update store data with pending orders count
+        const updatedStores = stores.map(store => {
+          const storeId = store._id?.toString() || store.id?.toString() || "";
+          const count = pendingOrdersData[storeId] || 0;
+          
+          return {
+            ...store,
+            pendingOrdersCount: count
+          };
+        });
+        
+        setStores(updatedStores);
+      } catch (error) {
+        console.error("Error updating pending order counts:", error);
+        // No need to show a toast here as it would disrupt user experience
+      } finally {
+        setLoadingStores(false);
+      }
+    };
+    
+    updatePendingOrderCounts();
+  }, [stores.length]); // Only run when stores are first loaded
+
+  // Function to determine color based on pending orders count
+  const getPendingOrdersColor = (count?: number): string => {
+    if (count === undefined || count === 0 || count <= 2) return "bg-green-100 text-green-700";
+    if (count <= 5) return "bg-yellow-100 text-yellow-700";
+    return "bg-red-100 text-red-700";
+  };
+
+  // Function to get text based on pending orders count
+  const getPendingOrdersText = (count?: number): string => {
+    if (count === undefined || count === 0) return "No pending orders";
+    if (count === 1) return "1 pending order";
+    return `${count} pending orders`;
+  };
   // Handle store selection and fetch pricing data
   const handleStoreSelection = async (storeId: string) => {
     try {
       setIsSubmitting(true); // Show loading state
-      const Store: Store = await fetchStoreById(storeId);
+      // Find the store in our stores array to get its pendingOrdersCount
+      const selectedStore = stores.find(store => (store._id || store.id) === storeId);
+      
+      // If store not found in our array, fetch it
+      const storeData: Store = selectedStore || await fetchStoreById(storeId);
+      
+      // Get pricing data
       const pricingData = await fetchStorePricing(storeId);
-
-      setStoreSelected(Store);
+      
+      // Make sure we preserve the pendingOrdersCount if we have it
+      setStoreSelected({
+        ...storeData,
+        pendingOrdersCount: selectedStore?.pendingOrdersCount || storeData.pendingOrdersCount || 0
+      });
+      
       if (pricingData) {
         setSelectedStorePricing(pricingData);
 
@@ -203,7 +266,6 @@ const NewOrder = () => {
       };
 
       const result = await createOrder(orderData);
-      console.log("Order created successfully:", result);
 
       toast({
         title: "Order submitted successfully",
@@ -270,6 +332,54 @@ const NewOrder = () => {
   // Filter only active stores
   // const activeStores = stores.filter((store) => store.status === "active");
 
+  // Function to manually refresh pending order counts
+  const refreshPendingOrderCounts = async () => {
+    try {
+      setLoadingStores(true);
+      
+      // Fetch actual pending orders data using the API function
+      const pendingOrdersData = await fetchPendingOrdersCounts();
+      
+      // Update store data with pending orders count
+      const updatedStores = stores.map(store => {
+        const storeId = store._id?.toString() || store.id?.toString() || "";
+        const count = pendingOrdersData[storeId] || 0;
+        
+        return {
+          ...store,
+          pendingOrdersCount: count
+        };
+      });
+      
+      setStores(updatedStores);
+      
+      // Also update the selected store if one is selected
+      if (storeSelected) {
+        const storeId = storeSelected._id?.toString() || storeSelected.id?.toString() || "";
+        const count = pendingOrdersData[storeId] || 0;
+        
+        setStoreSelected({
+          ...storeSelected,
+          pendingOrdersCount: count
+        });
+      }
+      
+      toast({
+        title: "Refreshed",
+        description: "Pending order counts have been updated",
+      });
+    } catch (error) {
+      console.error("Error refreshing pending order counts:", error);
+      toast({
+        title: "Error",
+        description: "Failed to refresh pending order counts",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingStores(false);
+    }
+  };
+
   return (
     <UserLayout>
       <div className="space-y-6">
@@ -298,7 +408,25 @@ const NewOrder = () => {
                       name="storeId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Select Store</FormLabel>
+                          <div className="flex justify-between items-center">
+                            <FormLabel>Select Store</FormLabel>
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={(e) => {
+                                e.preventDefault();
+                                refreshPendingOrderCounts();
+                              }}
+                              disabled={loadingStores}
+                            >
+                              {loadingStores ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <span className="text-xs">Refresh Counts</span>
+                              )}
+                            </Button>
+                          </div>
                           <Select
                             onValueChange={(value) => {
                               field.onChange(value);
@@ -315,7 +443,16 @@ const NewOrder = () => {
                                     <span>Loading stores...</span>
                                   </div>
                                 ) : (
-                                  <SelectValue placeholder="Select a store" />
+                                  <SelectValue placeholder="Select a store">
+                                    {storeSelected && (
+                                      <div className="flex items-center justify-between">
+                                        <span>{storeSelected.name}</span>
+                                        <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${getPendingOrdersColor(storeSelected.pendingOrdersCount)}`}>
+                                          {getPendingOrdersText(storeSelected.pendingOrdersCount)}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </SelectValue>
                                 )}
                               </SelectTrigger>
                             </FormControl>
@@ -326,12 +463,20 @@ const NewOrder = () => {
                                     key={store._id || store.id}
                                     value={store._id || store.id || ""}
                                   >
-                                    {store.name}
-                                    {store.location && (
-                                      <span className="text-gray-500 text-xs ml-2">
-                                        ({store.location})
-                                      </span>
-                                    )}
+                                    <div className="flex flex-col">
+                                      <div className="flex items-center justify-between w-full">
+                                        <span>{store.name}</span>
+                                        {/* Always show the status indicator, but with appropriate text based on count */}
+                                        <span className={`px-2 py-0.5 rounded-full text-xs ${getPendingOrdersColor(store.pendingOrdersCount)}`}>
+                                          {getPendingOrdersText(store.pendingOrdersCount)}
+                                        </span>
+                                      </div>
+                                      {store.location && (
+                                        <span className="text-gray-500 text-xs">
+                                          ({store.location})
+                                        </span>
+                                      )}
+                                    </div>
                                   </SelectItem>
                                 ))
                               ) : (
