@@ -9,17 +9,42 @@ import { Play, Clock, Coins, Loader2, CheckCircle, AlertCircle } from 'lucide-re
 import { fetchAds, watchAd, getUserSupercoins } from '@/api';
 import { Ad } from '@/types/ad';
 
+// Add TypeScript declarations for YouTube API
+declare global {
+  interface Window {
+    YT: {
+      Player: any;
+      PlayerState?: {
+        ENDED: number;
+        PLAYING: number;
+        PAUSED: number;
+        BUFFERING: number;
+        CUED: number;
+      };
+    };
+    onYouTubeIframeAPIReady: () => void;
+  }
+}
+
 const AdsPage = () => {
   const [ads, setAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [supercoins, setSupercoins] = useState<number>(0);
+  const [totalEarned, setTotalEarned] = useState<number>(0);
   const [selectedAd, setSelectedAd] = useState<Ad | null>(null);
   const [playing, setPlaying] = useState<boolean>(false);
   const [watchComplete, setWatchComplete] = useState<boolean>(false);
   const [rewarded, setRewarded] = useState<boolean>(false);
   const [processingReward, setProcessingReward] = useState<boolean>(false);
+  const [videoError, setVideoError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  
+  // Reference for YouTube player API
+  const youtubePlayerRef = useRef<any>(null);
+  
+  // Track YouTube video state
+  const [youtubePlayerReady, setYoutubePlayerReady] = useState(false);
 
   // Load ads and user's supercoins
   useEffect(() => {
@@ -34,7 +59,23 @@ const AdsPage = () => {
         
         // Load user's supercoins
         const coins = await getUserSupercoins();
-        setSupercoins(coins);
+        setSupercoins(coins.currentCoins || coins);
+        
+        // Set total earned if available
+        if (coins.totalEarned !== undefined) {
+          setTotalEarned(coins.totalEarned);
+        } else {
+          // If API doesn't provide totalEarned, estimate from watched ads
+          const totalFromAds = Array.isArray(fetchedAds) ? fetchedAds.reduce((total, ad) => {
+            // If ad has watchedCount, add that times rewardCoins
+            // Use nullish coalescing to handle undefined/null values
+            if (!ad) return total;
+            const watchCount = ad.watchedCount ?? 0;
+            const rewardAmount = ad.rewardCoins ?? 0;
+            return total + (watchCount * rewardAmount);
+          }, 0) : 0;
+          setTotalEarned(totalFromAds);
+        }
       } catch (err: any) {
         setError(err.message || "Failed to load ads. Please try again later.");
         console.error("Error loading ads:", err);
@@ -45,6 +86,104 @@ const AdsPage = () => {
     
     loadData();
   }, []);
+
+  // Check video URL validity when selected ad changes
+  useEffect(() => {
+    if (selectedAd && videoRef.current) {
+      // Reset error state
+      setVideoError(null);
+      
+      // Check if the video can play
+      const checkVideo = () => {
+        if (videoRef.current) {
+          const video = videoRef.current;
+          
+          // Check if video URL is valid
+          if (!selectedAd.videoUrl) {
+            setVideoError("Video URL is missing");
+            return;
+          }
+          
+          // Don't set src directly here since we're using <source> elements
+          // Instead, set up error handling only
+          
+          const errorHandler = () => {
+            console.error("Video error:", video.error);
+            setVideoError("This video format is not supported by your browser. Please try a different ad.");
+            setPlaying(false);
+          };
+          
+          video.addEventListener('error', errorHandler);
+          
+          return () => {
+            video.removeEventListener('error', errorHandler);
+          };
+        }
+      };
+      
+      checkVideo();
+    }
+  }, [selectedAd]);
+
+  // Check if URL is a YouTube URL
+  const isYouTubeUrl = (url: string): boolean => {
+    return !!url && (
+      url.includes('youtube.com/watch') || 
+      url.includes('youtu.be/') || 
+      url.includes('youtube.com/embed/')
+    );
+  };
+  
+  // Extract YouTube video ID from various YouTube URL formats
+  const getYoutubeVideoId = (url: string): string | null => {
+    if (!url) return null;
+    
+    // Match patterns like: https://www.youtube.com/watch?v=VIDEO_ID
+    // or https://youtu.be/VIDEO_ID or https://www.youtube.com/embed/VIDEO_ID
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\?\/]+)/,
+      /youtube\.com\/watch\?.*v=([^&\?\/]+)/
+    ];
+    
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+    
+    return null;
+  };
+  
+  // Try to resolve video format issues
+  const resolveVideoUrl = (url: string): string => {
+    if (!url) return url;
+    
+    // Don't modify YouTube URLs
+    if (isYouTubeUrl(url)) {
+      return url;
+    }
+    
+    // Check if the URL already has a valid video extension
+    if (/\.(mp4|webm|ogg|mov|m3u8)$/i.test(url)) {
+      return url;
+    }
+    
+    // If it's a Cloudinary URL without extension, append format
+    if (url.includes('cloudinary.com') && !url.includes('resource_type=video')) {
+      // Cloudinary transformation to force mp4
+      if (url.includes('/upload/')) {
+        return url.replace('/upload/', '/upload/f_mp4/');
+      }
+    }
+    
+    // If it's a URL with query parameters but no extension
+    if (url.includes('?') && !url.match(/\.(mp4|webm|ogg|mov|m3u8)/i)) {
+      return `${url}&format=mp4`;
+    }
+    
+    return url;
+  };
 
   // Handle video ended event
   const handleVideoEnded = () => {
@@ -58,11 +197,80 @@ const AdsPage = () => {
     setPlaying(true);
     setWatchComplete(false);
     setRewarded(false);
+    setVideoError(null);
+    
+    // Function to check video format support
+    const checkVideoFormat = (url: string) => {
+      // Simple check if the URL has a file extension we recognize
+      const formatSupported = /\.(mp4|webm|ogg|mov|m3u8)$/i.test(url);
+      if (!formatSupported) {
+        console.warn("Potentially unsupported video format:", url);
+      }
+      return formatSupported;
+    };
+    
+    // Check if the URL appears to be valid
+    if (!ad.videoUrl) {
+      setVideoError("Video URL is missing");
+      setPlaying(false);
+      return;
+    }
+    
+    // Check if it's a YouTube URL
+    if (isYouTubeUrl(ad.videoUrl)) {
+      // For YouTube URLs, we'll use the iframe API
+      const videoId = getYoutubeVideoId(ad.videoUrl);
+      if (!videoId) {
+        setVideoError("Invalid YouTube URL");
+        setPlaying(false);
+        return;
+      }
+      
+      // YouTube player will be initialized by the iframe when it loads
+      // The setupYouTubePlayer function will be called in the useEffect when the video element exists
+      setTimeout(() => {
+        setupYouTubePlayer();
+      }, 100);
+      
+      return;
+    }
+    
+    // For direct video URLs (non-YouTube)
+    // Try to fix video URL format issues
+    const resolvedUrl = resolveVideoUrl(ad.videoUrl);
+    // Create a modified ad object with the resolved URL
+    const resolvedAd = {
+      ...ad,
+      videoUrl: resolvedUrl
+    };
+    
+    // Use the resolved ad object
+    setSelectedAd(resolvedAd);
     
     // Reset video if it was already played
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
-      videoRef.current.play();
+      
+      // Force video element to reload with new sources
+      videoRef.current.load();
+      
+      // Handle potential play errors
+      videoRef.current.play()
+        .catch(error => {
+          console.error("Error playing video:", error);
+          
+          if (error.name === "NotSupportedError" || !checkVideoFormat(resolvedUrl)) {
+            setVideoError("This video format is not supported by your browser");
+          } else if (error.name === "AbortError") {
+            setVideoError("Video playback was aborted");
+          } else if (error.name === "NetworkError") {
+            setVideoError("Network error occurred while loading the video");
+          } else {
+            setVideoError("Failed to play this ad. Please try again later.");
+          }
+          
+          setPlaying(false);
+        });
     }
   };
 
@@ -75,7 +283,24 @@ const AdsPage = () => {
       const result = await watchAd(selectedAd.id || selectedAd._id || '');
       
       // Update supercoins
-      setSupercoins(result.supercoins);
+      if (result.supercoins) {
+        if (typeof result.supercoins === 'object') {
+          // If API returns object with currentCoins and totalEarned
+          setSupercoins(result.supercoins.currentCoins || result.supercoins);
+          if (result.supercoins.totalEarned !== undefined) {
+            setTotalEarned(result.supercoins.totalEarned);
+          } else {
+            // Increment total earned with the newly earned coins
+            setTotalEarned(prev => prev + selectedAd.rewardCoins);
+          }
+        } else {
+          // If API just returns a number
+          setSupercoins(result.supercoins);
+          // Increment total earned with the newly earned coins
+          setTotalEarned(prev => prev + selectedAd.rewardCoins);
+        }
+      }
+      
       setRewarded(true);
       
       toast({
@@ -95,10 +320,22 @@ const AdsPage = () => {
 
   // Handle video close
   const handleCloseVideo = () => {
+    // Clean up YouTube player if it exists
+    if (youtubePlayerRef.current) {
+      try {
+        youtubePlayerRef.current.destroy();
+      } catch (error) {
+        console.error("Error destroying YouTube player:", error);
+      }
+      youtubePlayerRef.current = null;
+      setYoutubePlayerReady(false);
+    }
+    
     setSelectedAd(null);
     setPlaying(false);
     setWatchComplete(false);
     setRewarded(false);
+    setVideoError(null);
   };
 
   // Prevent video pause/play toggling when user clicks
@@ -123,6 +360,282 @@ const AdsPage = () => {
     if (videoRef.current && videoRef.current.paused && playing) {
       videoRef.current.play();
     }
+  };
+
+  // Separate component to handle YouTube videos
+  const YouTubeVideoPlayer = () => {
+    // Set up YouTube player when component mounts
+    useEffect(() => {
+      if (!selectedAd || !isYouTubeUrl(selectedAd.videoUrl) || !playing) return;
+      
+      // Create container if needed
+      let container = document.getElementById('youtube-player-container');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'youtube-player-container';
+        document.querySelector('.aspect-video')?.appendChild(container);
+      }
+      
+      // Load YouTube API if needed
+      if (!window.YT || !window.YT.Player) {
+        // Set up API loading
+        window.onYouTubeIframeAPIReady = () => {
+          initializeYouTubePlayer();
+        };
+        
+        // Check if script is already added
+        if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+          const script = document.createElement('script');
+          script.src = "https://www.youtube.com/iframe_api";
+          document.head.appendChild(script);
+        }
+      } else {
+        // API already loaded, initialize player
+        initializeYouTubePlayer();
+      }
+      
+      return () => {
+        // Clean up
+        if (youtubePlayerRef.current) {
+          try {
+            youtubePlayerRef.current.destroy();
+          } catch (e) {
+            console.error("Error destroying YouTube player:", e);
+          }
+          youtubePlayerRef.current = null;
+        }
+      };
+    }, [selectedAd, playing]);
+    
+    // Initialize the YouTube player
+    const initializeYouTubePlayer = () => {
+      if (!selectedAd || !window.YT || !window.YT.Player) return;
+      
+      const videoId = getYoutubeVideoId(selectedAd.videoUrl);
+      if (!videoId) {
+        setVideoError("Invalid YouTube URL");
+        setPlaying(false);
+        return;
+      }
+      
+      try {
+        // Create player
+        youtubePlayerRef.current = new window.YT.Player('youtube-player-container', {
+          height: '100%',
+          width: '100%',
+          videoId: videoId,
+          playerVars: {
+            autoplay: playing ? 1 : 0,
+            controls: 0,
+            modestbranding: 1,
+            rel: 0,
+            showinfo: 0,
+            fs: 0,
+            disablekb: 1
+          },
+          events: {
+            onReady: (event: any) => {
+              if (playing) event.target.playVideo();
+              setYoutubePlayerReady(true);
+            },
+            onStateChange: (event: any) => {
+              if (event.data === 0) { // Video ended
+                handleVideoEnded();
+              }
+            },
+            onError: (event: any) => {
+              console.error("YouTube player error:", event);
+              setVideoError("Error loading YouTube video");
+              setPlaying(false);
+            }
+          }
+        });
+      } catch (error) {
+        console.error("Error initializing YouTube player:", error);
+        setVideoError("Failed to initialize YouTube player");
+        setPlaying(false);
+      }
+    };
+    
+    return (
+      <div className="relative w-full h-full bg-black">
+        <div id="youtube-player-container" className="w-full h-full"></div>
+        
+        {/* Loading indicator */}
+        {!youtubePlayerReady && playing && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="ml-2 text-white">Loading video...</span>
+          </div>
+        )}
+        
+        {/* Overlay with message */}
+        {playing && selectedAd && (
+          <div 
+            className="absolute inset-0 pointer-events-auto cursor-not-allowed z-10" 
+            onClick={(e) => e.preventDefault()}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            <div className="absolute top-3 left-3 bg-black/60 text-white text-xs rounded px-2 py-1">
+              Watch the complete ad to earn {selectedAd.rewardCoins} supercoins
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+  
+  // Load YouTube API script
+  useEffect(() => {
+    // Check if API is already loaded
+    if (window.YT) return;
+
+    // Create YouTube API script
+    const tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    
+    // Insert the script before the first script tag
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+    
+    // Setup callback function to be called when YouTube API loads
+    window.onYouTubeIframeAPIReady = () => {
+      console.log('YouTube API Ready');
+    };
+    
+    // Cleanup function
+    return () => {
+      window.onYouTubeIframeAPIReady = () => {};
+    };
+  }, []);
+  
+  // Setup YouTube player event listeners when needed
+  const setupYouTubePlayer = () => {
+    if (!window.YT || !window.YT.Player) {
+      console.warn("YouTube API not loaded yet");
+      return;
+    }
+    
+    const videoId = getYoutubeVideoId(selectedAd?.videoUrl || "");
+    if (!videoId) return;
+    
+    try {
+      youtubePlayerRef.current = new window.YT.Player('youtube-player', {
+        videoId: videoId,
+        playerVars: {
+          autoplay: playing ? 1 : 0,
+          controls: 0,
+          modestbranding: 1,
+          rel: 0,
+          showinfo: 0,
+          fs: 0
+        },
+        events: {
+          onReady: (event: any) => {
+            setYoutubePlayerReady(true);
+            if (playing) event.target.playVideo();
+          },
+          onStateChange: (event: any) => {
+            // YouTube states: -1 (unstarted), 0 (ended), 1 (playing), 2 (paused), 3 (buffering), 5 (video cued)
+            if (event.data === 0) { // Video ended
+              handleVideoEnded();
+            } else if (event.data === 2 && playing) { // Video paused but should be playing
+              event.target.playVideo();
+            }
+          },
+          onError: (event: any) => {
+            console.error("YouTube player error:", event);
+            setVideoError("Error playing YouTube video. Please try again later.");
+            setPlaying(false);
+          }
+        }
+      });
+    } catch (error) {
+      console.error("Error creating YouTube player:", error);
+    }
+  };
+
+  // Function to render the video player based on video type
+  const renderVideoPlayer = () => {
+    if (!selectedAd) return null;
+    
+    if (videoError) {
+      return (
+        <div className="flex items-center justify-center h-full w-full text-white bg-black p-4">
+          <div className="text-center">
+            <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-2" />
+            <p>{videoError}</p>
+            <Button 
+              variant="outline" 
+              className="mt-4 border-white text-white hover:bg-white/10"
+              onClick={handleCloseVideo}
+            >
+              Close
+            </Button>
+          </div>
+        </div>
+      );
+    }
+    
+    // Check if it's a YouTube URL
+    if (isYouTubeUrl(selectedAd.videoUrl)) {
+      return <YouTubeVideoPlayer />;
+    }
+    
+    // For standard video files
+    const resolvedUrl = resolveVideoUrl(selectedAd.videoUrl);
+    
+    return (
+      <>
+        <video 
+          ref={videoRef}
+          className="w-full h-full pointer-events-auto select-none" 
+          controls={false}
+          autoPlay={playing}
+          onEnded={handleVideoEnded}
+          poster={selectedAd.thumbnailUrl}
+          muted={false}
+          disablePictureInPicture
+          controlsList="nodownload nofullscreen noremoteplayback"
+          onClick={handleVideoClick}
+          onPause={() => playing && videoRef.current?.play()}
+        >
+          {/* Try MP4 format first as it's most widely supported */}
+          <source src={resolvedUrl} type="video/mp4" />
+          
+          {/* Try other formats if specific extensions are detected */}
+          {resolvedUrl.toLowerCase().endsWith('.webm') && (
+            <source src={resolvedUrl} type="video/webm" />
+          )}
+          {resolvedUrl.toLowerCase().endsWith('.ogg') && (
+            <source src={resolvedUrl} type="video/ogg" />
+          )}
+          {resolvedUrl.toLowerCase().endsWith('.mov') && (
+            <source src={resolvedUrl} type="video/quicktime" />
+          )}
+          {resolvedUrl.toLowerCase().endsWith('.m3u8') && (
+            <source src={resolvedUrl} type="application/x-mpegURL" />
+          )}
+          
+          {/* Add WebM as fallback format */}
+          {!resolvedUrl.toLowerCase().endsWith('.webm') && (
+            <source src={resolvedUrl} type="video/webm" />
+          )}
+          Your browser doesn't support this video format.
+        </video>
+        {playing && (
+          <div 
+            className="absolute inset-0 pointer-events-auto cursor-not-allowed" 
+            onClick={handleOverlayClick}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            <div className="absolute top-3 left-3 bg-black/60 text-white text-xs rounded px-2 py-1">
+              Watch the complete ad to earn {selectedAd.rewardCoins} supercoins
+            </div>
+          </div>
+        )}
+      </>
+    );
   };
 
   // Loading state UI
@@ -184,11 +697,20 @@ const AdsPage = () => {
               Watch ads to earn supercoins that can be redeemed for rewards
             </p>
           </div>
-          <div className="flex items-center gap-2 bg-amber-50 px-4 py-3 rounded-lg">
-            <Coins className="h-6 w-6 text-amber-500" />
-            <div>
-              <p className="text-sm text-gray-500">Your Supercoins</p>
-              <p className="text-2xl font-bold text-amber-600">{supercoins}</p>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 bg-amber-50 px-4 py-3 rounded-lg">
+              <Coins className="h-6 w-6 text-amber-500" />
+              <div>
+                <p className="text-sm text-gray-500">Available</p>
+                <p className="text-2xl font-bold text-amber-600">{supercoins}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 bg-green-50 px-4 py-3 rounded-lg">
+              <Coins className="h-6 w-6 text-green-500" />
+              <div>
+                <p className="text-sm text-gray-500">Total Earned</p>
+                <p className="text-2xl font-bold text-green-600">{totalEarned}</p>
+              </div>
             </div>
           </div>
         </section>
@@ -205,31 +727,7 @@ const AdsPage = () => {
               </CardHeader>
               <CardContent>
                 <div className="aspect-video bg-black rounded-md overflow-hidden relative">
-                  <video 
-                    ref={videoRef}
-                    src={selectedAd.videoUrl} 
-                    className="w-full h-full pointer-events-auto select-none" 
-                    controls={false}
-                    autoPlay={playing}
-                    onEnded={handleVideoEnded}
-                    poster={selectedAd.thumbnailUrl}
-                    muted={false}
-                    disablePictureInPicture
-                    controlsList="nodownload nofullscreen noremoteplayback"
-                    onClick={handleVideoClick}
-                    onPause={() => playing && videoRef.current?.play()}
-                  />
-                  {playing && (
-                    <div 
-                      className="absolute inset-0 pointer-events-auto cursor-not-allowed" 
-                      onClick={handleOverlayClick}
-                      onContextMenu={(e) => e.preventDefault()}
-                    >
-                      <div className="absolute top-3 left-3 bg-black/60 text-white text-xs rounded px-2 py-1">
-                        Watch the complete ad to earn {selectedAd.rewardCoins} supercoins
-                      </div>
-                    </div>
-                  )}
+                  {renderVideoPlayer()}
                 </div>
                 
                 {!playing && !watchComplete && (
@@ -278,6 +776,12 @@ const AdsPage = () => {
                         You've earned {selectedAd.rewardCoins} supercoins
                       </p>
                     </div>
+                  </div>
+                )}
+                
+                {videoError && (
+                  <div className="mt-4 text-red-500 text-center">
+                    {videoError}
                   </div>
                 )}
               </CardContent>

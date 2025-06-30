@@ -3,12 +3,12 @@ import { Link } from "react-router-dom";
 import UserLayout from "@/components/layouts/UserLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FilePlus, File, Clock, CheckCircle } from "lucide-react";
+import { FilePlus, File, Clock, CheckCircle, Coins } from "lucide-react";
 import OrderStatusBadge from "@/components/OrderStatusBadge";
 import type { Order } from "@/types/order";
 import { hasStatus } from "@/utils/orderUtils";
 import useAuthStore from "@/store/authStore";
-import { fetchOrders as apiGetOrders } from "@/api";
+import { fetchOrders as apiGetOrders, getUserSupercoins } from "@/api";
 
 const UserDashboard = () => {
   const { user } = useAuthStore();
@@ -19,21 +19,24 @@ const UserDashboard = () => {
     completedOrders: 0,
   });
   const [orders, setOrders] = useState<Order[]>([]);
-  const [isLoading, setIsLoading] = useState(true);  useEffect(() => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [supercoins, setSupercoins] = useState<number>(0);
+  const [totalEarnedCoins, setTotalEarnedCoins] = useState<number>(0);
+
+  useEffect(() => {
     const getOrders = async () => {
-      try {        setIsLoading(true);
+      try {
+        setIsLoading(true);
         const response = await apiGetOrders();
-        
+
         // Always ensure we have an array, even if empty
         setOrders(Array.isArray(response) ? response : []);
-        
       } catch (error: any) {
         console.error("Dashboard: Error fetching orders:", error);
-        
+
         // Handle any errors by setting empty orders array
         // This prevents the UI from breaking
         setOrders([]);
-        
       } finally {
         setIsLoading(false);
       }
@@ -71,6 +74,31 @@ const UserDashboard = () => {
     }
   }, [user, orders]);
 
+  // Fetch supercoins data
+  useEffect(() => {
+    const fetchSupercoins = async () => {
+      try {
+        const coinsData = await getUserSupercoins();
+        if (typeof coinsData === "object") {
+          // If API returns object with currentCoins and totalEarned
+          setSupercoins(coinsData.currentCoins || 0);
+          setTotalEarnedCoins(coinsData.totalEarned || 0);
+        } else {
+          // If API just returns a number
+          setSupercoins(coinsData || 0);
+          // We don't have totalEarned in this case
+        }
+      } catch (error) {
+        console.error("Error fetching supercoins:", error);
+        // Set default values in case of error
+        setSupercoins(0);
+        setTotalEarnedCoins(0);
+      }
+    };
+
+    fetchSupercoins();
+  }, []);
+
   return (
     <UserLayout>
       <div className="space-y-6">
@@ -85,7 +113,7 @@ const UserDashboard = () => {
         </section>
 
         {/* Stats cards */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -139,11 +167,34 @@ const UserDashboard = () => {
               </div>
             </CardContent>
           </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">
+                    Supercoins
+                  </p>
+                  <h3 className="text-2xl font-bold mt-1">
+                    {supercoins}
+                  </h3>
+                  {totalEarnedCoins > 0 && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      {totalEarnedCoins} total earned
+                    </p>
+                  )}
+                </div>
+                <div className="h-12 w-12 bg-amber-100 rounded-lg flex items-center justify-center text-amber-600">
+                  <Coins size={24} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </section>
 
         {/* Quick actions */}
         <section>
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
             <Link to="/new-order">
               <Button className="bg-primary hover:bg-primary-500 flex items-center space-x-2 w-full sm:w-auto">
                 <FilePlus size={18} />
