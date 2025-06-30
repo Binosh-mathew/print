@@ -9,7 +9,7 @@ export interface FileDetails {
   file: File | FileMetadata;
   copies: number;
   specialPaper: "none" | "glossy" | "matte" | "transparent";
-  printType: "blackAndWhite" | "color"| "mixed";
+  printType: "blackAndWhite" | "color" | "mixed";
   colorPages: string; // Pages to be printed in color when printType is "mixed"
   doubleSided: boolean;
   binding: {
@@ -54,4 +54,22 @@ export interface Order {
   documentName?: string;
   storeId?: string;
   storeName?: string;
+}
+
+export interface orderState {
+  orders: Order[];
+  loading: boolean;
+  error: string | null;
+
+  fetchOrders: (storeId: string) => Promise<Order | undefined>;
+  fetchAllOrders: () => Promise<Order[] | undefined>;
+  createOrder: (orderData: Partial<Order>) => Promise<Order | undefined>;
+  updateOrder: (
+    id: string,
+    orderData: Partial<Order>
+  ) => Promise<Order | undefined>;
+  deleteOrder: (id: string) => Promise<void>;
+
+  addOrder: (order: Order) => void;
+  updateOrderInStore: (order: Order) => void;
 }
