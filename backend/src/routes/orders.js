@@ -58,6 +58,10 @@ router.post(
       // Save the order to the database
       const savedOrder = await order.save();
 
+      const io = req.app.get("io");
+      // Emit an event to notify about the new order
+      io.to(`store:${savedOrder.storeId}`).emit("order:new", savedOrder);
+
       // Return the created order
       res.status(201).json({
         success: true,
@@ -80,28 +84,28 @@ router.post("/cleanup-files", auth, async (req, res) => {
   try {
     // Check if user is admin or developer
     const { role } = req.user;
-    
+
     if (role !== "developer") {
       return res.status(403).json({
         success: false,
-        message: "Not authorized to perform this action"
+        message: "Not authorized to perform this action",
       });
     }
-    
+
     // Run the cleanup
     const stats = await cleanupOldOrderFiles();
-    
+
     return res.status(200).json({
       success: true,
       message: "Cloudinary cleanup completed",
-      stats
+      stats,
     });
   } catch (error) {
     console.error("Error in cleanup endpoint:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to clean up Cloudinary files",
-      error: error.message
+      error: error.message,
     });
   }
 });
@@ -218,7 +222,14 @@ router.put("/:id", async (req, res) => {
       new: true,
     });
     if (!order) return res.status(404).json({ message: "Order not found" });
-    res.json(order);
+
+    const io = req.app.get("io");
+    io.to(`user:${order.userId}`).emit("order:statusUpdated", order);
+    res.status(200).json({
+      success: true,
+      message: "Order updated Successfully",
+      order,
+    });
   } catch (error) {
     res.status(500).json({ message: "Error updating order", error });
   }
