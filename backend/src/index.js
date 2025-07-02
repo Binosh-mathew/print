@@ -156,6 +156,6 @@ app.use((err, req, res, next) => {
 
 // Start server
 server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📡 Socket.IO enabled`);
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Socket.IO enabled`);
 });
