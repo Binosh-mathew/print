@@ -45,7 +45,7 @@ export const useOrderStore = create<orderState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const order = await createOrder(orderData);
-      set({ loading: false, orders: [...get().orders, order], error: null });
+      set({ loading: false, error: null });
       return order;
     } catch (error) {
       set({
@@ -58,33 +58,22 @@ export const useOrderStore = create<orderState>((set, get) => ({
   updateOrder: async (id: string, orderData: Partial<Order>) => {
     set({ loading: true, error: null });
     try {
-      set({ loading: true, error: null });
-      const updatedOrders = await updateOrder(id, orderData);
-      if (updatedOrders) {
-        set((state) => ({
-          orders: state.orders.map((order) =>
-            order._id === id ? { ...order, ...updatedOrders } : order
-          ),
-        }));
-      }
-      return updatedOrders;
+      const updatedOrder = await updateOrder(id, orderData);
+      set({ loading: false, error: null });
+      return updatedOrder;
     } catch (error) {
       set({
         loading: false,
-        error:
-          error instanceof Error ? error.message : "Failed to update order",
+        error: error instanceof Error ? error.message : "Failed to update order",
       });
+      return undefined;
     }
   },
   deleteOrder: async (id: string) => {
     set({ loading: true, error: null });
     try {
       await deleteOrder(id);
-      set((state) => ({
-        loading: false,
-        orders: state.orders.filter((order) => order._id !== id),
-        error: null,
-      }));
+     set({ loading: false, error: null });
     } catch (error) {
       set({
         loading: false,
@@ -93,13 +82,19 @@ export const useOrderStore = create<orderState>((set, get) => ({
       });
     }
   },
-  addOrder: (order: Order) =>
-    set((state) => ({ orders: [order, ...state.orders] })),
+addOrder: (order: Order) =>
+    set((state) => ({ 
+      orders: [order, ...state.orders] 
+    })),
 
   updateOrderInStore: (updated: Order) =>
     set((state) => ({
-      orders: state.orders.map((o) => {
-        return o._id === updated._id ? updated : o;
-      }),
+      orders: state.orders.map((o) => 
+        o._id === updated._id ? updated : o
+      ),
+    })),
+    removeOrder: (orderId: string) =>
+    set((state) => ({
+      orders: state.orders.filter((o) => o._id !== orderId)
     })),
 }));
