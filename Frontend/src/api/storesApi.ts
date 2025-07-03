@@ -150,3 +150,50 @@ export const updateStoreFeatures = async (
     );
   }
 };
+
+export const fetchPendingOrdersCount = async (): Promise<Record<string, number>> => {
+  // Always use the endpoint that returns real data
+  const endpoints = [
+    "/orders/pending-by-store", // Our primary endpoint in orders.js
+    "/stores/pending-orders-alt" // Fallback endpoint
+  ];
+  
+  for (const endpoint of endpoints) {
+    try {
+      const response = await axios.get(endpoint, { 
+        // Set a shorter timeout to avoid long waits if the server is having issues
+        timeout: 3000
+      });
+      
+      // Check if the response has the expected structure
+      if (response.data && response.data.pendingOrdersByStore) {
+        return response.data.pendingOrdersByStore;
+      } else {
+        console.warn(`Unexpected response format from ${endpoint}:`, response.data);
+      }
+    } catch (error: any) {
+      console.warn(`Error fetching pending orders count from ${endpoint}:`, error);
+      // Log additional details about the error for debugging
+      if (error.response) {
+        // The server responded with a status code outside the 2xx range
+        console.warn(`Server responded with error from ${endpoint}:`, {
+          status: error.response.status,
+          data: error.response.data
+        });
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.warn(`No response received from ${endpoint}`);
+      } else {
+        // Something else caused the error
+        console.warn(`Error setting up request to ${endpoint}:`, error.message);
+      }
+      
+      // Continue to the next endpoint
+      continue;
+    }
+  }
+  
+  console.warn("All endpoints failed, returning empty pending orders count");
+  // Return an empty object if all endpoints fail
+  return {};
+};
