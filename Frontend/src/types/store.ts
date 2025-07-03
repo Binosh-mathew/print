@@ -7,6 +7,7 @@ export interface Store {
   phone?: string;
   email?: string;
   status: 'active' | 'inactive';
+  pendingOrdersCount?: number; // Added field for pending orders count
   admin: {
     username: string;
     email: string;

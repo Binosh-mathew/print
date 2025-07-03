@@ -246,4 +246,41 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+// NOTE: This endpoint requires auth. There is also a public version defined directly in index.js
+// that should be used by the frontend for unauthenticated requests
+router.get("/pending-by-store", async (req, res) => {
+  try {
+    console.log("Fetching pending orders by store (public endpoint)");
+    
+    // Get all pending orders
+    const pendingOrders = await Order.find({ status: "Pending" }).lean();
+    console.log(`Found ${pendingOrders.length} total pending orders`);
+    
+    // Count manually by storeId
+    const pendingOrdersByStore = {};
+    for (const order of pendingOrders) {
+      if (order.storeId) {
+        const storeId = order.storeId.toString(); // Ensure it's a string
+        pendingOrdersByStore[storeId] = (pendingOrdersByStore[storeId] || 0) + 1;
+      }
+    }
+    
+    // Log counts for debugging
+    console.log("Pending orders by store:", pendingOrdersByStore);
+    
+    res.status(200).json({
+      success: true,
+      message: "Pending orders by store fetched successfully",
+      pendingOrdersByStore
+    });
+  } catch (error) {
+    console.error("Error fetching pending orders by store:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching pending orders by store",
+      error: error.message
+    });
+  }
+});
+
 export default router;

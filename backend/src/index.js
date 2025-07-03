@@ -70,6 +70,49 @@ app.use((req, res, next) => {
   next();
 });
 
+// Connect to MongoDB
+connectDB();
+
+// Separate public endpoint for fetching pending orders by store
+app.get("/api/orders/pending-by-store", async (req, res) => {
+  try {
+    console.log("PUBLIC ENDPOINT: Fetching pending orders by store");
+    
+    // Import Order model specifically for this route to avoid circular dependencies
+    const { Order } = await import("./models/Order.js");
+    
+    // Get all pending orders
+    const pendingOrders = await Order.find({ status: "Pending" }).lean();
+    console.log(`Found ${pendingOrders.length} total pending orders`);
+    
+    // Count manually by storeId
+    const pendingOrdersByStore = {};
+    for (const order of pendingOrders) {
+      if (order.storeId) {
+        const storeId = order.storeId.toString(); // Ensure it's a string
+        pendingOrdersByStore[storeId] = (pendingOrdersByStore[storeId] || 0) + 1;
+      }
+    }
+    
+    // Log counts for debugging
+    console.log("Pending orders by store:", pendingOrdersByStore);
+    
+    res.status(200).json({
+      success: true,
+      message: "Pending orders by store fetched successfully",
+      pendingOrdersByStore
+    });
+  } catch (error) {
+    console.error("Error in public pending orders endpoint:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching pending orders by store",
+      error: error.message
+    });
+  }
+});
+
+// Use routes without requiring authentication for development
 // Socket.IO authentication middleware
 io.use(async (socket, next) => {
   try {
@@ -132,7 +175,8 @@ app.use(
 // Global rate limiting
 app.use(rateLimit());
 
-// Protected routes (require authentication in production)
+// Protected routes (require authentication in production )
+// Note: Our public pending-orders endpoint is defined before this, so it won't be affected by auth middleware
 app.use("/api/ads", adsRoutes);
 app.use("/api/admins", adminsRoutes);
 app.use("/api/login-alerts", loginAlertsRoutes);
