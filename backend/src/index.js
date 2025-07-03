@@ -15,6 +15,9 @@ import { Server } from "socket.io";
 // Database connection
 import { connectDB } from "./utils/dbConnect.js";
 
+// Model imports (add this section)
+import { Order } from "./models/Order.js";
+
 // Middleware imports
 import rateLimit from "./middleware/rateLimit.js";
 import { verifySocketToken } from "./middleware/verifySocketToken.js";
@@ -41,18 +44,18 @@ import usersRoutes from "./routes/users.js";
 
 // App initialization
 const app = express();
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 5000; // Add fallback port
 
 // Server and Socket.IO setup
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL,
+    origin: process.env.FRONTEND_URL || "http://localhost:5173", // Add fallback
     credentials: true,
   },
 });
 
-// Database connection
+// Database connection (only once)
 connectDB();
 
 // Global middleware (order matters)
@@ -70,49 +73,69 @@ app.use((req, res, next) => {
   next();
 });
 
-// Connect to MongoDB
-connectDB();
+// Make Socket.IO instance available to routes (move before routes)
+app.set("io", io);
 
-// Separate public endpoint for fetching pending orders by store
+// Public routes (no authentication required)
+app.use("/api/auth", authRoutes);
+app.use("/api/system", systemRoutes);
+app.use("/api/platform-stats", platformStatsRoutes);
+
+// Public endpoint for fetching pending orders by store
 app.get("/api/orders/pending-by-store", async (req, res) => {
   try {
     console.log("PUBLIC ENDPOINT: Fetching pending orders by store");
-    
-    // Import Order model specifically for this route to avoid circular dependencies
-    const { Order } = await import("./models/Order.js");
-    
-    // Get all pending orders
-    const pendingOrders = await Order.find({ status: "Pending" }).lean();
+
+    // Get all pending orders (use imported model, not dynamic import)
+    const pendingOrders = await Order.find({ status: "pending" }).lean(); // Use lowercase "pending"
     console.log(`Found ${pendingOrders.length} total pending orders`);
-    
-    // Count manually by storeId
+
+    // Group orders by storeId
     const pendingOrdersByStore = {};
     for (const order of pendingOrders) {
       if (order.storeId) {
-        const storeId = order.storeId.toString(); // Ensure it's a string
-        pendingOrdersByStore[storeId] = (pendingOrdersByStore[storeId] || 0) + 1;
+        const storeId = order.storeId.toString();
+        pendingOrdersByStore[storeId] =
+          (pendingOrdersByStore[storeId] || 0) + 1;
       }
     }
-    
-    // Log counts for debugging
+
     console.log("Pending orders by store:", pendingOrdersByStore);
-    
+
     res.status(200).json({
       success: true,
       message: "Pending orders by store fetched successfully",
-      pendingOrdersByStore
+      data: pendingOrdersByStore, // Use 'data' for consistency
     });
   } catch (error) {
     console.error("Error in public pending orders endpoint:", error);
     res.status(500).json({
       success: false,
       message: "Error fetching pending orders by store",
-      error: error.message
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "Internal server error",
     });
   }
 });
 
-// Use routes without requiring authentication for development
+// Maintenance mode check (applied after public routes)
+app.use(maintenanceCheck);
+
+// Rate limiting for specific endpoints
+app.use(
+  "/api/orders/:orderId",
+  rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 5, // 5 requests per minute
+    message: "Too many requests for document access. Please try again later.",
+  })
+);
+
+// Global rate limiting
+app.use(rateLimit());
+
 // Socket.IO authentication middleware
 io.use(async (socket, next) => {
   try {
@@ -151,32 +174,7 @@ io.on("connection", (socket) => {
   });
 });
 
-// Make Socket.IO instance available to routes
-app.set("io", io);
-
-// Public routes (no authentication required)
-app.use("/api/auth", authRoutes);
-app.use("/api/system", systemRoutes);
-app.use("/api/platform-stats", platformStatsRoutes);
-
-// Maintenance mode check (applied after public routes)
-app.use(maintenanceCheck);
-
-// Rate limiting for specific endpoints
-app.use(
-  "/api/orders/:orderId",
-  rateLimit({
-    windowMs: 60 * 1000, // 1 minute
-    max: 5, // 5 requests per minute
-    message: "Too many requests for document access. Please try again later.",
-  })
-);
-
-// Global rate limiting
-app.use(rateLimit());
-
-// Protected routes (require authentication in production )
-// Note: Our public pending-orders endpoint is defined before this, so it won't be affected by auth middleware
+// Protected routes (require authentication in production)
 app.use("/api/ads", adsRoutes);
 app.use("/api/admins", adminsRoutes);
 app.use("/api/login-alerts", loginAlertsRoutes);
@@ -200,6 +198,6 @@ app.use((err, req, res, next) => {
 
 // Start server
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Socket.IO enabled`);
+  console.log(` Server running on port ${PORT}`);
+  console.log(` Socket.IO enabled`);
 });
