@@ -1,19 +1,20 @@
 import { useOrderStore } from "@/store/orderStore";
 import { io, Socket } from "socket.io-client";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useCallback } from "react";
 import { Order } from "@/types/order";
 
 let socket: Socket | null = null;
 
 export const useSocket = () => {
   const initialized = useRef(false);
-  const { addOrder, updateOrderInStore } = useOrderStore();
+  const { addOrder, updateOrderInStore, removeOrder, fetchAllOrders } = useOrderStore();
 
   useEffect(() => {
     if (initialized.current || socket) return;
 
     socket = io(import.meta.env.VITE_API_URL || "http://localhost:5000", {
       withCredentials: true,
+      transports: ['websocket', 'polling']
     });
 
     socket.on("connect", () => {
@@ -22,7 +23,7 @@ export const useSocket = () => {
     });
 
     socket.on("disconnect", () => {
-      console.log("Socket disconnected:", socket?.id);
+      console.log("Socket disconnected");
     });
 
     // Listen for new orders
@@ -40,7 +41,14 @@ export const useSocket = () => {
     // Listen for order deletions
     socket.on("order:deleted", (orderId: string) => {
       console.log("Order deleted:", orderId);
-      // You'll need to add a removeOrder method to your store
+      removeOrder(orderId);
+    });
+
+    // Listen for general order updates (refresh pending counts)
+    socket.on("orders:updated", () => {
+      console.log("Orders updated - refreshing data");
+      // Refresh the orders list
+      fetchAllOrders();
     });
 
     return () => {
@@ -50,21 +58,26 @@ export const useSocket = () => {
         initialized.current = false;
       }
     };
-  }, [addOrder, updateOrderInStore]);
+  }, [addOrder, updateOrderInStore, removeOrder, fetchAllOrders]);
 
-  // Return utility functions for components to use
+  const joinStore = useCallback((storeId: string) => {
+    if (socket?.connected) {
+      console.log(`Joining store room: store:${storeId}`);
+      socket.emit("join-store", storeId);
+    }
+  }, []);
+
+  const leaveStore = useCallback((storeId: string) => {
+    if (socket?.connected) {
+      console.log(`Leaving store room: store:${storeId}`);
+      socket.emit("leave-store", storeId);
+    }
+  }, []);
+
   return {
     socket,
     isConnected: socket?.connected || false,
-    joinStore: (storeId: string) => {
-      if (socket?.connected) {
-        socket.emit("join-store", storeId);
-      }
-    },
-    leaveStore: (storeId: string) => {
-      if (socket?.connected) {
-        socket.emit("leave-store", storeId);
-      }
-    },
+    joinStore,
+    leaveStore
   };
 };

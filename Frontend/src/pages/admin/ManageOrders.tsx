@@ -41,12 +41,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { fetchOrders, updateOrder } from "@/api";
+import { useSocket } from "@/hooks/useSocket";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Order } from "@/types/order";
 
 const ManageOrders = () => {
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const orderId = queryParams.get("id");
+  const { user } = useAuth();
+  const socket = useSocket();
 
   const [orders, setOrders] = useState<any[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<any[]>([]);
@@ -125,6 +129,113 @@ const ManageOrders = () => {
       orderDate.getFullYear() === today.getFullYear()
     );
   };
+
+  // Socket.IO integration for real-time updates
+  useEffect(() => {
+    console.log("Setting up Socket.IO for ManageOrders...");
+    
+    // Join the store room for real-time updates if user exists
+    if (user?.id && socket.isConnected) {
+      console.log(`Admin user detected, joining store room: ${user.id}`);
+      socket.joinStore(user.id);
+    }
+
+    // Cleanup: leave the room when component unmounts or user changes
+    return () => {
+      if (user?.id && socket.isConnected) {
+        console.log(`Leaving store room: ${user.id}`);
+        socket.leaveStore(user.id);
+      }
+    };
+  }, [user?.id, socket.isConnected, socket]);
+
+  // Listen for real-time order updates via Socket.IO
+  useEffect(() => {
+    if (!socket?.socket) return;
+
+    const handleNewOrder = (newOrder: Order) => {
+      console.log("New order received:", newOrder);
+      // Process the order to ensure customer name is set
+      const processedOrder = {
+        ...newOrder,
+        customerName: newOrder.customerName || newOrder.userName || "Unknown User"
+      };
+      
+      setOrders(prevOrders => [processedOrder, ...prevOrders]);
+      
+      toast({
+        title: "New Order",
+        description: `New order #${newOrder.id} received from ${processedOrder.customerName}`,
+      });
+    };
+
+    const handleOrderUpdate = (updatedOrder: Order) => {
+      console.log("Order updated:", updatedOrder);
+      // Process the order to ensure customer name is set
+      const processedOrder = {
+        ...updatedOrder,
+        customerName: updatedOrder.customerName || updatedOrder.userName || "Unknown User"
+      };
+      
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
+          (order._id === updatedOrder._id || order.id === updatedOrder.id) 
+            ? processedOrder 
+            : order
+        )
+      );
+
+      // Update selected order if it's the one being viewed
+      if (selectedOrder && (selectedOrder._id === updatedOrder._id || selectedOrder.id === updatedOrder.id)) {
+        setSelectedOrder(processedOrder);
+      }
+
+      toast({
+        title: "Order Updated",
+        description: `Order #${updatedOrder.id} status changed to ${updatedOrder.status}`,
+      });
+    };
+
+    const handleOrderDelete = (orderId: string) => {
+      console.log("Order deleted:", orderId);
+      setOrders(prevOrders =>
+        prevOrders.filter(order => order._id !== orderId && order.id !== orderId)
+      );
+
+      // Close dialog if viewing deleted order
+      if (selectedOrder && (selectedOrder._id === orderId || selectedOrder.id === orderId)) {
+        setIsDetailsOpen(false);
+        setSelectedOrder(null);
+      }
+
+      toast({
+        title: "Order Deleted",
+        description: `Order #${orderId} has been deleted`,
+        variant: "destructive",
+      });
+    };
+
+    const handleOrdersUpdate = () => {
+      console.log("Orders updated - refreshing data");
+      refreshOrders();
+    };
+
+    // Set up event listeners
+    socket.socket.on("order:new", handleNewOrder);
+    socket.socket.on("order:updated", handleOrderUpdate);
+    socket.socket.on("order:deleted", handleOrderDelete);
+    socket.socket.on("orders:updated", handleOrdersUpdate);
+
+    // Cleanup event listeners
+    return () => {
+      if (socket?.socket) {
+        socket.socket.off("order:new", handleNewOrder);
+        socket.socket.off("order:updated", handleOrderUpdate);
+        socket.socket.off("order:deleted", handleOrderDelete);
+        socket.socket.off("orders:updated", handleOrdersUpdate);
+      }
+    };
+  }, [socket?.socket, selectedOrder]);
 
   useEffect(() => {
     // Initial fetch when component mounts

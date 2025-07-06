@@ -2,13 +2,12 @@ import { create } from "zustand";
 import { Order, orderState } from "@/types/order";
 import {
   createOrder,
-  fetchOrderById,
   fetchOrders,
   deleteOrder,
   updateOrder,
 } from "@/api/orderApi";
 
-export const useOrderStore = create<orderState>((set, get) => ({
+export const useOrderStore = create<orderState>((set) => ({
   orders: [],
   loading: false,
   error: null,
@@ -16,15 +15,17 @@ export const useOrderStore = create<orderState>((set, get) => ({
   fetchOrders: async (storeId: string) => {
     set({ loading: true, error: null });
     try {
-      const order: Order = await fetchOrderById(storeId);
-      set({ loading: false, orders: [order], error: null });
-      return order;
+      // Use fetchOrders instead of fetchOrderById to get multiple orders
+      const orders: Order[] = await fetchOrders(storeId);
+      set({ loading: false, orders, error: null });
+      return orders;
     } catch (error) {
       set({
         loading: false,
         error:
           error instanceof Error ? error.message : "Failed to fetch orders",
       });
+      return undefined;
     }
   },
   fetchAllOrders: async () => {
@@ -40,6 +41,7 @@ export const useOrderStore = create<orderState>((set, get) => ({
           error instanceof Error ? error.message : "Failed to fetch all orders",
       });
     }
+    return [];
   },
   createOrder: async (orderData: Partial<Order>) => {
     set({ loading: true, error: null });
@@ -54,6 +56,7 @@ export const useOrderStore = create<orderState>((set, get) => ({
           error instanceof Error ? error.message : "Failed to create order",
       });
     }
+    return null;
   },
   updateOrder: async (id: string, orderData: Partial<Order>) => {
     set({ loading: true, error: null });
@@ -64,7 +67,8 @@ export const useOrderStore = create<orderState>((set, get) => ({
     } catch (error) {
       set({
         loading: false,
-        error: error instanceof Error ? error.message : "Failed to update order",
+        error:
+          error instanceof Error ? error.message : "Failed to update order",
       });
       return undefined;
     }
@@ -73,7 +77,7 @@ export const useOrderStore = create<orderState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       await deleteOrder(id);
-     set({ loading: false, error: null });
+      set({ loading: false, error: null });
     } catch (error) {
       set({
         loading: false,
@@ -82,19 +86,17 @@ export const useOrderStore = create<orderState>((set, get) => ({
       });
     }
   },
-addOrder: (order: Order) =>
-    set((state) => ({ 
-      orders: [order, ...state.orders] 
+  addOrder: (order: Order) =>
+    set((state) => ({
+      orders: [order, ...state.orders],
     })),
 
   updateOrderInStore: (updated: Order) =>
     set((state) => ({
-      orders: state.orders.map((o) => 
-        o._id === updated._id ? updated : o
-      ),
+      orders: state.orders.map((o) => (o._id === updated._id ? updated : o)),
     })),
-    removeOrder: (orderId: string) =>
+  removeOrder: (orderId: string) =>
     set((state) => ({
-      orders: state.orders.filter((o) => o._id !== orderId)
+      orders: state.orders.filter((o) => o._id !== orderId),
     })),
 }));

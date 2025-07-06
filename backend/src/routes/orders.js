@@ -58,15 +58,21 @@ router.post(
       // Save the order to the database
       const savedOrder = await order.save();
 
+      // Get Socket.IO instance for real-time updates
       const io = req.app.get("io");
-      // Emit an event to notify about the new order
-      io.to(`store:${savedOrder.storeId}`).emit("order:new", savedOrder);
+      
+      // Emit to store-specific room
+      if (io) {
+        io.to(`store:${savedOrder.storeId}`).emit("order:new", savedOrder);
+        // Also emit global update for pending count
+        io.emit("orders:updated");
+      }
 
       // Return the created order
       res.status(201).json({
         success: true,
         message: "Order created successfully",
-        order: savedOrder,
+        data: savedOrder,
       });
     } catch (error) {
       console.error("Error creating order:", error);
@@ -218,20 +224,43 @@ router.get("/:id", auth, fetchLimiter, async (req, res) => {
 // Update an order
 router.put("/:id", async (req, res) => {
   try {
-    const order = await Order.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    });
-    if (!order) return res.status(404).json({ message: "Order not found" });
+    const order = await Order.findByIdAndUpdate(
+      req.params.id, 
+      req.body, 
+      { new: true, runValidators: true }
+    );
+    
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found"
+      });
+    }
 
+    // Get Socket.IO instance for real-time updates
     const io = req.app.get("io");
-    io.to(`user:${order.userId}`).emit("order:statusUpdated", order);
+    
+    if (io) {
+      // Emit to store-specific room
+      io.to(`store:${order.storeId}`).emit("order:updated", order);
+      // Emit to user-specific room
+      io.to(`user:${order.userId}`).emit("order:statusUpdated", order);
+      // Emit global update for pending count changes
+      io.emit("orders:updated");
+    }
+
     res.status(200).json({
       success: true,
-      message: "Order updated Successfully",
-      order,
+      message: "Order updated successfully",
+      data: order,
     });
   } catch (error) {
-    res.status(500).json({ message: "Error updating order", error });
+    console.error("Error updating order:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error updating order",
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
   }
 });
 
@@ -239,39 +268,61 @@ router.put("/:id", async (req, res) => {
 router.delete("/:id", async (req, res) => {
   try {
     const order = await Order.findByIdAndDelete(req.params.id);
-    if (!order) return res.status(404).json({ message: "Order not found" });
-    res.json({ message: "Order deleted successfully" });
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found"
+      });
+    }
+
+    // Get Socket.IO instance for real-time updates
+    const io = req.app.get("io");
+    
+    if (io) {
+      // Emit to store-specific room
+      io.to(`store:${order.storeId}`).emit("order:deleted", order._id);
+      // Emit global update for pending count changes
+      io.emit("orders:updated");
+    }
+
+    res.json({
+      success: true,
+      message: "Order deleted successfully"
+    });
   } catch (error) {
-    res.status(500).json({ message: "Error deleting order", error });
+    console.error("Error deleting order:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error deleting order",
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
   }
 });
 
-// NOTE: This endpoint requires auth. There is also a public version defined directly in index.js
-// that should be used by the frontend for unauthenticated requests
 router.get("/pending-by-store", async (req, res) => {
   try {
-    console.log("Fetching pending orders by store (public endpoint)");
+    console.log("Fetching pending orders by store");
     
-    // Get all pending orders
-    const pendingOrders = await Order.find({ status: "Pending" }).lean();
-    console.log(`Found ${pendingOrders.length} total pending orders`);
+    // Use lowercase "pending" for consistency
+    const pendingOrders = await Order.find({ status: "pending" }).lean();
+    console.log(`Found ${pendingOrders.length} pending orders`);
     
     // Count manually by storeId
     const pendingOrdersByStore = {};
     for (const order of pendingOrders) {
       if (order.storeId) {
-        const storeId = order.storeId.toString(); // Ensure it's a string
+        const storeId = order.storeId.toString();
         pendingOrdersByStore[storeId] = (pendingOrdersByStore[storeId] || 0) + 1;
       }
     }
     
-    // Log counts for debugging
     console.log("Pending orders by store:", pendingOrdersByStore);
     
+    // Use consistent response format with 'data' property
     res.status(200).json({
       success: true,
       message: "Pending orders by store fetched successfully",
-      pendingOrdersByStore
+      data: pendingOrdersByStore
     });
   } catch (error) {
     console.error("Error fetching pending orders by store:", error);

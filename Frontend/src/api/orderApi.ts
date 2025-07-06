@@ -2,9 +2,10 @@
 import axios from "@/config/axios";
 import { Order } from "@/types/order";
 
-export const fetchOrders = async (): Promise<Order[]> => {
+export const fetchOrders = async (storeId?: string): Promise<Order[]> => {
   try {
-    const response = await axios.get("/orders");
+    const url = storeId ? `/orders?storeId=${storeId}` : "/orders";
+    const response = await axios.get(url);
     
     // Check if we got orders in the response
     if (response.data.orders && Array.isArray(response.data.orders)) {

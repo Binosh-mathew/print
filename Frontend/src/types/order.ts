@@ -61,9 +61,9 @@ export interface orderState {
   loading: boolean;
   error: string | null;
 
-  fetchOrders: (storeId: string) => Promise<Order| undefined>;
-  fetchAllOrders: () => Promise<Order[] | undefined>;
-  createOrder: (orderData: Partial<Order>) => Promise<Order | undefined>;
+  fetchOrders: (storeId: string) => Promise<Order[] | undefined>;
+  fetchAllOrders: () => Promise<Order[]>;
+  createOrder: (orderData: Partial<Order>) => Promise<Order | null>;
   updateOrder: (
     id: string,
     orderData: Partial<Order>
@@ -72,4 +72,5 @@ export interface orderState {
 
   addOrder: (order: Order) => void;
   updateOrderInStore: (order: Order) => void;
+  removeOrder: (orderId: string) => void;
 }

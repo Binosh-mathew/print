@@ -169,8 +169,25 @@ io.on("connection", (socket) => {
     socket.join(`store:${userId}`);
   }
 
+  // Handle explicit store room joining
+  socket.on("join-store", (storeId) => {
+    socket.join(`store:${storeId}`);
+    console.log(`Socket ${socket.id} joined store room: store:${storeId}`);
+    socket.emit("joined-store", { storeId, message: "Connected to store updates" });
+  });
+
+  // Handle store room leaving
+  socket.on("leave-store", (storeId) => {
+    socket.leave(`store:${storeId}`);
+    console.log(`Socket ${socket.id} left store room: store:${storeId}`);
+  });
+
   socket.on("disconnect", () => {
     console.log(`Socket disconnected - ID: ${socket.id}`);
+  });
+
+  socket.on("error", (error) => {
+    console.error("Socket error:", error);
   });
 });
 
