@@ -9,50 +9,118 @@ import { fetchOrders } from "@/api";
 import { type Order } from "@/types/order";
 import { toast } from "@/components/ui/use-toast";
 import useAuthStore from "@/store/authStore";
+import { useSocket } from "@/hooks/useSocket";
 
 const OrderHistory = () => {
   const { user } = useAuthStore();
   const [userOrders, setUserOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const socket = useSocket();
 
-  useEffect(() => {
-    // Fetch orders from API
-    const loadOrders = async () => {
-      setIsLoading(true);
-      try {
-        const data = await fetchOrders();
+  // Load orders from API
+  const loadOrders = async () => {
+    setIsLoading(true);
+    try {
+      const data = await fetchOrders();
 
-        if (user) {
-          // The backend already filters orders for the current user based on the auth token
-          // Just ensure we have an array to work with
-          const userOrdersList: Order[] = Array.isArray(data) ? data : [];
+      if (user) {
+        // The backend already filters orders for the current user based on the auth token
+        // Just ensure we have an array to work with
+        const userOrdersList: Order[] = Array.isArray(data) ? data : [];
 
-          // Sort orders by creation date (newest first)
-          const sortedOrders = userOrdersList.sort(
-            (a, b) =>
-              new Date(b.createdAt || "").getTime() -
-              new Date(a.createdAt || "").getTime()
-          );
+        // Sort orders by creation date (newest first)
+        const sortedOrders = userOrdersList.sort(
+          (a, b) =>
+            new Date(b.createdAt || "").getTime() -
+            new Date(a.createdAt || "").getTime()
+        );
 
-          setUserOrders(sortedOrders);
-        }
-      } catch (error) {
-        console.error("Error fetching orders:", error);
-        toast({
-          title: "Couldn't load orders",
-          description:
-            "There was a problem connecting to the server. Please try again later.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
+        setUserOrders(sortedOrders);
       }
-    };
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+      toast({
+        title: "Couldn't load orders",
+        description:
+          "There was a problem connecting to the server. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  // Initial fetch and real-time updates
+  useEffect(() => {
     loadOrders();
-  }, [user]);
+    
+    // Set up real-time updates when user changes or component mounts
+    if (user?.id) {
+      console.log(`Setting up real-time updates for user: ${user.id}`);
+      
+      // Register event handlers for order updates
+      socket.registerEventHandlers({
+        onNewOrder: (newOrder) => {
+          console.log("New order received:", newOrder);
+          setUserOrders(prevOrders => [newOrder, ...prevOrders].sort(
+            (a, b) => new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime()
+          ));
+          
+          toast({
+            title: "New Order",
+            description: `Your order for ${newOrder.documentName || 'document'} has been created.`,
+          });
+        },
+        onOrderUpdated: (updatedOrder) => {
+          console.log("Order updated:", updatedOrder);
+          setUserOrders(prevOrders => prevOrders.map(
+            order => (order._id === updatedOrder._id || order.id === updatedOrder.id) 
+              ? updatedOrder 
+              : order
+          ));
+          
+          toast({
+            title: "Order Updated",
+            description: `Your order status has changed to ${updatedOrder.status}.`,
+          });
+        },
+        onOrderDeleted: (orderId) => {
+          console.log("Order deleted:", orderId);
+          setUserOrders(prevOrders => prevOrders.filter(
+            order => order._id !== orderId && order.id !== orderId
+          ));
+          
+          toast({
+            title: "Order Removed",
+            description: "An order has been removed from your history.",
+            variant: "destructive"
+          });
+        },
+        onOrdersUpdated: () => {
+          console.log("Orders updated globally, refreshing");
+          loadOrders();
+        }
+      });
+    }
+    
+    return () => {
+      // Clean up event handlers when component unmounts
+      socket.registerEventHandlers({});
+    };
+  }, [user?.id, socket]);
 
-  // Search functionality removed
+  // Connection status indicator
+  useEffect(() => {
+    if (!socket.isConnected && socket.lastError) {
+      console.warn("Socket connection issue:", socket.lastError);
+      toast({
+        title: "Connection Issue",
+        description: "Live updates may be unavailable. Orders will still be processed.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    }
+  }, [socket.isConnected, socket.lastError]);
 
   // Function to get special paper info from files
   const getPaperAndBindingInfo = (order: Order) => {
@@ -75,7 +143,7 @@ const OrderHistory = () => {
           : "None",
     };
   };
-
+  
   return (
     <UserLayout>
       <div className="space-y-6">
@@ -86,11 +154,18 @@ const OrderHistory = () => {
               View and track your print orders
             </p>
           </div>
-          <Link to="/new-order">
-            <Button className="bg-primary hover:bg-primary-500">
-              New Order
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            {/* Socket connection indicator */}
+            <div className="flex items-center mr-2 text-xs text-gray-600 gap-1">
+              <div className={`w-2 h-2 rounded-full ${socket.isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+              <span>{socket.isConnected ? 'Live updates on' : 'Offline'}</span>
+            </div>
+            <Link to="/new-order">
+              <Button className="bg-primary hover:bg-primary-500">
+                New Order
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <Card>

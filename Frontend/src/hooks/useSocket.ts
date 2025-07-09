@@ -1,83 +1,321 @@
-import { useOrderStore } from "@/store/orderStore";
 import { io, Socket } from "socket.io-client";
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useState } from "react";
 import { Order } from "@/types/order";
 
+// Global socket instance shared between hook instances
 let socket: Socket | null = null;
+let globalIsConnected = false;
+let globalLastError: string | null = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+
+// Use this to track connection status globally across hook instances
+const updateGlobalConnectionStatus = (status: boolean) => {
+  globalIsConnected = status;
+};
+
+const updateGlobalError = (error: string | null) => {
+  globalLastError = error;
+};
 
 export const useSocket = () => {
   const initialized = useRef(false);
-  const { addOrder, updateOrderInStore, removeOrder, fetchAllOrders } = useOrderStore();
+  const [isConnected, setIsConnected] = useState<boolean>(globalIsConnected);
+  const [lastError, setLastError] = useState<string | null>(globalLastError);
+  const [eventHandlers, setEventHandlers] = useState<{
+    onNewOrder?: (order: Order) => void;
+    onOrderUpdated?: (order: Order) => void;
+    onOrderDeleted?: (orderId: string) => void;
+    onOrdersUpdated?: () => void;
+  }>({});
 
-  useEffect(() => {
-    if (initialized.current || socket) return;
+  const initializeSocket = useCallback(() => {
+    if (initialized.current || socket) {
+      console.log("Socket already initialized, skipping");
+      return () => {};
+    }
 
-    socket = io(import.meta.env.VITE_API_URL || "http://localhost:5000", {
+    console.log("Initializing new socket connection");
+    const socketUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    console.log(`Connecting to socket at: ${socketUrl}`);
+    setLastError(null);
+    updateGlobalError(null);
+
+    socket = io(socketUrl, {
       withCredentials: true,
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      autoConnect: true
     });
 
     socket.on("connect", () => {
       console.log("Socket connected:", socket?.id);
       initialized.current = true;
+      reconnectAttempts = 0;
+      updateGlobalConnectionStatus(true);
+      setIsConnected(true);
+      setLastError(null);
+      updateGlobalError(null);
     });
 
-    socket.on("disconnect", () => {
-      console.log("Socket disconnected");
+    socket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error.message);
+      updateGlobalConnectionStatus(false);
+      setIsConnected(false);
+      const errorMsg = `Connection error: ${error.message}`;
+      setLastError(errorMsg);
+      updateGlobalError(errorMsg);
+      
+      // Track reconnection attempts
+      reconnectAttempts++;
+      if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        console.error(`Failed to connect after ${MAX_RECONNECT_ATTEMPTS} attempts`);
+      }
     });
 
-    // Listen for new orders
-    socket.on("order:new", (order: Order) => {
-      console.log("New order received:", order);
-      addOrder(order);
+    socket.on("disconnect", (reason) => {
+      console.log(`Socket disconnected, reason: ${reason}`);
+      updateGlobalConnectionStatus(false);
+      setIsConnected(false);
+      
+      if (reason === 'io server disconnect') {
+        // The server disconnected us, we need to manually reconnect
+        socket?.connect();
+      }
     });
 
-    // Listen for order updates
-    socket.on("order:updated", (updatedOrder: Order) => {
-      console.log("Order updated:", updatedOrder);
-      updateOrderInStore(updatedOrder);
+    socket.on("error", (error) => {
+      console.error("Socket error:", error);
+      const errorMsg = typeof error === 'string' ? error : 'Socket error occurred';
+      setLastError(errorMsg);
+      updateGlobalError(errorMsg);
     });
 
-    // Listen for order deletions
-    socket.on("order:deleted", (orderId: string) => {
-      console.log("Order deleted:", orderId);
-      removeOrder(orderId);
+    socket.io.on("reconnect_attempt", (attempt) => {
+      console.log(`Socket reconnection attempt #${attempt}`);
     });
 
-    // Listen for general order updates (refresh pending counts)
-    socket.on("orders:updated", () => {
-      console.log("Orders updated - refreshing data");
-      // Refresh the orders list
-      fetchAllOrders();
+    socket.io.on("reconnect", (attempt) => {
+      console.log(`Socket reconnected after ${attempt} attempts`);
+      reconnectAttempts = 0;
+      updateGlobalConnectionStatus(true);
+      setIsConnected(true);
+      setLastError(null);
+      updateGlobalError(null);
+    });
+
+    socket.io.on("reconnect_error", (error) => {
+      console.error("Socket reconnection error:", error);
+      const errorMsg = `Reconnection error: ${error.message}`;
+      setLastError(errorMsg);
+      updateGlobalError(errorMsg);
+    });
+
+    socket.io.on("reconnect_failed", () => {
+      console.error("Socket reconnection failed after multiple attempts");
+      const errorMsg = "Failed to reconnect to server after multiple attempts";
+      setLastError(errorMsg);
+      updateGlobalError(errorMsg);
     });
 
     return () => {
-      if (socket) {
-        socket.disconnect();
-        socket = null;
-        initialized.current = false;
-      }
+      // This function will be called on component unmount
+      console.log("Cleanup function called, but keeping socket alive");
+      // We no longer disconnect the socket on cleanup to maintain connection across components
+      // Instead, we'll only reset the local state
+      initialized.current = false;
     };
-  }, [addOrder, updateOrderInStore, removeOrder, fetchAllOrders]);
-
-  const joinStore = useCallback((storeId: string) => {
-    if (socket?.connected) {
-      console.log(`Joining store room: store:${storeId}`);
-      socket.emit("join-store", storeId);
-    }
   }, []);
 
+  // Only initialize socket once when the hook is first used
+  useEffect(() => {
+    const cleanup = initializeSocket();
+    return cleanup;
+  }, [initializeSocket]);
+
+  // Set up event listeners when socket or handlers change
+  useEffect(() => {
+    if (!socket) {
+      console.log("No socket available to register event handlers");
+      return;
+    }
+
+    console.log("Setting up socket event listeners for orders");
+
+    // Listen for new orders
+    const handleNewOrder = (order: Order) => {
+      console.log("New order received:", order);
+      if (eventHandlers.onNewOrder) {
+        eventHandlers.onNewOrder(order);
+      }
+    };
+
+    // Listen for order updates
+    const handleOrderUpdate = (updatedOrder: Order) => {
+      console.log("Order updated:", updatedOrder);
+      if (eventHandlers.onOrderUpdated) {
+        eventHandlers.onOrderUpdated(updatedOrder);
+      }
+    };
+
+    // Listen for order deletions
+    const handleOrderDelete = (orderId: string) => {
+      console.log("Order deleted:", orderId);
+      if (eventHandlers.onOrderDeleted) {
+        eventHandlers.onOrderDeleted(orderId);
+      }
+    };
+
+    // Listen for general order updates
+    const handleOrdersUpdate = () => {
+      console.log("Orders updated - refreshing data");
+      if (eventHandlers.onOrdersUpdated) {
+        eventHandlers.onOrdersUpdated();
+      }
+    };
+
+    // Register event listeners
+    socket.on("order:new", handleNewOrder);
+    socket.on("order:updated", handleOrderUpdate);
+    socket.on("order:statusUpdated", handleOrderUpdate); // Legacy event name
+    socket.on("order:deleted", handleOrderDelete);
+    socket.on("orders:updated", handleOrdersUpdate);
+
+    // Cleanup event listeners when component unmounts or handlers change
+    return () => {
+      if (socket) {
+        console.log("Removing socket event listeners");
+        socket.off("order:new", handleNewOrder);
+        socket.off("order:updated", handleOrderUpdate);
+        socket.off("order:statusUpdated", handleOrderUpdate); // Legacy event name
+        socket.off("order:deleted", handleOrderDelete);
+        socket.off("orders:updated", handleOrdersUpdate);
+      }
+    };
+  }, [socket, eventHandlers]);
+
+  // Synchronize connection status periodically
+  useEffect(() => {
+    // This ensures the local state is synced with the actual socket connection state
+    const syncConnectionStatus = () => {
+      const actualStatus = socket?.connected || false;
+      if (isConnected !== actualStatus) {
+        console.log(`Syncing socket connection status: ${actualStatus}`);
+        setIsConnected(actualStatus);
+      }
+    };
+
+    // Initial sync
+    syncConnectionStatus();
+
+    // Set up interval to periodically check connection status
+    const intervalId = setInterval(syncConnectionStatus, 3000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [isConnected]);
+
+  // Manual reconnect function that can be called from components
+  const reconnect = useCallback(() => {
+    console.log("Manually reconnecting socket...");
+    reconnectAttempts = 0;
+    setLastError(null);
+    updateGlobalError(null);
+    
+    if (socket) {
+      if (socket.connected) {
+        console.log("Socket already connected, disconnecting first");
+        socket.disconnect();
+      }
+      
+      console.log("Reconnecting existing socket");
+      socket.connect();
+    } else {
+      console.log("No socket instance exists, initializing new one");
+      initializeSocket();
+    }
+  }, [initializeSocket]);
+
+  // Join a store room to receive store-specific events
+  const joinStore = useCallback((storeId: string) => {
+    if (!storeId) {
+      console.warn("Cannot join store - invalid storeId");
+      return;
+    }
+
+    if (socket?.connected) {
+      console.log(`Joining store room: store:${storeId}`);
+      if (socket) {
+        if (socket) {
+          socket.emit("join-store", storeId);
+        }
+      }
+    } else {
+      console.warn(`Cannot join store - socket not connected (connected: ${socket?.connected})`);
+      // Try to reconnect
+      if (socket) {
+        console.log("Reconnecting socket to join store");
+        socket.connect();
+        
+        // After connection is established, join the store
+        socket.once("connect", () => {
+          console.log(`Connected, now joining store: ${storeId}`);
+          socket.emit("join-store", storeId);
+        });
+      } else {
+        console.log("Initializing socket to join store");
+        initializeSocket();
+        
+        // Initialize socket and defer joining store until connected
+        setTimeout(() => {
+          if (socket?.connected) {
+            console.log(`Socket initialized, joining store: ${storeId}`);
+            socket.emit("join-store", storeId);
+          } else {
+            console.error("Failed to establish socket connection to join store");
+          }
+        }, 1000);
+      }
+    }
+  }, [initializeSocket]);
+
+  // Leave a store room when no longer needed
   const leaveStore = useCallback((storeId: string) => {
+    if (!storeId) {
+      console.warn("Cannot leave store - invalid storeId");
+      return;
+    }
+
     if (socket?.connected) {
       console.log(`Leaving store room: store:${storeId}`);
       socket.emit("leave-store", storeId);
+    } else {
+      console.warn("Cannot leave store - socket not connected");
     }
   }, []);
 
+  // Register event handlers for real-time updates
+  const registerEventHandlers = useCallback((handlers: {
+    onNewOrder?: (order: Order) => void;
+    onOrderUpdated?: (order: Order) => void;
+    onOrderDeleted?: (orderId: string) => void;
+    onOrdersUpdated?: () => void;
+  }) => {
+    console.log("Registering event handlers");
+    setEventHandlers(handlers);
+  }, []);
+
+  // Expose a focused API
   return {
-    socket,
-    isConnected: socket?.connected || false,
+    isConnected,
+    lastError,
     joinStore,
-    leaveStore
+    leaveStore,
+    reconnect,
+    registerEventHandlers
   };
 };

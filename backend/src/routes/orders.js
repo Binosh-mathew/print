@@ -57,15 +57,33 @@ router.post(
 
       // Save the order to the database
       const savedOrder = await order.save();
-
+      
+      // Format response order with capitalized status for frontend consistency
+      const responseOrder = {
+        ...savedOrder.toObject(),
+        // Ensure status is capitalized for frontend consistency
+        status: savedOrder.status.charAt(0).toUpperCase() + savedOrder.status.slice(1)
+      };
+      
       // Get Socket.IO instance for real-time updates
       const io = req.app.get("io");
       
-      // Emit to store-specific room
       if (io) {
-        io.to(`store:${savedOrder.storeId}`).emit("order:new", savedOrder);
+        // Emit to store-specific room
+        console.log(`Emitting order:new event to store:${savedOrder.storeId}`);
+        io.to(`store:${savedOrder.storeId}`).emit("order:new", responseOrder);
+        
+        // Also emit to user-specific room
+        if (savedOrder.userId) {
+          console.log(`Emitting order:new event to user:${savedOrder.userId}`);
+          io.to(`user:${savedOrder.userId}`).emit("order:new", responseOrder);
+        }
+        
         // Also emit global update for pending count
+        console.log("Emitting orders:updated event globally");
         io.emit("orders:updated");
+      } else {
+        console.warn("Socket.IO instance not available");
       }
 
       // Return the created order
@@ -145,7 +163,11 @@ router.get("/", auth, async (req, res) => {
       return res.status(200).json({
         success: true,
         message: "All orders fetched successfully",
-        orders: orders,
+        orders: orders.map(order => ({
+          ...order.toObject(),
+          // Ensure status is capitalized for frontend consistency
+          status: order.status.charAt(0).toUpperCase() + order.status.slice(1)
+        })),
       });
     }
 
@@ -159,6 +181,13 @@ router.get("/", auth, async (req, res) => {
           orders: [],
         });
       }
+      
+      // Map and format response orders
+      responseOrders = responseOrders.map(order => ({
+        ...order.toObject(),
+        // Ensure status is capitalized for frontend consistency
+        status: order.status.charAt(0).toUpperCase() + order.status.slice(1)
+      }));
     }
 
     if (role === "admin") {
@@ -166,10 +195,17 @@ router.get("/", auth, async (req, res) => {
       if (responseOrders.length === 0) {
         return res.status(200).json({
           success: true,
-          message: "No orders found for this user",
+          message: "No orders found for this store",
           orders: [],
         });
       }
+      
+      // Map and format response orders
+      responseOrders = responseOrders.map(order => ({
+        ...order.toObject(),
+        // Ensure status is capitalized for frontend consistency
+        status: order.status.charAt(0).toUpperCase() + order.status.slice(1)
+      }));
     }
 
     // Return the user's orders
@@ -211,8 +247,16 @@ router.get("/:id", auth, fetchLimiter, async (req, res) => {
       }
       return file.toObject();
     });
+    
+    // Format the order object with capitalized status for frontend consistency
+    const orderObject = {
+      ...order.toObject(), 
+      files: filesWithSignedUrls,
+      // Ensure status is capitalized for frontend consistency
+      status: order.status.charAt(0).toUpperCase() + order.status.slice(1)
+    };
 
-    res.json({ ...order.toObject(), files: filesWithSignedUrls });
+    res.json(orderObject);
   } catch (error) {
     console.error("Error fetching single order:", error);
     res
@@ -222,11 +266,19 @@ router.get("/:id", auth, fetchLimiter, async (req, res) => {
 });
 
 // Update an order
-router.put("/:id", async (req, res) => {
+router.put("/:id", auth, async (req, res) => {
   try {
+    // If status is provided, ensure it's lowercase for storage
+    const orderData = { ...req.body };
+    if (orderData.status) {
+      // Convert status to lowercase for storage consistency
+      orderData.status = orderData.status.toLowerCase();
+      console.log(`Normalized status for update: ${orderData.status}`);
+    }
+    
     const order = await Order.findByIdAndUpdate(
       req.params.id, 
-      req.body, 
+      orderData, 
       { new: true, runValidators: true }
     );
     
@@ -236,23 +288,43 @@ router.put("/:id", async (req, res) => {
         message: "Order not found"
       });
     }
+    
+    // Format response order with capitalized status for frontend consistency
+    const responseOrder = {
+      ...order.toObject(),
+      // Ensure status is capitalized for frontend consistency
+      status: order.status.charAt(0).toUpperCase() + order.status.slice(1)
+    };
 
     // Get Socket.IO instance for real-time updates
     const io = req.app.get("io");
     
     if (io) {
       // Emit to store-specific room
-      io.to(`store:${order.storeId}`).emit("order:updated", order);
+      console.log(`Emitting order:updated event to store:${order.storeId}`);
+      io.to(`store:${order.storeId}`).emit("order:updated", responseOrder);
+      
       // Emit to user-specific room
-      io.to(`user:${order.userId}`).emit("order:statusUpdated", order);
+      if (order.userId) {
+        console.log(`Emitting order:updated event to user:${order.userId}`);
+        io.to(`user:${order.userId}`).emit("order:updated", responseOrder);
+      }
+      
+      // Also emit the old status:updated event for backward compatibility
+      console.log(`Emitting order:statusUpdated event to user:${order.userId}`);
+      io.to(`user:${order.userId}`).emit("order:statusUpdated", responseOrder);
+      
       // Emit global update for pending count changes
+      console.log("Emitting orders:updated event globally");
       io.emit("orders:updated");
+    } else {
+      console.warn("Socket.IO instance not available");
     }
 
     res.status(200).json({
       success: true,
       message: "Order updated successfully",
-      data: order,
+      data: responseOrder,
     });
   } catch (error) {
     console.error("Error updating order:", error);
@@ -265,7 +337,7 @@ router.put("/:id", async (req, res) => {
 });
 
 // Delete an order
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", auth, async (req, res) => {
   try {
     const order = await Order.findByIdAndDelete(req.params.id);
     if (!order) {
@@ -280,9 +352,20 @@ router.delete("/:id", async (req, res) => {
     
     if (io) {
       // Emit to store-specific room
+      console.log(`Emitting order:deleted event to store:${order.storeId} for order ${order._id}`);
       io.to(`store:${order.storeId}`).emit("order:deleted", order._id);
+      
+      // Emit to user-specific room
+      if (order.userId) {
+        console.log(`Emitting order:deleted event to user:${order.userId} for order ${order._id}`);
+        io.to(`user:${order.userId}`).emit("order:deleted", order._id);
+      }
+      
       // Emit global update for pending count changes
+      console.log("Emitting orders:updated event globally");
       io.emit("orders:updated");
+    } else {
+      console.warn("Socket.IO instance not available");
     }
 
     res.json({

@@ -41,11 +41,10 @@ import { fetchPendingOrdersCounts } from "@/api/ordersCountApi";
 import type { OrderFormData, FileDetails, Order } from "@/types/order";
 import type { Store } from "@/types/store";
 import useAuthStore from "@/store/authStore";
-import { useOrderStore } from "@/store/orderStore";
+import { createOrder } from "@/api/orderApi"; // Import the API function directly
 
 const NewOrder = () => {
   const { user } = useAuthStore();
-  const { createOrder } = useOrderStore();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [files, setFiles] = useState<FileDetails[]>([]);

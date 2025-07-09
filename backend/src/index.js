@@ -51,8 +51,14 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: process.env.FRONTEND_URL || "http://localhost:5173", // Add fallback
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"]
   },
+  transports: ['websocket', 'polling'],
+  allowEIO3: true, // Add compatibility with Socket.IO v2 clients
+  pingTimeout: 30000,
+  pingInterval: 25000
 });
 
 // Database connection (only once)
@@ -80,6 +86,33 @@ app.set("io", io);
 app.use("/api/auth", authRoutes);
 app.use("/api/system", systemRoutes);
 app.use("/api/platform-stats", platformStatsRoutes);
+
+// Debug endpoint for Socket.IO - only available in dev mode
+if (process.env.NODE_ENV === "development") {
+  app.get("/api/socket-test", (req, res) => {
+    const roomName = req.query.room || "all";
+    const eventName = req.query.event || "test-event";
+    const message = req.query.message || "Test message";
+    
+    console.log(`Broadcasting test message to ${roomName}: ${message}`);
+    
+    if (roomName === "all") {
+      io.emit(eventName, { message, timestamp: new Date().toISOString() });
+    } else {
+      io.to(roomName).emit(eventName, { message, timestamp: new Date().toISOString() });
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `Test message sent to ${roomName}`,
+      socketStats: {
+        connections: io.engine.clientsCount,
+        rooms: Array.from(io.sockets.adapter.rooms.keys())
+          .filter(room => !room.startsWith('/'))
+      }
+    });
+  });
+}
 
 // Public endpoint for fetching pending orders by store
 app.get("/api/orders/pending-by-store", async (req, res) => {
@@ -139,27 +172,61 @@ app.use(rateLimit());
 // Socket.IO authentication middleware
 io.use(async (socket, next) => {
   try {
-    const token = socket.handshake.headers.cookie
+    console.log("Socket connection attempt - checking authentication");
+    
+    // Extract token from cookie or auth header
+    const cookieToken = socket.handshake.headers.cookie
       ?.split(";")
       .find((c) => c.trim().startsWith("token="))
       ?.split("=")[1];
+      
+    const headerToken = socket.handshake.auth?.token || 
+                        socket.handshake.headers?.authorization?.split(" ")[1];
+    
+    const token = cookieToken || headerToken;
 
-    if (!token) return next(new Error("Authentication failed"));
+    // If no token, proceed with limited access in development
+    if (!token) {
+      console.log("No token found for socket connection");
+      if (process.env.NODE_ENV === "development") {
+        socket.user = { id: "anonymous", role: "guest" };
+        console.log("Development mode: allowing anonymous socket connection");
+        return next();
+      }
+      return next(new Error("Authentication failed - no token"));
+    }
 
+    // Verify token
     const user = await verifySocketToken(token);
-    if (!user) return next(new Error("Invalid token"));
+    if (!user) {
+      console.log("Invalid token for socket connection");
+      if (process.env.NODE_ENV === "development") {
+        socket.user = { id: "anonymous", role: "guest" };
+        console.log("Development mode: allowing socket connection despite invalid token");
+        return next();
+      }
+      return next(new Error("Invalid token"));
+    }
 
     socket.user = user;
+    console.log(`Authenticated socket connection for user: ${user.id}`);
     next();
   } catch (error) {
+    console.error("Socket authentication error:", error);
+    if (process.env.NODE_ENV === "development") {
+      socket.user = { id: "anonymous", role: "guest" };
+      console.log("Development mode: allowing socket connection despite error");
+      return next();
+    }
     next(error);
   }
 });
 
 // Socket.IO connection handling
 io.on("connection", (socket) => {
-  const { id: userId, role } = socket.user;
-  console.log(`Socket connected - ID: ${socket.id} (User: ${userId})`);
+  // Get user info or default to anonymous
+  const { id: userId = "anonymous", role = "guest" } = socket.user || {};
+  console.log(`Socket connected - ID: ${socket.id} (User: ${userId}, Role: ${role})`);
 
   // Join user-specific room
   socket.join(`user:${userId}`);
@@ -167,10 +234,16 @@ io.on("connection", (socket) => {
   // Join store-specific room for admins
   if (role === "admin") {
     socket.join(`store:${userId}`);
+    console.log(`Admin user joined store room: store:${userId}`);
   }
 
   // Handle explicit store room joining
   socket.on("join-store", (storeId) => {
+    if (!storeId) {
+      console.warn(`Socket ${socket.id} attempted to join store with invalid storeId`);
+      return;
+    }
+    
     socket.join(`store:${storeId}`);
     console.log(`Socket ${socket.id} joined store room: store:${storeId}`);
     socket.emit("joined-store", { storeId, message: "Connected to store updates" });
@@ -178,16 +251,31 @@ io.on("connection", (socket) => {
 
   // Handle store room leaving
   socket.on("leave-store", (storeId) => {
+    if (!storeId) {
+      console.warn(`Socket ${socket.id} attempted to leave store with invalid storeId`);
+      return;
+    }
+    
     socket.leave(`store:${storeId}`);
     console.log(`Socket ${socket.id} left store room: store:${storeId}`);
   });
 
-  socket.on("disconnect", () => {
-    console.log(`Socket disconnected - ID: ${socket.id}`);
+  // Debug events
+  socket.on("ping", (callback) => {
+    console.log(`Received ping from socket ${socket.id}`);
+    if (typeof callback === 'function') {
+      callback({ status: 'pong', timestamp: new Date().toISOString() });
+    } else {
+      socket.emit('pong', { timestamp: new Date().toISOString() });
+    }
+  });
+
+  socket.on("disconnect", (reason) => {
+    console.log(`Socket disconnected - ID: ${socket.id}, Reason: ${reason}`);
   });
 
   socket.on("error", (error) => {
-    console.error("Socket error:", error);
+    console.error(`Socket error for ${socket.id}:`, error);
   });
 });
 
@@ -216,5 +304,6 @@ app.use((err, req, res, next) => {
 // Start server
 server.listen(PORT, () => {
   console.log(` Server running on port ${PORT}`);
-  console.log(` Socket.IO enabled`);
+  console.log(` Socket.IO enabled - CORS origin: ${process.env.FRONTEND_URL || "http://localhost:5173"}`);
+  console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
 });

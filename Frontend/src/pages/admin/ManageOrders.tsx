@@ -133,26 +133,57 @@ const ManageOrders = () => {
   // Socket.IO integration for real-time updates
   useEffect(() => {
     console.log("Setting up Socket.IO for ManageOrders...");
+    let reconnectTimer: NodeJS.Timeout;
     
-    // Join the store room for real-time updates if user exists
-    if (user?.id && socket.isConnected) {
-      console.log(`Admin user detected, joining store room: ${user.id}`);
-      socket.joinStore(user.id);
-    }
-
+    // Try to connect after a short delay to ensure auth is ready
+    const timer = setTimeout(() => {
+      if (user?.id) {
+        console.log(`Admin user detected, joining store room: ${user.id}`);
+        if (socket.isConnected) {
+          socket.joinStore(user.id);
+          toast({
+            title: "Live Updates Active",
+            description: "You will receive real-time order updates",
+            duration: 3000,
+          });
+        } else {
+          console.warn("Socket not connected, attempting reconnection...");
+          socket.reconnect();
+          // Try again after reconnection attempt
+          reconnectTimer = setTimeout(() => {
+            if (socket.isConnected) {
+              socket.joinStore(user.id);
+              toast({
+                title: "Live Updates Active",
+                description: "Reconnected successfully",
+                duration: 3000,
+              });
+            } else {
+              toast({
+                title: "Connection Issue",
+                description: socket.lastError || "Could not connect to real-time updates",
+                variant: "destructive",
+                duration: 5000,
+              });
+            }
+          }, 2000);
+        }
+      }
+    }, 1000);
+    
     // Cleanup: leave the room when component unmounts or user changes
     return () => {
+      clearTimeout(timer);
+      clearTimeout(reconnectTimer);
       if (user?.id && socket.isConnected) {
         console.log(`Leaving store room: ${user.id}`);
         socket.leaveStore(user.id);
       }
     };
-  }, [user?.id, socket.isConnected, socket]);
+  }, [user?.id, socket]); // Remove socket.isConnected from dependencies
 
   // Listen for real-time order updates via Socket.IO
   useEffect(() => {
-    if (!socket?.socket) return;
-
     const handleNewOrder = (newOrder: Order) => {
       console.log("New order received:", newOrder);
       // Process the order to ensure customer name is set
@@ -220,22 +251,16 @@ const ManageOrders = () => {
       refreshOrders();
     };
 
-    // Set up event listeners
-    socket.socket.on("order:new", handleNewOrder);
-    socket.socket.on("order:updated", handleOrderUpdate);
-    socket.socket.on("order:deleted", handleOrderDelete);
-    socket.socket.on("orders:updated", handleOrdersUpdate);
+    // Register event handlers
+    console.log("Registering order event handlers");
+    socket.registerEventHandlers({
+      onNewOrder: handleNewOrder,
+      onOrderUpdated: handleOrderUpdate,
+      onOrderDeleted: handleOrderDelete,
+      onOrdersUpdated: handleOrdersUpdate
+    });
 
-    // Cleanup event listeners
-    return () => {
-      if (socket?.socket) {
-        socket.socket.off("order:new", handleNewOrder);
-        socket.socket.off("order:updated", handleOrderUpdate);
-        socket.socket.off("order:deleted", handleOrderDelete);
-        socket.socket.off("orders:updated", handleOrdersUpdate);
-      }
-    };
-  }, [socket?.socket, selectedOrder]);
+  }, [selectedOrder, socket, refreshOrders]); // Remove toast from dependencies
 
   useEffect(() => {
     // Initial fetch when component mounts
@@ -361,64 +386,59 @@ const ManageOrders = () => {
     try {
       // Validate the status is one of the allowed values
       const validStatuses = [
-        "Pending",
-        "Processing",
-        "Shipped",
-        "Delivered",
-        "Cancelled",
-        "Completed",
+        "pending",  // Use lowercase for backend consistency
+        "processing",
+        "shipped",
+        "delivered",
+        "cancelled",
+        "completed",
       ];
-      const normalizedStatus = validStatuses.includes(newStatus)
-        ? (newStatus as
+      
+      // Convert to lowercase for backend consistency
+      const normalizedStatus = newStatus.toLowerCase();
+      
+      if (!validStatuses.includes(normalizedStatus)) {
+        throw new Error(`Invalid status: ${normalizedStatus}`);
+      }
+
+      // Convert lowercase status to proper case for frontend compatibility
+      const displayStatus = normalizedStatus.charAt(0).toUpperCase() + normalizedStatus.slice(1) as
             | "Pending"
             | "Processing"
             | "Shipped"
             | "Delivered"
             | "Cancelled"
-            | "Completed")        : "Pending";
+            | "Completed";
 
-      const updateData = { status: normalizedStatus };
-      const updatedOrder = await updateOrder(orderId, updateData);
-
-      if (!updatedOrder) {
-        throw new Error("No response from server after update");
-      }
-
-      const updatedOrders = orders.map((order) => {
-        // Use _id instead of id for MongoDB
-        if (order._id === orderId || order.id === orderId) {
-          return { ...order, status: normalizedStatus };
-        }
-        return order;
-      });
-
-      setOrders(updatedOrders);
-
-      if (
-        selectedOrder &&
-        (selectedOrder._id === orderId || selectedOrder.id === orderId)
-      ) {
-        setSelectedOrder({ ...selectedOrder, status: normalizedStatus });
-      }
-
+      const updateData = { status: displayStatus };
+      console.log(`Updating order ${orderId} status to ${displayStatus}`);
+      
+      await updateOrder(orderId, updateData);
+      
+      // NOTE: We don't need to manually update the state here
+      // The socket event handlers will receive the updated order and update the UI
+      
+      // Show immediate feedback to the user
       toast({
-        title: "Order updated",
-        description: `Order #${orderId} status changed to ${normalizedStatus}.`,
+        title: "Processing update",
+        description: `Changing order #${orderId} status to ${normalizedStatus}...`,
       });
 
       setStatusChangeCompleted(true);
-
-      // Don't close the dialog automatically
-      // setIsDetailsOpen(false);
+      
     } catch (error: any) {
       console.error("Error updating order status:", error);
       toast({
         title: "Update failed",
         description:
           error.response?.data?.message ||
+          error.message ||
           "There was a problem updating the order status.",
         variant: "destructive",
       });
+      
+      // Refresh orders in case of error to ensure UI is in sync
+      refreshOrders();
     } finally {
       setIsUpdating(false);
     }
@@ -483,15 +503,74 @@ const ManageOrders = () => {
     }
   };
 
+  // Periodically check socket connection status and update UI
+  useEffect(() => {
+    const checkConnectionStatus = () => {
+      // This effect has no state update but will re-render the UI if socket.isConnected changes
+      console.log("Connection status check:", socket.isConnected ? "Connected" : "Disconnected");
+    };
+    
+    // Check connection status immediately
+    checkConnectionStatus();
+    
+    // Then check every 5 seconds
+    const intervalId = setInterval(checkConnectionStatus, 5000);
+    
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [socket]);
+
   return (
     <AdminLayout>
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Manage Orders</h1>
-            <p className="text-gray-600 mt-1">
-              {showAllOrders ? "View and manage all print orders" : "View and manage today's print orders"}
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-gray-600">
+                {showAllOrders ? "View and manage all print orders" : "View and manage today's print orders"}
+              </p>
+              <div className="flex items-center gap-1.5 ml-3">
+                <div className={`w-2 h-2 rounded-full ${socket.isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                <span className="text-xs text-gray-600">
+                  {socket.isConnected ? 'Live Updates Active' : 'Disconnected'}
+                  {socket.lastError && !socket.isConnected && ` (${socket.lastError})`}
+                </span>
+                {!socket.isConnected && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 px-2 text-xs" 
+                    onClick={() => {
+                      socket.reconnect();
+                      toast({
+                        title: "Reconnecting...",
+                        description: "Attempting to reconnect to real-time updates",
+                      });
+                      
+                      // Add a timer to check status after reconnect attempt
+                      setTimeout(() => {
+                        if (socket.isConnected) {
+                          toast({
+                            title: "Connected!",
+                            description: "Successfully reconnected to real-time updates",
+                          });
+                        } else {
+                          toast({
+                            title: "Connection Failed",
+                            description: socket.lastError || "Could not establish connection",
+                            variant: "destructive"
+                          });
+                        }
+                      }, 2000);
+                    }}
+                  >
+                    Reconnect
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative w-full sm:w-64">

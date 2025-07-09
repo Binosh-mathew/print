@@ -33,12 +33,12 @@ export interface Order {
   orderId: string;
   customerName: string;
   status:
-    | "Pending"
-    | "Processing"
-    | "Shipped"
-    | "Delivered"
-    | "Cancelled"
-    | "Completed";
+    | "Pending" | "pending"
+    | "Processing" | "processing"
+    | "Shipped" | "shipped"
+    | "Delivered" | "delivered"
+    | "Cancelled" | "cancelled"
+    | "Completed" | "completed";
   details?: string;
   orderDate?: string;
   createdAt: string;
@@ -56,21 +56,4 @@ export interface Order {
   storeName?: string;
 }
 
-export interface orderState {
-  orders: Order[];
-  loading: boolean;
-  error: string | null;
 
-  fetchOrders: (storeId: string) => Promise<Order[] | undefined>;
-  fetchAllOrders: () => Promise<Order[]>;
-  createOrder: (orderData: Partial<Order>) => Promise<Order | null>;
-  updateOrder: (
-    id: string,
-    orderData: Partial<Order>
-  ) => Promise<Order | undefined>;
-  deleteOrder: (id: string) => Promise<void>;
-
-  addOrder: (order: Order) => void;
-  updateOrderInStore: (order: Order) => void;
-  removeOrder: (orderId: string) => void;
-}
