@@ -117,7 +117,17 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
         }
       }
 
-      const blob = chunks.length ? new Blob(chunks, { type: 'application/pdf' }) : await response.blob();
+      // Get content type from response or infer from filename
+      const contentType = response.headers.get('content-type') || 
+                         (documentName?.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 
+                          documentName?.match(/\.(jpe?g)$/i) ? 'image/jpeg' :
+                          documentName?.match(/\.(png)$/i) ? 'image/png' :
+                          documentName?.match(/\.(gif)$/i) ? 'image/gif' :
+                          documentName?.match(/\.(bmp)$/i) ? 'image/bmp' :
+                          documentName?.match(/\.(webp)$/i) ? 'image/webp' :
+                          'application/octet-stream');
+                          
+      const blob = chunks.length ? new Blob(chunks, { type: contentType }) : await response.blob();
 
       if (total) setFileSize(total);
       // Create an object URL to display in the iframe
@@ -189,10 +199,16 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
     }
   };
   
-  // Check if the document is a PDF (for display purposes)
+  // Check what type of document this is for display purposes
   const isPdf = documentUrl?.toLowerCase().endsWith('.pdf') || 
                 documentUrl?.includes('pdf') ||
                 (documentName?.toLowerCase().endsWith('.pdf') ?? false);
+                
+  const isImage = documentUrl?.match(/\.(jpe?g|png|gif|bmp|webp)($|\?)/i) || 
+                 (documentName?.match(/\.(jpe?g|png|gif|bmp|webp)$/i) ?? false);
+                
+  // Preview is available for PDFs and images only
+  // We use individual flags (isPdf, isImage) directly in the rendering
   
   if (isLoading) {
     return (
@@ -257,8 +273,10 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       </div>
       
       <div className="p-0 bg-white min-h-[500px] flex items-center justify-center">
-        {isPdf ? (          <div className="w-full h-[500px] border border-gray-200 rounded overflow-hidden">
-            {/* Use iframe for PDF preview with fallback content */}            <iframe 
+        {isPdf ? (
+          <div className="w-full h-[500px] border border-gray-200 rounded overflow-hidden">
+            {/* Use iframe for PDF preview with fallback content */}
+            <iframe 
               src={documentUrl}
               title={`${documentName} preview`}
               className="w-full h-full border-0"
@@ -267,17 +285,18 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
                 setError("Failed to load document preview. You can still print or download the document.");
               }}
             />
-            <div className="flex flex-col items-center justify-center p-8 text-center">
-              <FileText className="h-16 w-16 text-gray-300 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Preview Not Available</h3>
-              <p className="text-gray-600 mb-6">
-                Your browser cannot display this document, but you can still print or download it.
-              </p>
-              <div className="flex space-x-4">
-                <Button onClick={handlePrint}>Print Document</Button>
-                <Button variant="outline" onClick={handleDownload}>Download</Button>
-              </div>
-            </div>
+          </div>
+        ) : isImage ? (
+          <div className="w-full h-[500px] border border-gray-200 rounded overflow-hidden flex items-center justify-center bg-gray-50">
+            {/* Display image directly */}
+            <img 
+              src={documentUrl}
+              alt={documentName}
+              className="max-w-full max-h-full object-contain"
+              onError={() => {
+                setError("Failed to load image preview. You can still print or download the image.");
+              }}
+            />
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center p-8 text-center">

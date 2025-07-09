@@ -47,11 +47,32 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   const estimatePageCount = (file: File): number => {
     // Average page sizes in KB for different document types
     const avgPageSizes = {
+      // Document formats
       "application/pdf": 100, // 100KB per page for PDF
       "application/msword": 30, // 30KB per page for DOC
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document": 40, // 40KB per page for DOCX
       "application/vnd.ms-powerpoint": 250, // 250KB per page for PPT
       "application/vnd.openxmlformats-officedocument.presentationml.presentation": 300, // 300KB per page for PPTX
+      "application/vnd.ms-excel": 50, // 50KB per page for XLS
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": 70, // 70KB per page for XLSX
+      "text/plain": 3, // 3KB per page for TXT
+      "application/rtf": 10, // 10KB per page for RTF
+      
+      // Image formats (typically 1 page per image)
+      "image/jpeg": 500,
+      "image/png": 500,
+      "image/gif": 500,
+      "image/bmp": 500,
+      "image/webp": 500,
+      
+      // Open document formats
+      "application/vnd.oasis.opendocument.text": 30, // 30KB per page for ODT
+      "application/vnd.oasis.opendocument.spreadsheet": 50, // 50KB per page for ODS
+      "application/vnd.oasis.opendocument.presentation": 200, // 200KB per page for ODP
+      
+      // Other formats
+      "application/epub+zip": 20, // 20KB per page for EPUB
+      "application/x-iwork-pages-sffpages": 40, // 40KB per page for Pages
     };
 
     // Get the average page size for this file type, default to 100KB if unknown
@@ -74,18 +95,41 @@ const FileUploader: React.FC<FileUploaderProps> = ({
 
   const handleFiles = (newFiles: File[]) => {
     const allowedTypes = [
+      // PDF files
       "application/pdf",
+      // Word documents
       "application/msword",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      // PowerPoint presentations
       "application/vnd.ms-powerpoint",
       "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      // Excel spreadsheets
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      // Text files
+      "text/plain",
+      // Rich Text Format
+      "application/rtf",
+      // Images
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/bmp",
+      "image/webp",
+      // OpenDocument formats
+      "application/vnd.oasis.opendocument.text",
+      "application/vnd.oasis.opendocument.spreadsheet",
+      "application/vnd.oasis.opendocument.presentation",
+      // Other common document formats
+      "application/epub+zip",
+      "application/x-iwork-pages-sffpages",
     ];
 
     const validFiles = newFiles.filter((file) => {
       if (!allowedTypes.includes(file.type)) {
         toast({
           title: "Invalid file type",
-          description: `${file.name} is not a supported file type. Please upload PDF, DOC, DOCX, PPT, or PPTX files.`,
+          description: `${file.name} is not a supported file type. Please upload a document file in one of the supported formats.`,
           variant: "destructive",
         });
         return false;
@@ -163,7 +207,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
           type="file"
           className="hidden"
           onChange={handleChange}
-          accept=".pdf,.doc,.docx,.ppt,.pptx"
+          accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.rtf,.jpg,.jpeg,.png,.gif,.bmp,.webp,.odt,.ods,.odp,.epub"
           multiple
         />
         <div className="flex flex-col items-center justify-center">
@@ -172,7 +216,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
             Drag and drop your files here
           </p>
           <p className="text-sm text-gray-500 mb-4">
-            Supported formats: PDF, DOC, DOCX, PPT, PPTX
+            Supported formats: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT, RTF, JPEG, PNG, GIF, BMP, WEBP, ODT, ODS, ODP, EPUB
           </p>
           <Button type="button" className="bg-primary hover:bg-primary-500">
             Browse Files
@@ -184,7 +228,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         <div className="space-y-4">
           {files.map((fileDetail, index) => (
             <FileDetailsForm
-            bindingAvailable={store.pricing?.binding?.isAvailable}
+            bindingAvailable={!!(store.features?.binding?.isAvailable)}
               key={`${fileDetail.file.name}-${index}`}
               fileDetail={fileDetail}
               onUpdate={(updatedDetails) => {
