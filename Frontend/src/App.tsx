@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Suspense, useEffect, lazy } from "react";
 
 // Auth Context Provider
 // import { AuthProvider } from "./contexts/AuthContext";
@@ -46,8 +47,10 @@ import CreateAdmin from "@/pages/developer/CreateAdmin";
 import ProductManagement from "@/pages/developer/ProductManagement";
 import LoginAlerts from "@/pages/developer/LoginAlerts";
 import AdManagement from "./pages/developer/AdManagement";
-import { useEffect } from "react";
 import useAuthStore from "./store/authStore";
+
+// Lazy-loaded components
+const SocketDiagnostic = lazy(() => import("./components/SocketDiagnostic"));
 
 const queryClient = new QueryClient();
 const App = () => {
@@ -304,6 +307,18 @@ const App = () => {
                 element={
                   <ProtectedRoute allowedRole="developer">
                     <AdManagement />
+                  </ProtectedRoute>
+                }
+              />
+              
+              {/* Socket Diagnostic Tool - only in development mode */}
+              <Route
+                path="/developer/socket-diagnostic"
+                element={
+                  <ProtectedRoute allowedRole="developer">
+                    <Suspense fallback={<div>Loading diagnostic tool...</div>}>
+                      <SocketDiagnostic />
+                    </Suspense>
                   </ProtectedRoute>
                 }
               />

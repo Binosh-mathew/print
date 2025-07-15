@@ -111,32 +111,58 @@ export const verifyAuth = async ():Promise<any> =>{
 }
 
 // Order APIs
+// Throttle control for API calls - ensures we don't overload the server with requests
+let lastOrderFetchTime = 0;
+const MIN_FETCH_INTERVAL = 2000; // minimum 2 seconds between order fetches
+
 export const fetchOrders = async (): Promise<Order[]> => {
   try {
+    // Check if we're fetching too frequently
+    const now = Date.now();
+    const timeSinceLastFetch = now - lastOrderFetchTime;
+    
+    if (timeSinceLastFetch < MIN_FETCH_INTERVAL) {
+      console.log(`API throttled: Last fetch was ${timeSinceLastFetch}ms ago. Minimum interval is ${MIN_FETCH_INTERVAL}ms.`);
+      // Wait for the throttle time to pass
+      await new Promise(resolve => setTimeout(resolve, MIN_FETCH_INTERVAL - timeSinceLastFetch));
+    }
+    
+    // Update the last fetch time
+    lastOrderFetchTime = Date.now();
+    
+    console.log("API: Fetching orders from server");
     const response = await axios.get("/orders");
     
     // Check if we got orders in the response
     if (response.data.orders && Array.isArray(response.data.orders)) {
+      console.log(`API: Received ${response.data.orders.length} orders from server`);
       return response.data.orders;
     } else if (Array.isArray(response.data)) {
+      console.log(`API: Received ${response.data.length} orders from server`);
       return response.data;
     }
     
+    console.log("API: No orders found in response, returning empty array");
     // If we got a successful response but no orders property or it's not an array,
     // return empty array as the proper way to represent "no orders"
     return [];
   } catch (error: any) {
+    console.error("API: Error fetching orders:", error);
+    
     // For backward compatibility, still handle 404 "No orders found" as a non-error case
     if (error?.response?.status === 404) {
+      console.log("API: Got 404 - no orders found");
       return []; // Return empty array for 404 responses
     }
     
     // Check for authentication issues
     if (error?.response?.status === 401) {
+      console.error("API: Authentication error when fetching orders");
       throw new Error("Authentication error - please log in again");
     }
     
     // Return empty array for any error to prevent breaking the UI
+    console.log("API: Returning empty array after error");
     return [];
   }
 };
