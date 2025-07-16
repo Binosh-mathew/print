@@ -33,25 +33,19 @@ export const useSocket = () => {
   const initializeSocket = useCallback(() => {
     // Prevent multiple initializations at the same time
     if (isInitializing) {
-      console.log("Socket is already being initialized, skipping");
       return () => {};
     }
     
     // If we already have a socket instance, don't create a new one
     if (socket) {
-      console.log("Socket already exists, ensuring it's connected");
       if (!socket.connected) {
-        console.log("Reconnecting existing socket");
         socket.connect();
-      } else {
-        console.log("Socket is already connected");
       }
       initialized.current = true;
       return () => {};
     }
     
     isInitializing = true;
-    console.log("Initializing new socket connection");
     
     // Use VITE_SOCKET_URL if available, otherwise fall back to VITE_API_URL
     const baseUrl = import.meta.env.VITE_SOCKET_URL || 
@@ -61,7 +55,6 @@ export const useSocket = () => {
     // Remove any trailing slashes from the URL and ensure no path is included
     const socketUrl = baseUrl.replace(/\/api$/, '').replace(/\/$/, '');
     
-    console.log(`Connecting to socket at: ${socketUrl}`);
     setLastError(null);
     updateGlobalError(null);
 
@@ -80,7 +73,6 @@ export const useSocket = () => {
       });
 
       socket.on("connect", () => {
-        console.log("Socket connected:", socket?.id);
         initialized.current = true;
         reconnectAttempts = 0;
         isInitializing = false;
@@ -100,9 +92,6 @@ export const useSocket = () => {
         
         // Track reconnection attempts
         reconnectAttempts++;
-        if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-          console.error(`Failed to connect after ${MAX_RECONNECT_ATTEMPTS} attempts`);
-        }
       });
     } catch (err) {
       console.error("Error initializing socket:", err);
@@ -114,7 +103,6 @@ export const useSocket = () => {
     }
 
     socket.on("disconnect", (reason) => {
-      console.log(`Socket disconnected, reason: ${reason}`);
       updateGlobalConnectionStatus(false);
       setIsConnected(false);
       
@@ -131,12 +119,7 @@ export const useSocket = () => {
       updateGlobalError(errorMsg);
     });
 
-    socket.io.on("reconnect_attempt", (attempt) => {
-      console.log(`Socket reconnection attempt #${attempt}`);
-    });
-
-    socket.io.on("reconnect", (attempt) => {
-      console.log(`Socket reconnected after ${attempt} attempts`);
+    socket.io.on("reconnect", () => {
       reconnectAttempts = 0;
       updateGlobalConnectionStatus(true);
       setIsConnected(true);
@@ -152,7 +135,6 @@ export const useSocket = () => {
     });
 
     socket.io.on("reconnect_failed", () => {
-      console.error("Socket reconnection failed after multiple attempts");
       const errorMsg = "Failed to reconnect to server after multiple attempts";
       setLastError(errorMsg);
       updateGlobalError(errorMsg);
@@ -160,7 +142,6 @@ export const useSocket = () => {
 
     return () => {
       // This function will be called on component unmount
-      console.log("Cleanup function called, but keeping socket alive");
       // We no longer disconnect the socket on cleanup to maintain connection across components
       // Instead, we'll only reset the local state
       initialized.current = false;
@@ -172,7 +153,6 @@ export const useSocket = () => {
   useEffect(() => {
     // Skip initialization if it's already been done
     if (socket) {
-      console.log("Socket already exists, skipping initialization");
       return () => {};
     }
     
@@ -183,22 +163,17 @@ export const useSocket = () => {
   // Set up event listeners when socket or handlers change
   useEffect(() => {
     if (!socket) {
-      console.log("No socket available to register event handlers");
       return;
     }
 
     // Skip if there are no handlers registered
     const hasHandlers = Object.values(eventHandlers).some(handler => !!handler);
     if (!hasHandlers) {
-      console.log("No event handlers registered, skipping listener setup");
       return;
     }
 
-    console.log("Setting up socket event listeners for orders");
-
     // Listen for new orders
     const handleNewOrder = (order: Order) => {
-      console.log("New order received:", order);
       if (eventHandlers.onNewOrder) {
         eventHandlers.onNewOrder(order);
       }
@@ -206,7 +181,6 @@ export const useSocket = () => {
 
     // Listen for order updates
     const handleOrderUpdate = (updatedOrder: Order) => {
-      console.log("Order updated:", updatedOrder);
       if (eventHandlers.onOrderUpdated) {
         eventHandlers.onOrderUpdated(updatedOrder);
       }
@@ -214,7 +188,6 @@ export const useSocket = () => {
 
     // Listen for order deletions
     const handleOrderDelete = (orderId: string) => {
-      console.log("Order deleted:", orderId);
       if (eventHandlers.onOrderDeleted) {
         eventHandlers.onOrderDeleted(orderId);
       }
@@ -222,7 +195,6 @@ export const useSocket = () => {
 
     // Listen for general order updates
     const handleOrdersUpdate = () => {
-      console.log("Orders updated - refreshing data");
       if (eventHandlers.onOrdersUpdated) {
         eventHandlers.onOrdersUpdated();
       }
@@ -241,7 +213,6 @@ export const useSocket = () => {
       const currentSocket = socket;
       if (!currentSocket) return;
       
-      console.log("Removing socket event listeners");
       currentSocket.off("order:new", handleNewOrder);
       currentSocket.off("order:updated", handleOrderUpdate);
       currentSocket.off("order:statusUpdated", handleOrderUpdate); // Legacy event name
@@ -262,15 +233,13 @@ export const useSocket = () => {
     const syncConnectionStatus = () => {
       const actualStatus = socket?.connected || false;
       
-      // Only log when status changes to avoid console spam
+      // Only update when status changes
       if (isConnected !== actualStatus) {
-        console.log(`Syncing socket connection status: ${actualStatus ? 'Connected' : 'Disconnected'}`);
         setIsConnected(actualStatus);
         updateGlobalConnectionStatus(actualStatus);
         
         // If we've reconnected after being disconnected, try to rejoin rooms
         if (actualStatus && !isConnected) {
-          console.log("Reconnected after being disconnected, reinitializing if needed");
           if (!initialized.current) {
             initialized.current = true;
           }
@@ -281,7 +250,7 @@ export const useSocket = () => {
     // Initial sync
     syncConnectionStatus();
 
-    // Set up interval to periodically check connection status - less frequent to reduce spam
+    // Set up interval to periodically check connection status
     const intervalId = setInterval(syncConnectionStatus, 5000);
 
     return () => {
@@ -291,21 +260,17 @@ export const useSocket = () => {
 
   // Manual reconnect function that can be called from components
   const reconnect = useCallback(() => {
-    console.log("Manually reconnecting socket...");
     reconnectAttempts = 0;
     setLastError(null);
     updateGlobalError(null);
     
     if (socket) {
       if (socket.connected) {
-        console.log("Socket already connected, disconnecting first");
         socket.disconnect();
       }
       
-      console.log("Reconnecting existing socket");
       socket.connect();
     } else {
-      console.log("No socket instance exists, initializing new one");
       initializeSocket();
     }
   }, [initializeSocket]);
@@ -313,29 +278,23 @@ export const useSocket = () => {
   // Join a store room to receive store-specific events
   const joinStore = useCallback((storeId: string) => {
     if (!storeId) {
-      console.warn("Cannot join store - invalid storeId");
       return;
     }
 
     if (socket?.connected) {
-      console.log(`Joining store room: store:${storeId}`);
       socket.emit("join-store", storeId);
     } else {
-      console.warn(`Cannot join store - socket not connected (connected: ${socket?.connected})`);
       // Try to reconnect
       if (socket) {
         // Create a stable reference that TypeScript knows won't be null in callbacks
         const socketRef = socket;
-        console.log("Reconnecting socket to join store");
         socketRef.connect();
         
         // After connection is established, join the store
         socketRef.once("connect", () => {
-          console.log(`Connected, now joining store: ${storeId}`);
           socketRef.emit("join-store", storeId);
         });
       } else {
-        console.log("Initializing socket to join store");
         initializeSocket();
         
         // Initialize socket and defer joining store until connected
@@ -343,10 +302,7 @@ export const useSocket = () => {
           // Create a local reference to the current socket inside the callback
           const currentSocket = socket;
           if (currentSocket?.connected) {
-            console.log(`Socket initialized, joining store: ${storeId}`);
             currentSocket.emit("join-store", storeId);
-          } else {
-            console.error("Failed to establish socket connection to join store");
           }
         }, 1000);
       }
@@ -356,17 +312,13 @@ export const useSocket = () => {
   // Leave a store room when no longer needed
   const leaveStore = useCallback((storeId: string) => {
     if (!storeId) {
-      console.warn("Cannot leave store - invalid storeId");
       return;
     }
 
     if (socket?.connected) {
       // Create a stable reference that TypeScript knows won't be null
       const socketRef = socket;
-      console.log(`Leaving store room: store:${storeId}`);
       socketRef.emit("leave-store", storeId);
-    } else {
-      console.warn("Cannot leave store - socket not connected");
     }
   }, []);
 
@@ -377,8 +329,6 @@ export const useSocket = () => {
     onOrderDeleted?: (orderId: string) => void;
     onOrdersUpdated?: () => void;
   }) => {
-    console.log("Registering event handlers");
-    
     // Perform a deep comparison to avoid unnecessary state updates
     const handlersChanged = 
       eventHandlers.onNewOrder !== handlers.onNewOrder ||
@@ -388,8 +338,6 @@ export const useSocket = () => {
     
     if (handlersChanged) {
       setEventHandlers(handlers);
-    } else {
-      console.log("Event handlers unchanged, skipping update");
     }
   }, [eventHandlers]);
 

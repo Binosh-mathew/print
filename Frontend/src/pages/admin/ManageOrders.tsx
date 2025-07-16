@@ -132,13 +132,11 @@ const ManageOrders = () => {
 
   // Socket.IO integration for real-time updates
   useEffect(() => {
-    console.log("Setting up Socket.IO for ManageOrders...");
     let reconnectTimer: NodeJS.Timeout;
     
     // Try to connect after a short delay to ensure auth is ready
     const timer = setTimeout(() => {
       if (user?.id) {
-        console.log(`Admin user detected, joining store room: ${user.id}`);
         if (socket.isConnected) {
           socket.joinStore(user.id);
           toast({
@@ -147,7 +145,7 @@ const ManageOrders = () => {
             duration: 3000,
           });
         } else {
-          console.warn("Socket not connected, attempting reconnection...");
+          socket.reconnect();
           socket.reconnect();
           // Try again after reconnection attempt
           reconnectTimer = setTimeout(() => {
@@ -176,7 +174,6 @@ const ManageOrders = () => {
       clearTimeout(timer);
       clearTimeout(reconnectTimer);
       if (user?.id && socket.isConnected) {
-        console.log(`Leaving store room: ${user.id}`);
         socket.leaveStore(user.id);
       }
     };
@@ -185,7 +182,6 @@ const ManageOrders = () => {
   // Listen for real-time order updates via Socket.IO
   useEffect(() => {
     const handleNewOrder = (newOrder: Order) => {
-      console.log("New order received:", newOrder);
       // Process the order to ensure customer name is set
       const processedOrder = {
         ...newOrder,
@@ -201,7 +197,6 @@ const ManageOrders = () => {
     };
 
     const handleOrderUpdate = (updatedOrder: Order) => {
-      console.log("Order updated:", updatedOrder);
       // Process the order to ensure customer name is set
       const processedOrder = {
         ...updatedOrder,
@@ -228,7 +223,6 @@ const ManageOrders = () => {
     };
 
     const handleOrderDelete = (orderId: string) => {
-      console.log("Order deleted:", orderId);
       setOrders(prevOrders =>
         prevOrders.filter(order => order._id !== orderId && order.id !== orderId)
       );
@@ -247,12 +241,10 @@ const ManageOrders = () => {
     };
 
     const handleOrdersUpdate = () => {
-      console.log("Orders updated - refreshing data");
       refreshOrders();
     };
 
     // Register event handlers
-    console.log("Registering order event handlers");
     socket.registerEventHandlers({
       onNewOrder: handleNewOrder,
       onOrderUpdated: handleOrderUpdate,
@@ -411,7 +403,6 @@ const ManageOrders = () => {
             | "Completed";
 
       const updateData = { status: displayStatus };
-      console.log(`Updating order ${orderId} status to ${displayStatus}`);
       
       await updateOrder(orderId, updateData);
       
@@ -507,7 +498,6 @@ const ManageOrders = () => {
   useEffect(() => {
     const checkConnectionStatus = () => {
       // This effect has no state update but will re-render the UI if socket.isConnected changes
-      console.log("Connection status check:", socket.isConnected ? "Connected" : "Disconnected");
     };
     
     // Check connection status immediately

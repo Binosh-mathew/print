@@ -133,13 +133,23 @@ export const fetchOrders = async (): Promise<Order[]> => {
     console.log("API: Fetching orders from server");
     const response = await axios.get("/orders");
     
+    console.log("API: Raw response data:", response.data);
+    
     // Check if we got orders in the response
-    if (response.data.orders && Array.isArray(response.data.orders)) {
+    if (response.data && response.data.orders && Array.isArray(response.data.orders)) {
       console.log(`API: Received ${response.data.orders.length} orders from server`);
       return response.data.orders;
     } else if (Array.isArray(response.data)) {
       console.log(`API: Received ${response.data.length} orders from server`);
       return response.data;
+    } else if (response.data && typeof response.data === 'object') {
+      // Try to extract orders from any property that might contain them
+      for (const key in response.data) {
+        if (Array.isArray(response.data[key])) {
+          console.log(`API: Found orders array in response.data.${key}`);
+          return response.data[key];
+        }
+      }
     }
     
     console.log("API: No orders found in response, returning empty array");
