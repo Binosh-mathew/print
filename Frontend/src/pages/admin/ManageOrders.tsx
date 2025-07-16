@@ -415,7 +415,13 @@ const ManageOrders = () => {
         description: `Changing order #${orderId} status to ${normalizedStatus}...`,
       });
 
+      // Briefly set statusChangeCompleted to true to trigger any UI feedback
       setStatusChangeCompleted(true);
+      
+      // Reset after a short delay, but keep the dialog open
+      setTimeout(() => {
+        setStatusChangeCompleted(false);
+      }, 1000);
       
     } catch (error: any) {
       console.error("Error updating order status:", error);
@@ -452,9 +458,11 @@ const ManageOrders = () => {
   const handleDialogOpenChange = (open: boolean) => {
     if (!open && !isUpdating) {
       setIsDetailsOpen(false);
-      setTimeout(() => {
+      
+      // Reset status change completed flag if dialog is closed
+      if (statusChangeCompleted) {
         setStatusChangeCompleted(false);
-      }, 300);
+      }
     }
   };
 
@@ -786,7 +794,7 @@ const ManageOrders = () => {
       </div>
 
       <Dialog
-        open={isDetailsOpen && !statusChangeCompleted}
+        open={isDetailsOpen}
         onOpenChange={handleDialogOpenChange}
       >
         <DialogContent className="sm:max-w-[90%] lg:max-w-5xl xl:max-w-6xl md:h-[85vh] mt-6 sm:mt-0 overflow-hidden">
@@ -1234,7 +1242,6 @@ const ManageOrders = () => {
                   <Button
                     onClick={() => {
                       setIsDetailsOpen(false);
-                      setTimeout(() => setStatusChangeCompleted(false), 300);
                     }}
                     disabled={isUpdating}
                   >
