@@ -23,7 +23,12 @@ const orderSchema = new mongoose.Schema({
   customerName: { type: String, required: true },
   documentName: { type: String, required: true },
   userId: { type: String, required: true },
-  status: { type: String, enum: ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Completed'], default: 'Pending' },
+  status: { 
+    type: String, 
+    enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'completed'], 
+    default: 'pending',
+    set: (status) => status.toLowerCase() // Always store lowercase status
+  },
   files: [fileSchema],
   details: String,
   copies: Number,

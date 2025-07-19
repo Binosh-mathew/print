@@ -1,130 +1,347 @@
+// Environment configuration (must be first)
 import dotenv from "dotenv";
 dotenv.config();
 
-
-//Import necessary modules
+// Core Node.js and Express modules
 import express from "express";
+import http from "http";
 import cors from "cors";
 import morgan from "morgan";
-import  cookieParser  from "cookie-parser"
-import {connectDB} from "./utils/dbConnect.js";
-import rateLimit from "./middleware/rateLimit.js"
+import cookieParser from "cookie-parser";
 
+// Third-party libraries
+import { Server } from "socket.io";
 
+// Database connection
+import { connectDB } from "./utils/dbConnect.js";
 
-// Import routes
-import authRoutes from "./routes/auth.js";
-import orderRoutes from "./routes/orders.js";
-import storeRoutes from "./routes/stores.js";
-import platformStatsRoutes from "./routes/platformStats.js";
-import adminsRoutes from "./routes/admins.js";
-import messagesRoutes from "./routes/messages.js";
-import usersRoutes from "./routes/users.js";
-import systemRoutes from "./routes/system.js";
-import productsRoutes from "./routes/products.js";
-import adsRoutes from "./routes/ads.js";
-import loginAlertsRoutes from "./routes/loginAlerts.js";
-import {maintenanceCheck} from "./middleware/maintenanceMode.js";
+// Model imports (add this section)
+import { Order } from "./models/Order.js";
+
+// Middleware imports
+import rateLimit from "./middleware/rateLimit.js";
+import { verifySocketToken } from "./middleware/verifySocketToken.js";
+import { maintenanceCheck } from "./middleware/maintenanceMode.js";
+
+// Configuration imports
 import { corsOptions } from "./config/cors.js";
+
+// Utility imports
 import { initScheduledTasks } from "./utils/scheduler.js";
 
+// Route imports (alphabetically ordered)
+import adsRoutes from "./routes/ads.js";
+import adminsRoutes from "./routes/admins.js";
+import authRoutes from "./routes/auth.js";
+import loginAlertsRoutes from "./routes/loginAlerts.js";
+import messagesRoutes from "./routes/messages.js";
+import orderRoutes from "./routes/orders.js";
+import platformStatsRoutes from "./routes/platformStats.js";
+import productsRoutes from "./routes/products.js";
+import storeRoutes from "./routes/stores.js";
+import systemRoutes from "./routes/system.js";
+import usersRoutes from "./routes/users.js";
 
+// App initialization
 const app = express();
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 5000; // Add fallback port
 
-// Middleware
+// Server and Socket.IO setup
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || "http://localhost:5173", // Add fallback
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"]
+  },
+  path: '/socket.io', // Explicitly use default path
+  transports: ['websocket', 'polling'],
+  allowEIO3: true, // Add compatibility with Socket.IO v2 clients
+  pingTimeout: 30000,
+  pingInterval: 25000
+});
+
+// Database connection (only once)
+connectDB();
+
+// Global middleware (order matters)
 app.use(express.json());
 app.use(cors(corsOptions));
 app.use(morgan("dev"));
 app.use(cookieParser());
-initScheduledTasks(); // Initialize scheduled tasks
-app.use(rateLimit()); // Apply rate limiting middleware
 
-// Add permissions policy header to allow fullscreen
+// Initialize scheduled tasks
+initScheduledTasks();
+
+// Security headers
 app.use((req, res, next) => {
   res.setHeader("Permissions-Policy", "fullscreen=*");
   next();
 });
 
-// Connect to MongoDB
-connectDB();
+// Make Socket.IO instance available to routes (move before routes)
+app.set("io", io);
 
-// Separate public endpoint for fetching pending orders by store
+// Public routes (no authentication required)
+app.use("/api/auth", authRoutes);
+app.use("/api/system", systemRoutes);
+app.use("/api/platform-stats", platformStatsRoutes);
+
+// Debug endpoint for Socket.IO - only available in dev mode
+if (process.env.NODE_ENV === "development") {
+  app.get("/api/socket-test", (req, res) => {
+    const roomName = req.query.room || "all";
+    const eventName = req.query.event || "test-event";
+    const message = req.query.message || "Test message";
+    
+    console.log(`Broadcasting test message to ${roomName}: ${message}`);
+    
+    if (roomName === "all") {
+      io.emit(eventName, { message, timestamp: new Date().toISOString() });
+    } else {
+      io.to(roomName).emit(eventName, { message, timestamp: new Date().toISOString() });
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `Test message sent to ${roomName}`,
+      socketStats: {
+        connections: io.engine.clientsCount,
+        rooms: Array.from(io.sockets.adapter.rooms.keys())
+          .filter(room => !room.startsWith('/'))
+      }
+    });
+  });
+  
+  // Debug endpoint for Socket.IO connections
+  app.get("/api/socket-debug", (req, res) => {
+    try {
+      const socketInfo = {
+        socketRunning: !!io,
+        connections: io ? io.engine.clientsCount : 0,
+        rooms: io ? Array.from(io.sockets.adapter.rooms.keys())
+          .filter(room => !room.match(/^[a-zA-Z0-9]{20}$/)) // Filter out socket IDs
+          : [],
+        namespaces: Object.keys(io?.nsps || {}),
+        corsConfig: io?.corsConfig || io?._corsConfig || "Not available",
+        transports: io?.opts?.transports || "Not available",
+        path: io?.path || "Not available",
+        serverInfo: {
+          version: process.version,
+          socketIOVersion: require('socket.io/package.json').version,
+          env: process.env.NODE_ENV,
+          port: PORT,
+          frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173"
+        }
+      };
+      
+      res.json({
+        success: true,
+        message: "Socket.IO debug information",
+        data: socketInfo
+      });
+    } catch (error) {
+      console.error("Error generating Socket.IO debug info:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error generating debug info",
+        error: error.message
+      });
+    }
+  });
+}
+
+// Public endpoint for fetching pending orders by store
 app.get("/api/orders/pending-by-store", async (req, res) => {
   try {
     console.log("PUBLIC ENDPOINT: Fetching pending orders by store");
-    
-    // Import Order model specifically for this route to avoid circular dependencies
-    const { Order } = await import("./models/Order.js");
-    
-    // Get all pending orders
-    const pendingOrders = await Order.find({ status: "Pending" }).lean();
+
+    // Get all pending orders (use imported model, not dynamic import)
+    const pendingOrders = await Order.find({ status: "pending" }).lean(); // Use lowercase "pending"
     console.log(`Found ${pendingOrders.length} total pending orders`);
-    
-    // Count manually by storeId
+
+    // Group orders by storeId
     const pendingOrdersByStore = {};
     for (const order of pendingOrders) {
       if (order.storeId) {
-        const storeId = order.storeId.toString(); // Ensure it's a string
-        pendingOrdersByStore[storeId] = (pendingOrdersByStore[storeId] || 0) + 1;
+        const storeId = order.storeId.toString();
+        pendingOrdersByStore[storeId] =
+          (pendingOrdersByStore[storeId] || 0) + 1;
       }
     }
-    
-    // Log counts for debugging
+
     console.log("Pending orders by store:", pendingOrdersByStore);
-    
+
     res.status(200).json({
       success: true,
       message: "Pending orders by store fetched successfully",
-      pendingOrdersByStore
+      data: pendingOrdersByStore, // Use 'data' for consistency
     });
   } catch (error) {
     console.error("Error in public pending orders endpoint:", error);
     res.status(500).json({
       success: false,
       message: "Error fetching pending orders by store",
-      error: error.message
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "Internal server error",
     });
   }
 });
 
-// Use routes without requiring authentication for development
-app.use("/api/auth", authRoutes);
-app.use("/api/system", systemRoutes);
-app.use("/api/platform-stats", platformStatsRoutes);
-
-// Apply maintenance mode check without requiring authentication
+// Maintenance mode check (applied after public routes)
 app.use(maintenanceCheck);
 
-// Apply rate limiting to specific routes
-// More strict rate limiting for document routes that might fetch large files
-app.use("/api/orders/:orderId", rateLimit({
-  windowMs: 60 * 1000,    // 1 minute window
-  max: 5,                 // Limit each IP to 5 requests per minute for specific order endpoints
-  message: "Too many requests for document access. Please try again later."
-}));
+// Rate limiting for specific endpoints
+app.use(
+  "/api/orders/:orderId",
+  rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 5, // 5 requests per minute
+    message: "Too many requests for document access. Please try again later.",
+  })
+);
 
-// Routes that should require authentication in production 
-// Note: Our public pending-orders endpoint is defined before this, so it won't be affected by auth middleware
-app.use("/api/orders", orderRoutes);
-app.use("/api/stores", storeRoutes);
-app.use("/api/admins", adminsRoutes);
-app.use("/api/messages", messagesRoutes);
-app.use("/api/users", usersRoutes);
-app.use("/api/products", productsRoutes);
-app.use("/api/ads", adsRoutes);
-app.use("/api/login-alerts", loginAlertsRoutes);
+// Global rate limiting
+app.use(rateLimit());
 
+// Socket.IO authentication middleware
+io.use(async (socket, next) => {
+  try {
+    console.log("Socket connection attempt - checking authentication");
+    
+    // Extract token from cookie or auth header
+    const cookieToken = socket.handshake.headers.cookie
+      ?.split(";")
+      .find((c) => c.trim().startsWith("token="))
+      ?.split("=")[1];
+      
+    const headerToken = socket.handshake.auth?.token || 
+                        socket.handshake.headers?.authorization?.split(" ")[1];
+    
+    const token = cookieToken || headerToken;
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res
-    .status(500)
-    .json({ message: "Something went wrong!", error: err.message });
+    // If no token, proceed with limited access in development
+    if (!token) {
+      console.log("No token found for socket connection");
+      if (process.env.NODE_ENV === "development") {
+        socket.user = { id: "anonymous", role: "guest" };
+        console.log("Development mode: allowing anonymous socket connection");
+        return next();
+      }
+      return next(new Error("Authentication failed - no token"));
+    }
+
+    // Verify token
+    const user = await verifySocketToken(token);
+    if (!user) {
+      console.log("Invalid token for socket connection");
+      if (process.env.NODE_ENV === "development") {
+        socket.user = { id: "anonymous", role: "guest" };
+        console.log("Development mode: allowing socket connection despite invalid token");
+        return next();
+      }
+      return next(new Error("Invalid token"));
+    }
+
+    socket.user = user;
+    console.log(`Authenticated socket connection for user: ${user.id}`);
+    next();
+  } catch (error) {
+    console.error("Socket authentication error:", error);
+    if (process.env.NODE_ENV === "development") {
+      socket.user = { id: "anonymous", role: "guest" };
+      console.log("Development mode: allowing socket connection despite error");
+      return next();
+    }
+    next(error);
+  }
 });
 
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+// Socket.IO connection handling
+io.on("connection", (socket) => {
+  // Get user info or default to anonymous
+  const { id: userId = "anonymous", role = "guest" } = socket.user || {};
+  console.log(`Socket connected - ID: ${socket.id} (User: ${userId}, Role: ${role})`);
+
+  // Join user-specific room
+  socket.join(`user:${userId}`);
+
+  // Join store-specific room for admins
+  if (role === "admin") {
+    socket.join(`store:${userId}`);
+    console.log(`Admin user joined store room: store:${userId}`);
+  }
+
+  // Handle explicit store room joining
+  socket.on("join-store", (storeId) => {
+    if (!storeId) {
+      console.warn(`Socket ${socket.id} attempted to join store with invalid storeId`);
+      return;
+    }
+    
+    socket.join(`store:${storeId}`);
+    console.log(`Socket ${socket.id} joined store room: store:${storeId}`);
+    socket.emit("joined-store", { storeId, message: "Connected to store updates" });
+  });
+
+  // Handle store room leaving
+  socket.on("leave-store", (storeId) => {
+    if (!storeId) {
+      console.warn(`Socket ${socket.id} attempted to leave store with invalid storeId`);
+      return;
+    }
+    
+    socket.leave(`store:${storeId}`);
+    console.log(`Socket ${socket.id} left store room: store:${storeId}`);
+  });
+
+  // Debug events
+  socket.on("ping", (callback) => {
+    console.log(`Received ping from socket ${socket.id}`);
+    if (typeof callback === 'function') {
+      callback({ status: 'pong', timestamp: new Date().toISOString() });
+    } else {
+      socket.emit('pong', { timestamp: new Date().toISOString() });
+    }
+  });
+
+  socket.on("disconnect", (reason) => {
+    console.log(`Socket disconnected - ID: ${socket.id}, Reason: ${reason}`);
+  });
+
+  socket.on("error", (error) => {
+    console.error(`Socket error for ${socket.id}:`, error);
+  });
+});
+
+// Protected routes (require authentication in production)
+app.use("/api/ads", adsRoutes);
+app.use("/api/admins", adminsRoutes);
+app.use("/api/login-alerts", loginAlertsRoutes);
+app.use("/api/messages", messagesRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/products", productsRoutes);
+app.use("/api/stores", storeRoutes);
+app.use("/api/users", usersRoutes);
+
+// Global error handling middleware (must be last)
+app.use((err, req, res, next) => {
+  console.error("Error stack:", err.stack);
+  res.status(500).json({
+    message: "Something went wrong!",
+    error:
+      process.env.NODE_ENV === "development"
+        ? err.message
+        : "Internal server error",
+  });
+});
+
+// Start server
+server.listen(PORT, () => {
+  console.log(` Server running on port ${PORT}`);
+  console.log(` Socket.IO enabled - CORS origin: ${process.env.FRONTEND_URL || "http://localhost:5173"}`);
+  console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
 });

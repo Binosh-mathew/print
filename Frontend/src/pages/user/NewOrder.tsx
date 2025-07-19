@@ -33,7 +33,6 @@ import { Loader2 } from "lucide-react";
 import FileUploader from "@/components/FileUploader";
 import { toast } from "@/components/ui/use-toast";
 import {
-  createOrder,
   fetchStoreById,
   fetchStorePricing,
   fetchStores,
@@ -42,6 +41,7 @@ import { fetchPendingOrdersCounts } from "@/api/ordersCountApi";
 import type { OrderFormData, FileDetails, Order } from "@/types/order";
 import type { Store } from "@/types/store";
 import useAuthStore from "@/store/authStore";
+import { createOrder } from "@/api/orderApi"; // Import the API function directly
 
 const NewOrder = () => {
   const { user } = useAuthStore();
@@ -125,8 +125,6 @@ const NewOrder = () => {
 
     loadStores();
   }, []);
-
-  // We'll now use the fetchPendingOrdersCounts function from ordersCountApi.ts
 
   // Update stores with actual pending orders data
   useEffect(() => {

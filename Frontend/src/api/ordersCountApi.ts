@@ -1,9 +1,6 @@
 // We only need axios for the API calls
 import axios from "../config/axios";
 
-/**
- * Fetch pending order counts for all stores
- */
 export const fetchPendingOrdersCounts = async (): Promise<Record<string, number>> => {
   try {
     // Use the direct baseURL from environment variable to ensure we're hitting the correct endpoint

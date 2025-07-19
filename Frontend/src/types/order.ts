@@ -9,7 +9,7 @@ export interface FileDetails {
   file: File | FileMetadata;
   copies: number;
   specialPaper: "none" | "glossy" | "matte" | "transparent";
-  printType: "blackAndWhite" | "color"| "mixed";
+  printType: "blackAndWhite" | "color" | "mixed";
   colorPages: string; // Pages to be printed in color when printType is "mixed"
   doubleSided: boolean;
   binding: {
@@ -33,12 +33,12 @@ export interface Order {
   orderId: string;
   customerName: string;
   status:
-    | "Pending"
-    | "Processing"
-    | "Shipped"
-    | "Delivered"
-    | "Cancelled"
-    | "Completed";
+    | "Pending" | "pending"
+    | "Processing" | "processing"
+    | "Shipped" | "shipped"
+    | "Delivered" | "delivered"
+    | "Cancelled" | "cancelled"
+    | "Completed" | "completed";
   details?: string;
   orderDate?: string;
   createdAt: string;
@@ -55,3 +55,5 @@ export interface Order {
   storeId?: string;
   storeName?: string;
 }
+
+
