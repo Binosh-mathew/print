@@ -203,6 +203,7 @@ const ManageOrders = () => {
         customerName: updatedOrder.customerName || updatedOrder.userName || "Unknown User"
       };
       
+      // Update orders list
       setOrders(prevOrders =>
         prevOrders.map(order =>
           (order._id === updatedOrder._id || order.id === updatedOrder.id) 
@@ -213,7 +214,17 @@ const ManageOrders = () => {
 
       // Update selected order if it's the one being viewed
       if (selectedOrder && (selectedOrder._id === updatedOrder._id || selectedOrder.id === updatedOrder.id)) {
-        setSelectedOrder(processedOrder);
+        // Create a new object to ensure React detects the change
+        const updatedSelectedOrder = {
+          ...selectedOrder,
+          ...processedOrder
+        };
+        setSelectedOrder(updatedSelectedOrder);
+        
+        // Add a small delay and force update again to ensure UI reflects changes
+        setTimeout(() => {
+            setSelectedOrder((current: Order | null) => (current ? { ...current } : null));
+        }, 50);
       }
 
       toast({
@@ -406,8 +417,17 @@ const ManageOrders = () => {
       
       await updateOrder(orderId, updateData);
       
-      // NOTE: We don't need to manually update the state here
-      // The socket event handlers will receive the updated order and update the UI
+      // Immediately update the selected order locally
+      if (selectedOrder && (selectedOrder._id === orderId || selectedOrder.id === orderId)) {
+        // Create a new object to ensure React detects the change
+        const updatedSelectedOrder = {
+          ...selectedOrder,
+          status: displayStatus
+        };
+        setSelectedOrder(updatedSelectedOrder);
+      }
+      
+      // NOTE: Socket event handlers will also receive the updated order and update the UI
       
       // Show immediate feedback to the user
       toast({
