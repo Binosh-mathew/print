@@ -96,14 +96,9 @@ const ProductManagement = () => {
 
       <DeleteConfirmDialog
         isOpen={isDeleteDialogOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            closeDeleteDialog();
-          }
-        }}
+        onClose={closeDeleteDialog}
         onConfirm={handleDeleteProduct}
-        onCancel={closeDeleteDialog}
-        isSubmitting={isSubmitting}
+        isDeleting={isSubmitting}
       />
     </DeveloperLayout>
   );

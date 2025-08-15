@@ -11,14 +11,16 @@ import { UseFormReturn } from 'react-hook-form';
 interface AdFormDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  form: UseFormReturn<any>;
-  onSubmit: (data: any) => void;
-  isSubmitting: boolean;
   editAdId: string | null;
-  videoPreview: string | null;
-  thumbnailPreview: string | null;
+  isSubmitting: boolean;
+  form: UseFormReturn<any>;
+  onSubmit: (values: any) => void;
+  videoFile: File | null;
+  thumbnailFile: File | null;
   isUploadingVideo: boolean;
   isUploadingThumbnail: boolean;
+  videoPreview: string | null;
+  thumbnailPreview: string | null;
   onVideoFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onThumbnailFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
@@ -26,16 +28,18 @@ interface AdFormDialogProps {
 export const AdFormDialog: React.FC<AdFormDialogProps> = ({
   isOpen,
   onClose,
+  editAdId,
+  isSubmitting,
   form,
   onSubmit,
-  isSubmitting,
-  editAdId,
-  videoPreview,
-  thumbnailPreview,
+  videoFile,
+  thumbnailFile,
   isUploadingVideo,
   isUploadingThumbnail,
+  videoPreview,
+  thumbnailPreview,
   onVideoFileChange,
-  onThumbnailFileChange,
+  onThumbnailFileChange
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -137,6 +141,9 @@ export const AdFormDialog: React.FC<AdFormDialogProps> = ({
                               className="w-full max-w-xs rounded border"
                               style={{ maxHeight: '150px' }}
                             />
+                            <p className="text-xs text-gray-500 mt-1">
+                              {videoFile?.name} ({videoFile ? Math.round(videoFile.size / 1024) : 0} KB)
+                            </p>
                           </div>
                         )}
                         
@@ -192,6 +199,9 @@ export const AdFormDialog: React.FC<AdFormDialogProps> = ({
                               className="w-full max-w-xs rounded border object-cover"
                               style={{ maxHeight: '150px' }}
                             />
+                            <p className="text-xs text-gray-500 mt-1">
+                              {thumbnailFile?.name} ({thumbnailFile ? Math.round(thumbnailFile.size / 1024) : 0} KB)
+                            </p>
                           </div>
                         )}
                         

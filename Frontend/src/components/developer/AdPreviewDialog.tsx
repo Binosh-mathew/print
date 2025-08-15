@@ -7,23 +7,21 @@ import { Ad } from '@/types/ad';
 
 interface AdPreviewDialogProps {
   ad: Ad | null;
+  isOpen: boolean;
   onClose: () => void;
+  formatDuration: (seconds: number) => string;
 }
 
 export const AdPreviewDialog: React.FC<AdPreviewDialogProps> = ({
   ad,
+  isOpen,
   onClose,
+  formatDuration
 }) => {
   if (!ad) return null;
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   return (
-    <Dialog open={!!ad} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
