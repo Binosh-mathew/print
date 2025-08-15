@@ -122,7 +122,7 @@ const ManageOrders = () => {
     if (!order.createdAt) return false;
     const orderDate = new Date(order.createdAt);
     const today = new Date();
-    
+
     return (
       orderDate.getDate() === today.getDate() &&
       orderDate.getMonth() === today.getMonth() &&
@@ -133,7 +133,7 @@ const ManageOrders = () => {
   // Socket.IO integration for real-time updates
   useEffect(() => {
     let reconnectTimer: NodeJS.Timeout;
-    
+
     // Try to connect after a short delay to ensure auth is ready
     const timer = setTimeout(() => {
       if (user?.id) {
@@ -159,7 +159,8 @@ const ManageOrders = () => {
             } else {
               toast({
                 title: "Connection Issue",
-                description: socket.lastError || "Could not connect to real-time updates",
+                description:
+                  socket.lastError || "Could not connect to real-time updates",
                 variant: "destructive",
                 duration: 5000,
               });
@@ -168,7 +169,7 @@ const ManageOrders = () => {
         }
       }
     }, 1000);
-    
+
     // Cleanup: leave the room when component unmounts or user changes
     return () => {
       clearTimeout(timer);
@@ -185,11 +186,12 @@ const ManageOrders = () => {
       // Process the order to ensure customer name is set
       const processedOrder = {
         ...newOrder,
-        customerName: newOrder.customerName || newOrder.userName || "Unknown User"
+        customerName:
+          newOrder.customerName || newOrder.userName || "Unknown User",
       };
-      
-      setOrders(prevOrders => [processedOrder, ...prevOrders]);
-      
+
+      setOrders((prevOrders) => [processedOrder, ...prevOrders]);
+
       toast({
         title: "New Order",
         description: `New order #${newOrder.id} received from ${processedOrder.customerName}`,
@@ -200,30 +202,37 @@ const ManageOrders = () => {
       // Process the order to ensure customer name is set
       const processedOrder = {
         ...updatedOrder,
-        customerName: updatedOrder.customerName || updatedOrder.userName || "Unknown User"
+        customerName:
+          updatedOrder.customerName || updatedOrder.userName || "Unknown User",
       };
-      
+
       // Update orders list
-      setOrders(prevOrders =>
-        prevOrders.map(order =>
-          (order._id === updatedOrder._id || order.id === updatedOrder.id) 
-            ? processedOrder 
+      setOrders((prevOrders) =>
+        prevOrders.map((order) =>
+          order._id === updatedOrder._id || order.id === updatedOrder.id
+            ? processedOrder
             : order
         )
       );
 
       // Update selected order if it's the one being viewed
-      if (selectedOrder && (selectedOrder._id === updatedOrder._id || selectedOrder.id === updatedOrder.id)) {
+      if (
+        selectedOrder &&
+        (selectedOrder._id === updatedOrder._id ||
+          selectedOrder.id === updatedOrder.id)
+      ) {
         // Create a new object to ensure React detects the change
         const updatedSelectedOrder = {
           ...selectedOrder,
-          ...processedOrder
+          ...processedOrder,
         };
         setSelectedOrder(updatedSelectedOrder);
-        
+
         // Add a small delay and force update again to ensure UI reflects changes
         setTimeout(() => {
-            setSelectedOrder((current: Order | null) => (current ? { ...current } : null));
+          setSelectedOrder((current: Order | null) =>
+            current ? { ...current } : null
+          );
         }, 50);
       }
 
@@ -234,12 +243,17 @@ const ManageOrders = () => {
     };
 
     const handleOrderDelete = (orderId: string) => {
-      setOrders(prevOrders =>
-        prevOrders.filter(order => order._id !== orderId && order.id !== orderId)
+      setOrders((prevOrders) =>
+        prevOrders.filter(
+          (order) => order._id !== orderId && order.id !== orderId
+        )
       );
 
       // Close dialog if viewing deleted order
-      if (selectedOrder && (selectedOrder._id === orderId || selectedOrder.id === orderId)) {
+      if (
+        selectedOrder &&
+        (selectedOrder._id === orderId || selectedOrder.id === orderId)
+      ) {
         setIsDetailsOpen(false);
         setSelectedOrder(null);
       }
@@ -260,9 +274,8 @@ const ManageOrders = () => {
       onNewOrder: handleNewOrder,
       onOrderUpdated: handleOrderUpdate,
       onOrderDeleted: handleOrderDelete,
-      onOrdersUpdated: handleOrdersUpdate
+      onOrdersUpdated: handleOrdersUpdate,
     });
-
   }, [selectedOrder, socket, refreshOrders]); // Remove toast from dependencies
 
   useEffect(() => {
@@ -287,8 +300,9 @@ const ManageOrders = () => {
         // Normalize the status for comparison
         const orderStatus = order?.status.toLowerCase();
         return orderStatus === filterValue;
-      });    }
-    
+      });
+    }
+
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
 
@@ -305,7 +319,7 @@ const ManageOrders = () => {
         ) {
           return true;
         }
-        
+
         if (order.userName && order.userName.toLowerCase().includes(query)) {
           return true;
         }
@@ -316,7 +330,8 @@ const ManageOrders = () => {
           order.documentName.toLowerCase().includes(query)
         ) {
           return true;
-        }        return false;
+        }
+        return false;
       });
     }
 
@@ -389,46 +404,50 @@ const ManageOrders = () => {
     try {
       // Validate the status is one of the allowed values
       const validStatuses = [
-        "pending",  // Use lowercase for backend consistency
+        "pending", // Use lowercase for backend consistency
         "processing",
         "shipped",
         "delivered",
         "cancelled",
         "completed",
       ];
-      
+
       // Convert to lowercase for backend consistency
       const normalizedStatus = newStatus.toLowerCase();
-      
+
       if (!validStatuses.includes(normalizedStatus)) {
         throw new Error(`Invalid status: ${normalizedStatus}`);
       }
 
       // Convert lowercase status to proper case for frontend compatibility
-      const displayStatus = normalizedStatus.charAt(0).toUpperCase() + normalizedStatus.slice(1) as
-            | "Pending"
-            | "Processing"
-            | "Shipped"
-            | "Delivered"
-            | "Cancelled"
-            | "Completed";
+      const displayStatus = (normalizedStatus.charAt(0).toUpperCase() +
+        normalizedStatus.slice(1)) as
+        | "Pending"
+        | "Processing"
+        | "Shipped"
+        | "Delivered"
+        | "Cancelled"
+        | "Completed";
 
       const updateData = { status: displayStatus };
-      
+
       await updateOrder(orderId, updateData);
-      
+
       // Immediately update the selected order locally
-      if (selectedOrder && (selectedOrder._id === orderId || selectedOrder.id === orderId)) {
+      if (
+        selectedOrder &&
+        (selectedOrder._id === orderId || selectedOrder.id === orderId)
+      ) {
         // Create a new object to ensure React detects the change
         const updatedSelectedOrder = {
           ...selectedOrder,
-          status: displayStatus
+          status: displayStatus,
         };
         setSelectedOrder(updatedSelectedOrder);
       }
-      
+
       // NOTE: Socket event handlers will also receive the updated order and update the UI
-      
+
       // Show immediate feedback to the user
       toast({
         title: "Processing update",
@@ -437,12 +456,11 @@ const ManageOrders = () => {
 
       // Briefly set statusChangeCompleted to true to trigger any UI feedback
       setStatusChangeCompleted(true);
-      
+
       // Reset after a short delay, but keep the dialog open
       setTimeout(() => {
         setStatusChangeCompleted(false);
       }, 1000);
-      
     } catch (error: any) {
       console.error("Error updating order status:", error);
       toast({
@@ -453,7 +471,7 @@ const ManageOrders = () => {
           "There was a problem updating the order status.",
         variant: "destructive",
       });
-      
+
       // Refresh orders in case of error to ensure UI is in sync
       refreshOrders();
     } finally {
@@ -478,7 +496,7 @@ const ManageOrders = () => {
   const handleDialogOpenChange = (open: boolean) => {
     if (!open && !isUpdating) {
       setIsDetailsOpen(false);
-      
+
       // Reset status change completed flag if dialog is closed
       if (statusChangeCompleted) {
         setStatusChangeCompleted(false);
@@ -488,19 +506,24 @@ const ManageOrders = () => {
 
   // Helper function to calculate and display mixed printing page information
   const getMixedPrintInfo = (colorPagesStr: string, totalPageCount: number) => {
-    if (!colorPagesStr || typeof colorPagesStr !== 'string') {
-      return { colorPagesCount: 0, bwPagesCount: 0, totalPageCount: totalPageCount || 0, summary: "No color pages specified" };
-    }
-    
-    if (!totalPageCount || typeof totalPageCount !== 'number') {
-      return { 
-        colorPagesCount: 0, 
-        bwPagesCount: 0, 
-        totalPageCount: 0, 
-        summary: "Page count unknown" 
+    if (!colorPagesStr || typeof colorPagesStr !== "string") {
+      return {
+        colorPagesCount: 0,
+        bwPagesCount: 0,
+        totalPageCount: totalPageCount || 0,
+        summary: "No color pages specified",
       };
     }
-    
+
+    if (!totalPageCount || typeof totalPageCount !== "number") {
+      return {
+        colorPagesCount: 0,
+        bwPagesCount: 0,
+        totalPageCount: 0,
+        summary: "Page count unknown",
+      };
+    }
+
     try {
       const colorPages = parseColorPages(colorPagesStr, totalPageCount);
       const colorPagesCount = colorPages.length;
@@ -509,15 +532,15 @@ const ManageOrders = () => {
         colorPagesCount,
         bwPagesCount,
         totalPageCount,
-        summary: `${colorPagesCount} color, ${bwPagesCount} B&W of ${totalPageCount} total`
+        summary: `${colorPagesCount} color, ${bwPagesCount} B&W of ${totalPageCount} total`,
       };
     } catch (error) {
       console.error("Error parsing color pages:", error);
-      return { 
-        colorPagesCount: 0, 
-        bwPagesCount: 0, 
-        totalPageCount, 
-        summary: "Error parsing color pages" 
+      return {
+        colorPagesCount: 0,
+        bwPagesCount: 0,
+        totalPageCount,
+        summary: "Error parsing color pages",
       };
     }
   };
@@ -527,13 +550,13 @@ const ManageOrders = () => {
     const checkConnectionStatus = () => {
       // This effect has no state update but will re-render the UI if socket.isConnected changes
     };
-    
+
     // Check connection status immediately
     checkConnectionStatus();
-    
+
     // Then check every 5 seconds
     const intervalId = setInterval(checkConnectionStatus, 5000);
-    
+
     return () => {
       clearInterval(intervalId);
     };
@@ -547,9 +570,11 @@ const ManageOrders = () => {
             <h1 className="text-3xl font-bold">Manage Orders</h1>
             <div className="flex items-center gap-2 mt-1">
               <p className="text-gray-600">
-                {showAllOrders ? "View and manage all print orders" : "View and manage today's print orders"}
+                {showAllOrders
+                  ? "View and manage all print orders"
+                  : "View and manage today's print orders"}
               </p>
-              <div className="flex items-center gap-1.5 ml-3">
+              {/*<div className="flex items-center gap-1.5 ml-3">
                 <div className={`w-2 h-2 rounded-full ${socket.isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
                 <span className="text-xs text-gray-600">
                   {socket.isConnected ? 'Live Updates Active' : 'Disconnected'}
@@ -587,7 +612,7 @@ const ManageOrders = () => {
                     Reconnect
                   </Button>
                 )}
-              </div>
+              </div>*/}
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
@@ -622,12 +647,15 @@ const ManageOrders = () => {
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <CardTitle className="text-xl">
-                {showAllOrders ? "All Orders" : "Orders from Today"} ({filteredOrders.length})
+                {showAllOrders ? "All Orders" : "Orders from Today"} (
+                {filteredOrders.length})
               </CardTitle>
               <Button
                 variant={showAllOrders ? "outline" : "default"}
                 onClick={() => setShowAllOrders(!showAllOrders)}
-                className={`w-full sm:w-auto ${!showAllOrders ? "bg-primary hover:bg-primary/90" : ""}`}
+                className={`w-full sm:w-auto ${
+                  !showAllOrders ? "bg-primary hover:bg-primary/90" : ""
+                }`}
               >
                 {showAllOrders ? "Show Today's Orders" : "View All Orders"}
               </Button>
@@ -719,7 +747,9 @@ const ManageOrders = () => {
                       <TableCell colSpan={8} className="h-24 text-center">
                         <div className="flex items-center justify-center">
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                          <span className="ml-2 text-gray-500">Loading orders...</span>
+                          <span className="ml-2 text-gray-500">
+                            Loading orders...
+                          </span>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -791,7 +821,9 @@ const ManageOrders = () => {
                       <TableCell colSpan={8} className="h-24 text-center">
                         <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                         <p className="text-gray-500">
-                          {showAllOrders ? "No orders found" : "No orders found for today"}
+                          {showAllOrders
+                            ? "No orders found"
+                            : "No orders found for today"}
                         </p>
                         {searchQuery && (
                           <p className="text-sm text-gray-400 mt-1">
@@ -800,7 +832,8 @@ const ManageOrders = () => {
                         )}
                         {!showAllOrders && !searchQuery && (
                           <p className="text-sm text-gray-400 mt-1">
-                            Click "View All Orders" to see orders from previous days
+                            Click "View All Orders" to see orders from previous
+                            days
                           </p>
                         )}
                       </TableCell>
@@ -813,10 +846,7 @@ const ManageOrders = () => {
         </Card>
       </div>
 
-      <Dialog
-        open={isDetailsOpen}
-        onOpenChange={handleDialogOpenChange}
-      >
+      <Dialog open={isDetailsOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="sm:max-w-[90%] lg:max-w-5xl xl:max-w-6xl md:h-[85vh] mt-6 sm:mt-0 overflow-hidden">
           {selectedOrder && (
             <>
@@ -843,8 +873,15 @@ const ManageOrders = () => {
                   </DialogTitle>
                   <DialogDescription className="mt-2">
                     Placed on{" "}
-                    <span className="font-medium">{new Date(selectedOrder.createdAt).toLocaleDateString()}</span> by{" "}
-                    <span className="font-medium">{selectedOrder.customerName || selectedOrder.userName || "Unknown User"}</span>
+                    <span className="font-medium">
+                      {new Date(selectedOrder.createdAt).toLocaleDateString()}
+                    </span>{" "}
+                    by{" "}
+                    <span className="font-medium">
+                      {selectedOrder.customerName ||
+                        selectedOrder.userName ||
+                        "Unknown User"}
+                    </span>
                   </DialogDescription>
                 </DialogHeader>
 
@@ -868,21 +905,30 @@ const ManageOrders = () => {
                           </div>
                           <div className="grid grid-cols-3 gap-4 text-sm print-grid">
                             <div className="print-item">
-                              <p className="text-gray-500 print-label">Copies</p>
+                              <p className="text-gray-500 print-label">
+                                Copies
+                              </p>
                               <p className="font-medium print-value">
                                 {selectedOrder.copies}
                               </p>
                             </div>
                             <div className="print-item">
-                              <p className="text-gray-500 print-label">Print Type</p>
+                              <p className="text-gray-500 print-label">
+                                Print Type
+                              </p>
                               <p className="font-medium print-value">
                                 {(() => {
                                   // Check if any file has mixed print type
-                                  const hasMixedFile = selectedOrder.files?.some((file: any) => file.printType === "mixed");
+                                  const hasMixedFile =
+                                    selectedOrder.files?.some(
+                                      (file: any) => file.printType === "mixed"
+                                    );
                                   if (hasMixedFile) {
                                     return "Mixed (B&W + Color)";
                                   } else {
-                                    return selectedOrder.colorType === "color" ? "Color" : "Black & White";
+                                    return selectedOrder.colorType === "color"
+                                      ? "Color"
+                                      : "Black & White";
                                   }
                                 })()}
                               </p>
@@ -903,7 +949,9 @@ const ManageOrders = () => {
                     <Card className="border shadow-sm">
                       <CardHeader className="py-4 px-5">
                         <CardTitle className="text-sm font-semibold flex items-center">
-                          <span className="inline-flex items-center justify-center w-4 h-4 mr-2 rounded-full bg-primary/10 text-primary">₹</span>
+                          <span className="inline-flex items-center justify-center w-4 h-4 mr-2 rounded-full bg-primary/10 text-primary">
+                            ₹
+                          </span>
                           Payment Details
                         </CardTitle>
                       </CardHeader>
@@ -940,101 +988,134 @@ const ManageOrders = () => {
                       </CardHeader>
                       <CardContent className="py-3 px-5">
                         <div className="space-y-4 print-files">
-                          {selectedOrder.files.map((file: any, index: number) => {
-                            // Skip if file data is invalid
-                            if (!file) return null;
+                          {selectedOrder.files.map(
+                            (file: any, index: number) => {
+                              // Skip if file data is invalid
+                              if (!file) return null;
 
-                            const fileName = file.originalName || "Unknown file";
-                            const copies = file.copies || 1;
-                            const printType = file.printType || "blackAndWhite";
-                            const specialPaper = file.specialPaper || "none";
-                            const binding = file.binding || { needed: false };
+                              const fileName =
+                                file.originalName || "Unknown file";
+                              const copies = file.copies || 1;
+                              const printType =
+                                file.printType || "blackAndWhite";
+                              const specialPaper = file.specialPaper || "none";
+                              const binding = file.binding || { needed: false };
 
-                            return (
-                              <div
-                                key={index}
-                                className="bg-gray-50 p-4 rounded-md print-file-item border border-gray-200"
-                              >
-                                <div className="flex items-center justify-between mb-2">
-                                  <p className="font-medium text-sm print-filename">
-                                    {fileName}
-                                  </p>
-                                  {printType === "mixed" && (
-                                    <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full font-medium">
-                                      Mixed Print
-                                    </span>
-                                  )}
-                                </div>
-                                
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-3 gap-x-4 text-xs text-gray-600 print-file-details">
-                                  <div className="print-detail">
-                                    <span className="text-gray-500 block mb-1">Copies</span>
-                                    <span className="font-medium">{copies}</span>
+                              return (
+                                <div
+                                  key={index}
+                                  className="bg-gray-50 p-4 rounded-md print-file-item border border-gray-200"
+                                >
+                                  <div className="flex items-center justify-between mb-2">
+                                    <p className="font-medium text-sm print-filename">
+                                      {fileName}
+                                    </p>
+                                    {printType === "mixed" && (
+                                      <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full font-medium">
+                                        Mixed Print
+                                      </span>
+                                    )}
                                   </div>
-                                  <div className="print-detail">
-                                    <span className="text-gray-500 block mb-1">Print Type</span>
-                                    <span className="font-medium">
-                                      {printType === "blackAndWhite" 
-                                        ? "B&W" 
-                                        : printType === "mixed" 
-                                          ? "Mixed (B&W + Color)" 
-                                          : "Color"}
-                                    </span>
-                                  </div>
-                                  <div className="print-detail">
-                                    <span className="text-gray-500 block mb-1">Paper</span>
-                                    <span className="font-medium">
-                                      {specialPaper === "none"
-                                        ? "Normal A4"
-                                        : specialPaper}
-                                    </span>
-                                  </div>
-                                  <div className="print-detail">
-                                    <span className="text-gray-500 block mb-1">Binding</span>
-                                    <span className="font-medium">
-                                      {binding?.needed
-                                        ? (binding.type || "").replace("Binding", "")
-                                        : "None"}
-                                    </span>
-                                  </div>
-                                </div>
-                                
-                                {printType === "mixed" && (
-                                  <div className="mt-3 text-xs border-t border-gray-200 pt-3">
-                                    <div className="mb-2">
-                                      <span className="font-medium">Color Pages:</span>{" "}
-                                      {file.colorPages || (file.specificRequirements && file.specificRequirements.includes("Just the page")) 
-                                        ? (file.colorPages || "Page 1")
-                                        : "Not specified - print entire document in color"}
-                                      {file.pageCount && file.colorPages && (
-                                        <>
-                                          {" - "}
-                                          <span className="text-primary font-medium">
-                                            {getMixedPrintInfo(file.colorPages, file.pageCount).summary}
-                                          </span>
-                                        </>
-                                      )}
+
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-3 gap-x-4 text-xs text-gray-600 print-file-details">
+                                    <div className="print-detail">
+                                      <span className="text-gray-500 block mb-1">
+                                        Copies
+                                      </span>
+                                      <span className="font-medium">
+                                        {copies}
+                                      </span>
                                     </div>
-                                    {file.specificRequirements && file.specificRequirements !== "Just the page" && (
-                                      <div className="text-gray-700">
-                                        <span className="font-medium">Additional instructions:</span>{" "}
+                                    <div className="print-detail">
+                                      <span className="text-gray-500 block mb-1">
+                                        Print Type
+                                      </span>
+                                      <span className="font-medium">
+                                        {printType === "blackAndWhite"
+                                          ? "B&W"
+                                          : printType === "mixed"
+                                          ? "Mixed (B&W + Color)"
+                                          : "Color"}
+                                      </span>
+                                    </div>
+                                    <div className="print-detail">
+                                      <span className="text-gray-500 block mb-1">
+                                        Paper
+                                      </span>
+                                      <span className="font-medium">
+                                        {specialPaper === "none"
+                                          ? "Normal A4"
+                                          : specialPaper}
+                                      </span>
+                                    </div>
+                                    <div className="print-detail">
+                                      <span className="text-gray-500 block mb-1">
+                                        Binding
+                                      </span>
+                                      <span className="font-medium">
+                                        {binding?.needed
+                                          ? (binding.type || "").replace(
+                                              "Binding",
+                                              ""
+                                            )
+                                          : "None"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {printType === "mixed" && (
+                                    <div className="mt-3 text-xs border-t border-gray-200 pt-3">
+                                      <div className="mb-2">
+                                        <span className="font-medium">
+                                          Color Pages:
+                                        </span>{" "}
+                                        {file.colorPages ||
+                                        (file.specificRequirements &&
+                                          file.specificRequirements.includes(
+                                            "Just the page"
+                                          ))
+                                          ? file.colorPages || "Page 1"
+                                          : "Not specified - print entire document in color"}
+                                        {file.pageCount && file.colorPages && (
+                                          <>
+                                            {" - "}
+                                            <span className="text-primary font-medium">
+                                              {
+                                                getMixedPrintInfo(
+                                                  file.colorPages,
+                                                  file.pageCount
+                                                ).summary
+                                              }
+                                            </span>
+                                          </>
+                                        )}
+                                      </div>
+                                      {file.specificRequirements &&
+                                        file.specificRequirements !==
+                                          "Just the page" && (
+                                          <div className="text-gray-700">
+                                            <span className="font-medium">
+                                              Additional instructions:
+                                            </span>{" "}
+                                            {file.specificRequirements}
+                                          </div>
+                                        )}
+                                    </div>
+                                  )}
+
+                                  {file.specificRequirements &&
+                                    printType !== "mixed" && (
+                                      <div className="mt-3 text-xs border-t border-gray-200 pt-3">
+                                        <span className="font-medium">
+                                          Instructions:
+                                        </span>{" "}
                                         {file.specificRequirements}
                                       </div>
                                     )}
-                                  </div>
-                                )}
-                                
-                                {file.specificRequirements && printType !== "mixed" && (
-                                  <div className="mt-3 text-xs border-t border-gray-200 pt-3">
-                                    <span className="font-medium">
-                                      Instructions:
-                                    </span>{" "}
-                                    {file.specificRequirements}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
+                                </div>
+                              );
+                            }
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -1073,7 +1154,8 @@ const ManageOrders = () => {
                           }
                           size="sm"
                           disabled={
-                            isUpdating || isStatus(selectedOrder.status, "Pending")
+                            isUpdating ||
+                            isStatus(selectedOrder.status, "Pending")
                           }
                           onClick={() =>
                             handleStatusChange(
@@ -1097,7 +1179,8 @@ const ManageOrders = () => {
                           }
                           size="sm"
                           disabled={
-                            isUpdating || isStatus(selectedOrder.status, "Processing")
+                            isUpdating ||
+                            isStatus(selectedOrder.status, "Processing")
                           }
                           onClick={() =>
                             handleStatusChange(
@@ -1121,7 +1204,8 @@ const ManageOrders = () => {
                           }
                           size="sm"
                           disabled={
-                            isUpdating || isStatus(selectedOrder.status, "Completed")
+                            isUpdating ||
+                            isStatus(selectedOrder.status, "Completed")
                           }
                           onClick={() =>
                             handleStatusChange(
@@ -1145,7 +1229,8 @@ const ManageOrders = () => {
                           }
                           size="sm"
                           disabled={
-                            isUpdating || isStatus(selectedOrder.status, "Cancelled")
+                            isUpdating ||
+                            isStatus(selectedOrder.status, "Cancelled")
                           }
                           onClick={() =>
                             handleStatusChange(
@@ -1192,22 +1277,30 @@ const ManageOrders = () => {
                       <div className="flex flex-col md:flex-row">
                         {selectedOrder.files.length > 1 && (
                           <div className="w-full md:w-48 border-b md:border-b-0 md:border-r border-gray-200 p-3 md:p-4 space-y-2 overflow-y-auto max-h-[200px] md:max-h-[420px]">
-                            {selectedOrder.files.map((file: any, idx: number) => (
-                              <Button
-                                key={idx}
-                                variant={idx === selectedFileIdx ? "default" : "outline"}
-                                size="sm"
-                                className="w-full text-xs truncate"
-                                onClick={() => setSelectedFileIdx(idx)}
-                              >
-                                {file.originalName}
-                              </Button>
-                            ))}
+                            {selectedOrder.files.map(
+                              (file: any, idx: number) => (
+                                <Button
+                                  key={idx}
+                                  variant={
+                                    idx === selectedFileIdx
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  size="sm"
+                                  className="w-full text-xs truncate"
+                                  onClick={() => setSelectedFileIdx(idx)}
+                                >
+                                  {file.originalName}
+                                </Button>
+                              )
+                            )}
                           </div>
                         )}
                         <div className="flex-1 h-[420px]">
                           <DocumentViewer
-                            documentName={selectedOrder.files[selectedFileIdx].originalName}
+                            documentName={
+                              selectedOrder.files[selectedFileIdx].originalName
+                            }
                             orderId={selectedOrder._id}
                             fileIndex={selectedFileIdx}
                             fallbackMessage="The document file is not available for preview or printing. Please contact the customer for the original file."
@@ -1218,7 +1311,7 @@ const ManageOrders = () => {
                     </CardContent>
                   </Card>
                 </div>
-                
+
                 {/* Footer Actions - Fixed */}
                 <DialogFooter className="flex justify-between mt-auto pt-4 border-t border-gray-200">
                   <Button
@@ -1244,7 +1337,8 @@ const ManageOrders = () => {
 
                       // Remove the temporary style after printing
                       setTimeout(() => {
-                        const tempStyle = document.getElementById("temp-print-style");
+                        const tempStyle =
+                          document.getElementById("temp-print-style");
                         if (tempStyle) tempStyle.remove();
                       }, 2000);
 
