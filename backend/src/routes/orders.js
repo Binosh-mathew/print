@@ -9,6 +9,14 @@ import { cleanupOldOrderFiles } from "../utils/cleanupClaudinary.js";
 
 const router = Router();
 
+// Helper function to determine resource type from mimetype
+const getResourceType = (mimetype) => {
+  if (!mimetype) return 'raw';
+  if (mimetype.startsWith('video/')) return 'video';
+  if (mimetype.startsWith('image/')) return 'image';
+  return 'raw';
+};
+
 // Rate limiter for order creation (10 req/min per IP)
 const createLimiter = rateLimit({ windowMs: 60_000, max: 10 });
 
@@ -30,6 +38,7 @@ router.post(
           fileName: file.path, // Cloudinary URL
           publicId: file.filename, // Cloudinary public_id
           originalName: file.originalname,
+          resourceType: getResourceType(file.mimetype), // Store the resource type
           ...details, // Merge with additional details
           copies: details.copies || 1,
           specialPaper: details.specialPaper || "none",
@@ -191,13 +200,61 @@ router.get("/:id", auth, fetchLimiter, async (req, res) => {
     // Generate signed URLs for each file
     const filesWithSignedUrls = order.files.map((file) => {
       if (file.publicId) {
-        const signedUrl = cloudinary.url(file.publicId, {
-          resource_type: "raw",
-          sign_url: true,
-          secure: true,
-          expires_at: Math.floor(Date.now() / 1000) + SIGNED_URL_TTL,
-        });
-        return { ...file.toObject(), fileName: signedUrl };
+        // Use the stored resourceType, or default to 'raw' if not present (for old orders)
+        const resourceType = file.resourceType || 'raw';
+        
+        console.log(`Generating signed URL for file: ${file.publicId}, resourceType: ${resourceType}`);
+        console.log(`Original file name: ${file.originalName}`);
+        
+        // For raw files, check if the public_id already includes the extension
+        let publicIdToUse = file.publicId;
+        const fileExtension = file.originalName ? file.originalName.split('.').pop().toLowerCase() : null;
+        
+        if (resourceType === 'raw') {
+          const publicIdHasExtension = fileExtension && file.publicId.toLowerCase().endsWith(`.${fileExtension}`);
+          
+          if (!publicIdHasExtension && fileExtension) {
+            // Old order - the file was uploaded without extension but Cloudinary stores it with one
+            // We need to append it to access the file
+            publicIdToUse = `${file.publicId}.${fileExtension}`;
+            console.log(`Old order detected - appending extension for access`);
+          }
+        }
+        
+        console.log(`Final public ID: ${publicIdToUse}`);
+        
+        // Generate authenticated URL using Cloudinary's private_download_url
+        // This is specifically designed for secure file downloads
+        try {
+          const signedUrl = cloudinary.utils.private_download_url(
+            publicIdToUse,
+            fileExtension || 'pdf', // format
+            {
+              resource_type: resourceType,
+              type: 'upload',
+              expires_at: Math.floor(Date.now() / 1000) + SIGNED_URL_TTL,
+            }
+          );
+          
+          console.log(`Generated private download URL: ${signedUrl}`);
+          
+          return { ...file.toObject(), fileName: signedUrl };
+        } catch (urlError) {
+          console.error(`Error generating private download URL, falling back to standard URL:`, urlError.message);
+          
+          // Fallback to standard signed URL
+          const signedUrl = cloudinary.url(publicIdToUse, {
+            resource_type: resourceType,
+            type: 'upload',
+            sign_url: true,
+            secure: true,
+            expires_at: Math.floor(Date.now() / 1000) + SIGNED_URL_TTL,
+          });
+          
+          console.log(`Generated fallback signed URL: ${signedUrl}`);
+          
+          return { ...file.toObject(), fileName: signedUrl };
+        }
       }
       return file.toObject();
     });

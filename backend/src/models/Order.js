@@ -11,6 +11,7 @@ const fileSchema = new mongoose.Schema({
   fileName: String, // Cloudinary URL
   publicId: String, // Cloudinary public ID
   originalName: String, // Original name of the file
+  resourceType: String, // Cloudinary resource type (image, video, raw, auto)
   copies: Number,
   specialPaper: String,
   printType: String,
