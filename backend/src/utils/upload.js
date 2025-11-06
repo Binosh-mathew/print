@@ -9,15 +9,21 @@ const storage = new CloudinaryStorage({
     const isVideo = file.mimetype.startsWith('video/');
     const isImage = file.mimetype.startsWith('image/');
     
+    // Extract the file extension
+    const fileExtension = file.originalname.split('.').pop();
+    const fileNameWithoutExt = file.originalname.substring(0, file.originalname.lastIndexOf('.')) || file.originalname;
+    
     return {
       folder: isVideo ? 'printspark_videos' : 
              isImage ? 'printspark_images' : 
              'printspark_uploads',
       resource_type: isVideo ? 'video' : 
                      isImage ? 'image' : 
-                     'auto',
-      // Use filename as public_id (without extension)
-      public_id: file.originalname.split('.')[0] + '_' + Date.now(),
+                     'raw',
+      // Include extension in public_id for raw files (documents)
+      public_id: isVideo || isImage 
+        ? `${fileNameWithoutExt}_${Date.now()}`
+        : `${fileNameWithoutExt}_${Date.now()}.${fileExtension}`,
     };
   },
 });
