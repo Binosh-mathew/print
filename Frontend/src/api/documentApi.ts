@@ -19,20 +19,18 @@ export const getDocumentUrl = async (
 ): Promise<string> => {
   // Generate a cache key based on orderId and fileIndex
   const cacheKey = `${orderId}-${fileIndex}`;
-  
+
   // Check if we have a valid cached URL
   const cachedData = documentUrlCache[cacheKey];
   const now = Date.now();
   if (cachedData && now - cachedData.timestamp < CACHE_EXPIRATION) {
     return cachedData.url;
   }
-  
+
   try {
     // Fetch the order details to get the document URL
-    const response = await axios.get(
-      `/orders/${orderId}`,
-      {}
-    );    if (
+    const response = await axios.get(`/orders/${orderId}`, {});
+    if (
       response.data &&
       response.data.files &&
       response.data.files.length > fileIndex
@@ -43,9 +41,9 @@ export const getDocumentUrl = async (
         const cacheKey = `${orderId}-${fileIndex}`;
         documentUrlCache[cacheKey] = {
           url: file.fileName,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         };
-        
+
         return file.fileName;
       }
     }
@@ -98,17 +96,12 @@ export const uploadDocument = async (
  * @param documentUrl The URL of the document to print
  * @param documentName The name of the document (for the window title)
  */
-export const printDocument = (
-  documentUrl: string,
-  documentName: string = "Document" // Keep parameter for API compatibility
-) => {
+export const printDocument = (documentUrl: string) => {
   try {
-    // Check if the document URL is valid
     if (!documentUrl) {
       throw new Error("Document URL is not available");
     }
 
-    // Try using an iframe approach instead of window.open to avoid fullscreen permission issues
     const iframe = document.createElement("iframe");
     iframe.style.display = "none";
     iframe.src = documentUrl;
@@ -117,7 +110,6 @@ export const printDocument = (
         iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
 
-        // Remove the iframe after printing is initiated
         setTimeout(() => {
           if (iframe.parentNode) {
             iframe.parentNode.removeChild(iframe);
@@ -222,4 +214,51 @@ export const checkDocumentExists = async (): Promise<boolean> => {
 
   // Always return true for the demo
   return true;
+};
+
+export const fetchDocumentFile = async (
+  orderId: string,
+  documentName: string,
+  fileIndex: number,
+  onProgress?: (progress: number) => void
+): Promise<{ blob: Blob; signedUrl: string; fileSize: number }> => {
+  const signedUrl = await getDocumentUrl(orderId, fileIndex);
+  console.log("Signed URL : ", signedUrl);
+  const response = await fetch(signedUrl);
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch document file");
+  }
+
+  const total = parseInt(response.headers.get("content-length") || "0", 10);
+  const reader = response.body?.getReader();
+  const chunks: BlobPart[] = [];
+  let received = 0;
+
+  if (reader) {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      if (value) {
+        chunks.push(value);
+        received += value.length;
+
+        if (onProgress && total > 0) {
+          onProgress(Math.round((received / total) * 100));
+        }
+      }
+    }
+  }
+
+  const contentType =
+    response.headers.get("content-type") ||
+    (documentName.endsWith(".pdf") && "application/pdf") ||
+    "application/octet-stream";
+
+  const blob = chunks.length
+    ? new Blob(chunks, { type: contentType })
+    : await response.blob();
+
+  return { blob, signedUrl, fileSize: total };
 };

@@ -5,8 +5,7 @@ import { Message } from "@/types/message";
 import { Product } from "@/types/product";
 import { Ad } from "@/types/ad";
 import { LoginAlert } from "@/types/loginAlert";
-import axios from "./config/axios"
-
+import axios from "./config/axios";
 
 // Auth APIs
 export const registerUser = async (
@@ -22,16 +21,18 @@ export const registerUser = async (
     });
     return response.data;
   } catch (error: any) {
-    
     // Check for existing user error
-    if (error?.response?.status === 400 && 
-        error?.response?.data?.message?.includes("User already exists")) {
+    if (
+      error?.response?.status === 400 &&
+      error?.response?.data?.message?.includes("User already exists")
+    ) {
       throw new Error("User already exists");
     }
-    
+
     // Handle other error messages
     if (error?.response?.data) {
-      const errorMessage = error?.response?.data?.message || "Registration failed";
+      const errorMessage =
+        error?.response?.data?.message || "Registration failed";
       throw new Error(errorMessage);
     }
     throw new Error("An unexpected error occurred during registration");
@@ -48,14 +49,16 @@ export const loginUser = async (
     // Return both user and token
     return {
       ...response.data.user,
-      token: response.data.token
+      token: response.data.token,
     };
   } catch (error: any) {
     // Handle specific error messages including email verification errors
     if (error?.response?.data) {
       // Check if this is a verification error
       if (error.response.data.needsVerification) {
-        const verificationError = new Error(error.response.data.message || "Email verification required");
+        const verificationError = new Error(
+          error.response.data.message || "Email verification required"
+        );
         // Add a custom property to indicate verification is needed
         (verificationError as any).needsVerification = true;
         throw verificationError;
@@ -66,21 +69,28 @@ export const loginUser = async (
   }
 };
 
-export const googleAuthLogin = async (
-  userData: { email: string; name: string; photoURL?: string; uid: string }
-): Promise<any> => {
+export const googleAuthLogin = async (userData: {
+  email: string;
+  name: string;
+  photoURL?: string;
+  uid: string;
+}): Promise<any> => {
   try {
     // Send refresh option to indicate if profile should be refreshed with latest Google data
     const response = await axios.post("/auth/google-auth", {
       ...userData,
-      syncProfile: true // Always sync profile data on login
+      syncProfile: true, // Always sync profile data on login
     });
     return response.data;
   } catch (error: any) {
     if (error?.response?.data) {
-      throw new Error(error.response.data.message || "Google authentication failed");
+      throw new Error(
+        error.response.data.message || "Google authentication failed"
+      );
     }
-    throw new Error("An unexpected error occurred during Google authentication");
+    throw new Error(
+      "An unexpected error occurred during Google authentication"
+    );
   }
 };
 
@@ -96,19 +106,18 @@ export const logoutUser = async (): Promise<void> => {
   }
 };
 
-
-export const verifyAuth = async ():Promise<any> =>{
-  try{
+export const verifyAuth = async (): Promise<any> => {
+  try {
     const response = await axios.get("/auth/verify");
     return response.data;
-  }catch(error:any){
+  } catch (error: any) {
     // Handle specific error messages
     if (error?.response?.data) {
       throw new Error(error.response.data.message || "Verification failed");
     }
     throw new Error("An unexpected error occurred during verification");
   }
-}
+};
 
 // Order APIs
 // Throttle control for API calls - ensures we don't overload the server with requests
@@ -120,59 +129,50 @@ export const fetchOrders = async (): Promise<Order[]> => {
     // Check if we're fetching too frequently
     const now = Date.now();
     const timeSinceLastFetch = now - lastOrderFetchTime;
-    
+
     if (timeSinceLastFetch < MIN_FETCH_INTERVAL) {
-      console.log(`API throttled: Last fetch was ${timeSinceLastFetch}ms ago. Minimum interval is ${MIN_FETCH_INTERVAL}ms.`);
       // Wait for the throttle time to pass
-      await new Promise(resolve => setTimeout(resolve, MIN_FETCH_INTERVAL - timeSinceLastFetch));
+      await new Promise((resolve) =>
+        setTimeout(resolve, MIN_FETCH_INTERVAL - timeSinceLastFetch)
+      );
     }
-    
+
     // Update the last fetch time
     lastOrderFetchTime = Date.now();
-    
-    console.log("API: Fetching orders from server");
+
     const response = await axios.get("/orders");
-    
-    console.log("API: Raw response data:", response.data);
-    
+
     // Check if we got orders in the response
-    if (response.data && response.data.orders && Array.isArray(response.data.orders)) {
-      console.log(`API: Received ${response.data.orders.length} orders from server`);
+    if (
+      response.data &&
+      response.data.orders &&
+      Array.isArray(response.data.orders)
+    ) {
       return response.data.orders;
     } else if (Array.isArray(response.data)) {
-      console.log(`API: Received ${response.data.length} orders from server`);
       return response.data;
-    } else if (response.data && typeof response.data === 'object') {
+    } else if (response.data && typeof response.data === "object") {
       // Try to extract orders from any property that might contain them
       for (const key in response.data) {
         if (Array.isArray(response.data[key])) {
-          console.log(`API: Found orders array in response.data.${key}`);
           return response.data[key];
         }
       }
     }
-    
-    console.log("API: No orders found in response, returning empty array");
-    // If we got a successful response but no orders property or it's not an array,
-    // return empty array as the proper way to represent "no orders"
     return [];
   } catch (error: any) {
     console.error("API: Error fetching orders:", error);
-    
+
     // For backward compatibility, still handle 404 "No orders found" as a non-error case
     if (error?.response?.status === 404) {
-      console.log("API: Got 404 - no orders found");
       return []; // Return empty array for 404 responses
     }
-    
+
     // Check for authentication issues
     if (error?.response?.status === 401) {
       console.error("API: Authentication error when fetching orders");
       throw new Error("Authentication error - please log in again");
     }
-    
-    // Return empty array for any error to prevent breaking the UI
-    console.log("API: Returning empty array after error");
     return [];
   }
 };
@@ -359,7 +359,7 @@ export const fetchStoreById = async (id: string): Promise<Store> => {
 export const fetchStorePricing = async (id: string): Promise<any> => {
   try {
     const response = await axios.get(`/stores/${id}`);
-    return response.data.pricing ;
+    return response.data.pricing;
   } catch (error: any) {
     // Handle specific error messages
     if (error?.response?.data) {
@@ -380,10 +380,9 @@ export const updateStorePricing = async (
   pricingData: any
 ): Promise<any> => {
   try {
-    const response = await axios.put(
-      `/stores/${id}/pricing`,
-      { pricing: pricingData }
-    );
+    const response = await axios.put(`/stores/${id}/pricing`, {
+      pricing: pricingData,
+    });
     return response.data;
   } catch (error: any) {
     // Handle specific error messages
@@ -442,21 +441,26 @@ export const deleteUser = async (userId: string): Promise<void> => {
 export const fetchMessages = async (): Promise<Message[]> => {
   try {
     const response = await axios.get(`/messages`);
-    
+
     // Check different possible response structures
     if (Array.isArray(response.data)) {
       return response.data;
-    } else if (response.data.messages && Array.isArray(response.data.messages)) {
+    } else if (
+      response.data.messages &&
+      Array.isArray(response.data.messages)
+    ) {
       return response.data.messages;
     } else if (response.data.data && Array.isArray(response.data.data)) {
       return response.data.data;
     }
-    
+
     return [];
   } catch (error: any) {
     // Handle specific error messages
     if (error?.response?.data) {
-      throw new Error(error.response.data.message || "Failed to fetch messages");
+      throw new Error(
+        error.response.data.message || "Failed to fetch messages"
+      );
     }
     throw new Error("An unexpected error occurred while fetching messages");
   }
@@ -543,7 +547,7 @@ export const fetchProducts = async () => {
   try {
     const response = await axios.get("/products");
     const products = response.data.products || [];
-    
+
     // Map MongoDB _id to id for frontend use
     return products.map((product: any) => ({
       ...product,
@@ -572,7 +576,10 @@ export const createProduct = async (productData: Partial<Product>) => {
   }
 };
 
-export const updateProduct = async (id: string, productData: Partial<Product>) => {
+export const updateProduct = async (
+  id: string,
+  productData: Partial<Product>
+) => {
   try {
     const response = await axios.put(`/products/${id}`, productData);
     return response.data.product;
@@ -585,15 +592,15 @@ export const deleteProduct = async (id: string) => {
   if (!id) {
     throw new Error("No product ID provided for deletion");
   }
-  
+
   try {
     // Check if the ID is a temporary ID (generated by our frontend)
-    if (id.startsWith('temp-id-')) {
+    if (id.startsWith("temp-id-")) {
       // Instead of making an API call, just return true to remove it from the UI
       // This handles products that haven't been properly saved to the database
       return true;
     }
-    
+
     // Use the proper MongoDB ID format - backend expects _id
     let endpointId = id;
     await axios.delete(`/products/${endpointId}`);
@@ -606,13 +613,16 @@ export const deleteProduct = async (id: string) => {
         // Remove from UI anyway to avoid user confusion
         return true;
       }
-      
+
       // Special handling for 404 - product might already be deleted
       if (error.response.status === 404) {
         return true; // Return success to update the UI
       }
-      
-      throw new Error(error.response.data?.message || `Delete failed with status: ${error.response.status}`);
+
+      throw new Error(
+        error.response.data?.message ||
+          `Delete failed with status: ${error.response.status}`
+      );
     } else if (error.request) {
       throw new Error("No response received from server");
     } else {
@@ -633,14 +643,16 @@ export const toggleProductFeature = async (id: string) => {
 export const fetchProductCategories = async () => {
   try {
     const response = await axios.get("/products/categories");
-    
+
     // Transform the array of strings to the format expected by the Select component
     // [string] -> [{ value: string, label: string }]
-    const formattedCategories = response.data.categories.map((category: string) => ({
-      value: category,
-      label: category.charAt(0).toUpperCase() + category.slice(1) // Capitalize first letter
-    }));
-    
+    const formattedCategories = response.data.categories.map(
+      (category: string) => ({
+        value: category,
+        label: category.charAt(0).toUpperCase() + category.slice(1), // Capitalize first letter
+      })
+    );
+
     return formattedCategories;
   } catch (error) {
     // Return default categories as a fallback
@@ -649,7 +661,7 @@ export const fetchProductCategories = async () => {
       { value: "software", label: "Software" },
       { value: "printing", label: "Printing Supplies" },
       { value: "beauty", label: "Beauty" },
-      { value: "other", label: "Other" }
+      { value: "other", label: "Other" },
     ];
   }
 };
@@ -658,7 +670,7 @@ export const fetchProductCategories = async () => {
 export const fetchAds = async () => {
   try {
     const response = await axios.get("/ads");
-    
+
     // Map MongoDB _id to id for frontend use
     const ads = response.data.ads || [];
     return ads.map((ad: any) => ({
@@ -676,7 +688,7 @@ export const fetchAdById = async (id: string) => {
     const ad = response.data.ad;
     return {
       ...ad,
-      id: ad._id
+      id: ad._id,
     };
   } catch (error) {
     throw error;
@@ -705,7 +717,7 @@ export const deleteAd = async (id: string) => {
   if (!id) {
     throw new Error("No ad ID provided for deletion");
   }
-  
+
   try {
     await axios.delete(`/ads/${id}`);
     return true;
@@ -735,31 +747,24 @@ export const getUserSupercoins = async () => {
 // Upload video file for ad
 export const uploadAdVideo = async (videoFile: File) => {
   try {
-    console.log("Uploading video file:", videoFile.name, videoFile.type, videoFile.size);
-    
     const formData = new FormData();
     formData.append("video", videoFile);
-    
-    // Log the base URL being used
-    console.log("API Base URL:", import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api");
-    
     // Simple approach: use the default axios instance with the right path
     const response = await axios.post("/ads/upload/video", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
-      }
+      },
     });
-    
-    console.log("Upload response:", response.data);
+
     return response.data;
   } catch (error: any) {
     console.error("Error uploading video:", error);
     console.error("Response data:", error.response?.data);
     console.error("Request URL:", error.config?.url);
     throw new Error(
-      error.response?.data?.message || 
-      error.message || 
-      "Failed to upload video file"
+      error.response?.data?.message ||
+        error.message ||
+        "Failed to upload video file"
     );
   }
 };
@@ -767,31 +772,21 @@ export const uploadAdVideo = async (videoFile: File) => {
 // Upload thumbnail image for ad
 export const uploadAdThumbnail = async (thumbnailFile: File) => {
   try {
-    console.log("Uploading thumbnail file:", thumbnailFile.name, thumbnailFile.type, thumbnailFile.size);
-    
     const formData = new FormData();
     formData.append("thumbnail", thumbnailFile);
-    
-    // Log the base URL being used
-    console.log("API Base URL:", import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api");
-    
+
     // Simple approach: use the default axios instance with the right path
     const response = await axios.post("/ads/upload/thumbnail", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
-      }
+      },
     });
-    
-    console.log("Upload response:", response.data);
     return response.data;
   } catch (error: any) {
-    console.error("Error uploading thumbnail:", error);
-    console.error("Response data:", error.response?.data);
-    console.error("Request URL:", error.config?.url);
     throw new Error(
-      error.response?.data?.message || 
-      error.message || 
-      "Failed to upload thumbnail file"
+      error.response?.data?.message ||
+        error.message ||
+        "Failed to upload thumbnail file"
     );
   }
 };
@@ -823,11 +818,8 @@ export const updateStoreFeatures = async (
     if (status !== undefined) {
       updateData.status = status;
     }
-    
-    const response = await axios.put(
-      `/stores/${id}/features`,
-      updateData
-    );
+
+    const response = await axios.put(`/stores/${id}/features`, updateData);
     return response.data;
   } catch (error: any) {
     if (error?.response?.data) {
