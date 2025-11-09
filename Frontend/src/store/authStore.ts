@@ -12,12 +12,11 @@ const authStoreKey = "auth_data";
 const jwtExpirationDays = 14 * 24 * 60 * 60; // 14 days in seconds
 
 const useAuthStore = create<authState>((set, get) => ({
-  //Internal methods to manage authentication data in localStorage
   _setAuthData: (user: User, token?: string) => {
     const authData = {
       user: user,
-      expiresIn: Date.now() + jwtExpirationDays * 1000, // Convert seconds to milliseconds
-      token: token, // Store the token if provided
+      expiresIn: Date.now() + jwtExpirationDays * 1000,
+      token: token,
     };
 
     try {
@@ -47,8 +46,6 @@ const useAuthStore = create<authState>((set, get) => ({
       const hasUser = !!parsedData.user;
       const hasUserId = hasUser && !!parsedData.user.id;
 
-      // Only validate based on expiration time for now
-      // to avoid async operations that can cause render loops
       return hasExpiry && notExpired && hasUser && hasUserId;
     } catch (error) {
       console.error("Error validating auth data:", error);
@@ -97,7 +94,6 @@ const useAuthStore = create<authState>((set, get) => ({
         role: response.user.role,
         photoURL: response.user.photoURL,
       };
-
 
       // Extract the token from the response
       const token = response.token;
@@ -289,7 +285,6 @@ const useAuthStore = create<authState>((set, get) => ({
       const data = get()._getAuthData();
 
       if (data && get()._validateAuthData()) {
-
         set({
           user: data.user,
           isAuthenticated: true,
@@ -326,21 +321,15 @@ const useAuthStore = create<authState>((set, get) => ({
     }
   }, // Session monitoring and refresh mechanism
   refreshSession: async () => {
-
-    // Check if Firebase user is still valid
     try {
       const { auth } = await import("@/config/firebase");
       const currentUser = auth.currentUser;
 
       if (currentUser) {
-        // If we have an active Firebase user but no valid local auth,
-        // this could indicate a state mismatch - refresh the auth
         if (!get()._validateAuthData()) {
 
-          // Get fresh ID token
           const idToken = await currentUser.getIdToken(true);
 
-          // Prepare user data for backend
           const googleData = {
             email: currentUser.email || "",
             name:
@@ -352,37 +341,29 @@ const useAuthStore = create<authState>((set, get) => ({
             idToken,
           };
 
-          // Re-authenticate with the backend
           await get().loginWithGoogle(googleData);
         }
       }
     } catch (error) {
       console.error("Error refreshing Firebase session:", error);
     }
-
-    // Return current auth state
     return get().checkauth();
   },
 
   initialize: () => {
     set({ loading: true });
 
-    // Use setTimeout to ensure this runs after all other synchronous operations
     setTimeout(() => {
       const authResult = get().checkauth();
       set({ loading: false });
-
-      // Set up periodic session refresh for long sessions
-      // Only if user is authenticated, check every 30 minutes to ensure session is still valid
       if (authResult) {
         const sessionRefreshInterval = setInterval(() => {
           const isStillValid = get().refreshSession();
           if (!isStillValid) {
             clearInterval(sessionRefreshInterval);
           }
-        }, 30 * 60 * 1000); // 30 minutes
+        }, 30 * 60 * 1000);
 
-        // Store interval ID for cleanup
         (window as any).__authRefreshInterval = sessionRefreshInterval;
       }
     }, 0);

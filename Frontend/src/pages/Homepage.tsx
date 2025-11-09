@@ -20,7 +20,6 @@ const Homepage = () => {
   }, [isAuthenticated, navigate]);
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Header */}
       <header className="bg-white border-b border-gray-200 shadow-sm">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">          <Link to="/" className="font-bold text-3xl text-primary">
             PrintSpark
@@ -42,7 +41,6 @@ const Homepage = () => {
         </div>
       </header>
 
-      {/* Hero Section */}
       <section className="bg-gradient-to-br from-primary-100 to-white py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center">

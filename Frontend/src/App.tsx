@@ -4,11 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Suspense, useEffect, lazy } from "react";
-
-// Auth Context Provider
-// import { AuthProvider } from "./contexts/AuthContext";
-
-// User Pages
 import Homepage from "./pages/Homepage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -20,7 +15,6 @@ import UserProfile from "./pages/user/Profile";
 import OffersShops from "./pages/user/OffersShops";
 import AdsPage from "./pages/user/AdsPage";
 
-// Admin Pages
 import AdminLogin from "./pages/admin/AdminLogin";
 import Dashboard from "./pages/admin/Dashboard";
 import ManageOrders from "./pages/admin/ManageOrders";
@@ -30,13 +24,11 @@ import StoreSettings from "./pages/admin/StoreSettings";
 import Messages from "./pages/admin/Messages";
 import AdminProfile from "./pages/admin/Profile";
 import NotFound from "./pages/NotFound";
-import VerifyEmail from "./pages/VerifyEmail"; 
+import VerifyEmail from "./pages/VerifyEmail";
 
-// Protected Route Component
 import ProtectedRoute from "./components/ProtectedRoute";
 import MaintenanceCheck from "./components/MaintenanceCheck";
 
-// Developer Pages
 import DeveloperDashboard from "@/pages/developer/DeveloperDashboard";
 import DeveloperLogin from "@/pages/developer/DeveloperLogin";
 import DeveloperMessages from "@/pages/developer/Messages";
@@ -49,60 +41,52 @@ import LoginAlerts from "@/pages/developer/LoginAlerts";
 import AdManagement from "./pages/developer/AdManagement";
 import useAuthStore from "./store/authStore";
 
-// Lazy-loaded components
 const SocketDiagnostic = lazy(() => import("./components/SocketDiagnostic"));
 
 const queryClient = new QueryClient();
 const App = () => {
-  const { initialize } = useAuthStore();  useEffect(() => {
+  const { initialize } = useAuthStore();
+
+  useEffect(() => {
     initialize();
-    
-    // Add a listener for storage events to handle multi-tab scenarios
+
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === "auth_data") {
         initialize();
       }
     };
-    
+
     window.addEventListener("storage", handleStorageChange);
-    
-    // Set up Firebase auth state listener
+
     const setupFirebaseAuthListener = async () => {
       try {
         const { auth } = await import("./config/firebase");
-        const { onAuthStateChanged } = await import("firebase/auth");        // Listen for Firebase auth state changes
-        const unsubscribe = onAuthStateChanged(auth, async (_user) => {
-          // Auth state changed, user signed in or out - handled by state
-        });
-        
+        const { onAuthStateChanged } = await import("firebase/auth");
+        const unsubscribe = onAuthStateChanged(auth, async (_user) => {});
         return unsubscribe;
       } catch (error) {
         console.error("Failed to set up Firebase auth listener:", error);
         return null;
       }
     };
-    
-    // Start listening to Firebase auth events
+
     let authUnsubscribe: (() => void) | null = null;
-    setupFirebaseAuthListener().then(unsubscribe => {
+    setupFirebaseAuthListener().then((unsubscribe) => {
       authUnsubscribe = unsubscribe;
     });
-    
-    // Cleanup function
+
     return () => {
       window.removeEventListener("storage", handleStorageChange);
-      
-      // Clean up Firebase auth listener
       if (authUnsubscribe) {
         authUnsubscribe();
       }
-      
-      // Clear any session refresh intervals
+
       if ((window as any).__authRefreshInterval) {
         clearInterval((window as any).__authRefreshInterval);
       }
     };
   }, [initialize]);
+
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -111,13 +95,12 @@ const App = () => {
         <Sonner />
         <BrowserRouter basename="/">
           <MaintenanceCheck>
-            <Routes>              {/* Public Routes */}
+            <Routes>
+              {" "}
               <Route path="/" element={<Homepage />} index={true} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/verify-email/:token" element={<VerifyEmail />} />
-
-              {/* User Protected Routes */}
               <Route
                 path="/dashboard"
                 element={
@@ -174,8 +157,6 @@ const App = () => {
                   </ProtectedRoute>
                 }
               />
-
-              {/* Admin Routes */}
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route
                 path="/admin"
@@ -233,7 +214,6 @@ const App = () => {
                   </ProtectedRoute>
                 }
               />
-
               {/* Developer Routes */}
               <Route path="/developer/login" element={<DeveloperLogin />} />
               <Route
@@ -284,7 +264,6 @@ const App = () => {
                   </ProtectedRoute>
                 }
               />
-              
               <Route
                 path="/developer/login-alerts"
                 element={
@@ -293,7 +272,6 @@ const App = () => {
                   </ProtectedRoute>
                 }
               />
-
               <Route
                 path="/developer/products"
                 element={
@@ -310,8 +288,6 @@ const App = () => {
                   </ProtectedRoute>
                 }
               />
-              
-              {/* Socket Diagnostic Tool - only in development mode */}
               <Route
                 path="/developer/socket-diagnostic"
                 element={
@@ -322,8 +298,6 @@ const App = () => {
                   </ProtectedRoute>
                 }
               />
-
-              {/* Catch-All Route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </MaintenanceCheck>

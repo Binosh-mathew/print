@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import AdminLayout from "@/components/layouts/AdminLayout";
 import { Button } from "@/components/ui/button";
-import type { Order } from "@/types/order";
 import {
   Card,
   CardContent,
@@ -25,81 +24,7 @@ import {
   Line,
   Legend,
 } from "recharts";
-import axios from "../../config/axios";
-
-// Function to generate monthly data from orders
-const generateMonthlyData = (orders: any[]) => {
-  const currentYear = new Date().getFullYear();
-  const monthNames = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
-
-  // Initialize monthly data with all months
-  const monthlyData = monthNames.map((month) => ({
-    name: month,
-    revenue: 0,
-    completed: 0,
-    pending: 0,
-    total: 0,
-  }));
-
-  // Process each order
-  orders.forEach((order) => {
-    if (!order.createdAt) return;
-
-    const orderDate = new Date(order.createdAt);
-    if (orderDate.getFullYear() !== currentYear) return;
-
-    const monthIndex = orderDate.getMonth();
-    const price = parseFloat(order.totalPrice) || 0;
-    const status = order.status?.toLowerCase() || "";
-
-    monthlyData[monthIndex].total += 1;
-    monthlyData[monthIndex].revenue += price;
-
-    if (status === "completed") {
-      monthlyData[monthIndex].completed += 1;
-    } else if (status === "pending") {
-      monthlyData[monthIndex].pending += 1;
-    }
-  });
-
-  return monthlyData;
-};
-
-// Get current month's data for the charts
-const getCurrentYearData = (orders: any[]) => {
-  const monthlyData = generateMonthlyData(orders);
-  const currentMonth = new Date().getMonth();
-
-  // Get last 6 months data
-  const startMonth = Math.max(0, currentMonth - 5);
-  const chartData = monthlyData.slice(startMonth, currentMonth + 1);
-
-  return {
-    revenueData: chartData.map((month) => ({
-      name: month.name,
-      revenue: parseFloat(month.revenue.toFixed(2)),
-    })),
-    ordersData: chartData.map((month) => ({
-      name: month.name,
-      completed: month.completed,
-      pending: month.pending,
-      total: month.total,
-    })),
-  };
-};
+import { fetchDashboardData } from "@/api/orderApi";
 
 const AdminDashboard = () => {
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
@@ -123,99 +48,11 @@ const AdminDashboard = () => {
   });
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        // Fetch orders data
-        const ordersResponse = await axios.get("/orders");        const orders:Order[] = Array.isArray(ordersResponse.data.orders)
-          ? ordersResponse.data.orders
-          : [];
-
-        // Sort orders by date (newest first) and get recent orders
-        const sortedOrders = [...orders].sort((a, b) => {
-          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-          return dateB - dateA;
-        });
-
-        // Set recent orders (first 5)
-        setRecentOrders(sortedOrders.slice(0, 5));
-
-        // Update chart data
-        const currentYearData = getCurrentYearData(orders);
-        setChartData(currentYearData);
-
-        // Get current date for filtering
-        const today = new Date();
-        const currentMonth = today.getMonth();
-        const currentYear = today.getFullYear();
-
-        // Filter orders for today
-        const todayOrders = orders.filter((order: any) => {
-          if (!order.createdAt) return false;
-          const orderDate = new Date(order.createdAt);
-          return (
-            orderDate.getDate() === today.getDate() &&
-            orderDate.getMonth() === currentMonth &&
-            orderDate.getFullYear() === currentYear
-          );
-        });
-
-        // Filter orders for current month
-        const monthlyOrders = orders.filter((order: any) => {
-          if (!order.createdAt) return false;
-          const orderDate = new Date(order.createdAt);
-          return (
-            orderDate.getMonth() === currentMonth &&
-            orderDate.getFullYear() === currentYear
-          );
-        });
-
-        // Calculate total revenue
-        const totalRevenue = orders.reduce((total: number, order: any) => {
-          const price = order.totalPrice || 0;
-          return (
-            total + (typeof price === "number" ? price : parseFloat(price) || 0)
-          );
-        }, 0);
-
-        // Calculate monthly revenue
-        const monthlyRevenue = monthlyOrders.reduce(
-          (total: number, order: any) => {
-            const price = order.totalPrice || 0;
-            return (
-              total +
-              (typeof price === "number" ? price : parseFloat(price) || 0)
-            );
-          },
-          0
-        );
-
-        // Count orders by status (case-insensitive)
-        const statusCounts = orders.reduce((acc: any, order: any) => {
-          if (!order.status) return acc;
-          const status = order.status.toLowerCase();
-          acc[status] = (acc[status] || 0) + 1;
-          return acc;
-        }, {});
-
-        // Update stats
-        setStats({
-          totalOrders: orders.length,
-          pendingOrders: statusCounts.pending || 0,
-          completedOrders: statusCounts.completed || 0,
-          totalRevenue,
-          dailyOrders: todayOrders.length,
-          monthlyOrders: monthlyOrders.length,
-          monthlyRevenue,
-        });
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-        // You might want to set some error state here
-      }
-    };
-
-    fetchDashboardData();
-    const intervalId = setInterval(fetchDashboardData, 30000); // Update every 30 seconds
+    fetchDashboardData(setRecentOrders, setStats, setChartData);
+    const intervalId = setInterval(
+      () => fetchDashboardData(setRecentOrders, setStats, setChartData),
+      30000
+    );
     return () => clearInterval(intervalId);
   }, []);
 

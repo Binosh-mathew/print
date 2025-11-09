@@ -1,19 +1,20 @@
 // Order APIs
 import axios from "@/config/axios";
 import { Order } from "@/types/order";
+import { getCurrentYearData } from "@/utils/ordersStats";
 
 export const fetchOrders = async (storeId?: string): Promise<Order[]> => {
   try {
     const url = storeId ? `/orders?storeId=${storeId}` : "/orders";
     const response = await axios.get(url);
-    
+
     // Check if we got orders in the response
     if (response.data.orders && Array.isArray(response.data.orders)) {
       return response.data.orders;
     } else if (Array.isArray(response.data)) {
       return response.data;
     }
-    
+
     // If we got a successful response but no orders property or it's not an array,
     // return empty array as the proper way to represent "no orders"
     return [];
@@ -22,12 +23,12 @@ export const fetchOrders = async (storeId?: string): Promise<Order[]> => {
     if (error?.response?.status === 404) {
       return []; // Return empty array for 404 responses
     }
-    
+
     // Check for authentication issues
     if (error?.response?.status === 401) {
       throw new Error("Authentication error - please log in again");
     }
-    
+
     // Return empty array for any error to prevent breaking the UI
     return [];
   }
@@ -120,5 +121,85 @@ export const fetchOrderById = async (id: string): Promise<Order> => {
       throw new Error(error.response.data.message || "Failed to fetch order");
     }
     throw new Error("An unexpected error occurred while fetching order");
+  }
+};
+
+export const fetchDashboardData = async (
+  setRecentOrders: (orders: Order[]) => void,
+  setStats: (stats: any) => void,
+  setChartData: (data: any) => void
+) => {
+  try {
+    const ordersResponse = await axios.get("/orders");
+    const orders: Order[] = Array.isArray(ordersResponse.data.orders)
+      ? ordersResponse.data.orders
+      : [];
+
+    const sortedOrders = [...orders].sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    setRecentOrders(sortedOrders.slice(0, 5));
+
+    const currentYearData = getCurrentYearData(orders);
+    setChartData(currentYearData);
+
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+
+    const todayOrders = orders.filter((order: any) => {
+      if (!order.createdAt) return false;
+      const orderDate = new Date(order.createdAt);
+      return (
+        orderDate.getDate() === today.getDate() &&
+        orderDate.getMonth() === currentMonth &&
+        orderDate.getFullYear() === currentYear
+      );
+    });
+
+    const monthlyOrders = orders.filter((order: any) => {
+      if (!order.createdAt) return false;
+      const orderDate = new Date(order.createdAt);
+      return (
+        orderDate.getMonth() === currentMonth &&
+        orderDate.getFullYear() === currentYear
+      );
+    });
+
+    const totalRevenue = orders.reduce((total: number, order: any) => {
+      const price = order.totalPrice || 0;
+      return (
+        total + (typeof price === "number" ? price : parseFloat(price) || 0)
+      );
+    }, 0);
+
+    const monthlyRevenue = monthlyOrders.reduce((total: number, order: any) => {
+      const price = order.totalPrice || 0;
+      return (
+        total + (typeof price === "number" ? price : parseFloat(price) || 0)
+      );
+    }, 0);
+
+    const statusCounts = orders.reduce((acc: any, order: any) => {
+      if (!order.status) return acc;
+      const status = order.status.toLowerCase();
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {});
+
+    setStats({
+      totalOrders: orders.length,
+      pendingOrders: statusCounts.pending || 0,
+      completedOrders: statusCounts.completed || 0,
+      totalRevenue,
+      dailyOrders: todayOrders.length,
+      monthlyOrders: monthlyOrders.length,
+      monthlyRevenue,
+    });
+  } catch (error) {
+    console.error("Error fetching dashboard data:", error);
   }
 };
